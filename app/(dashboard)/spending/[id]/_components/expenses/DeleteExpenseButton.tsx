@@ -7,9 +7,11 @@ import { deleteExpense } from "@/app/(dashboard)/_lib/expenses/mutations";
 export default function DeleteExpenseButton({
   expenseGroupId,
   expense,
+  menuFocusKey,
 }: {
   expenseGroupId: number;
   expense: { id: number; title: string; amountCentavos: number };
+  menuFocusKey?: string;
 }) {
   async function confirmDelete(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
@@ -21,8 +23,9 @@ export default function DeleteExpenseButton({
     <FormDialog
       triggerLabel="Delete"
       triggerAriaLabel={`Delete expense: ${expense.title}`}
-      triggerFocusKey={`delete-expense-${expense.id}`}
+      triggerFocusKey={menuFocusKey ?? `delete-expense-${expense.id}`}
       triggerVariant="danger"
+      triggerClassName={menuFocusKey ? "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-red-400" : undefined}
       destructive
       returnFocusId="expense-group-title"
       title="Delete expense?"

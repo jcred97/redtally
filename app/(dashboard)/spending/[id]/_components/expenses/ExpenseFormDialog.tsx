@@ -28,6 +28,7 @@ type ExpenseFormDialogProps = {
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
   expense?: EditableExpense;
+  menuFocusKey?: string;
 };
 
 export default function ExpenseFormDialog({
@@ -35,6 +36,7 @@ export default function ExpenseFormDialog({
   categories,
   bankOptions,
   expense,
+  menuFocusKey,
 }: ExpenseFormDialogProps) {
   const fieldId = useId();
   const submissionId = useRef("");
@@ -123,8 +125,10 @@ export default function ExpenseFormDialog({
       <FormDialog
         triggerLabel={expense ? "Edit" : "+ New Expense"}
         triggerAriaLabel={expense ? `Edit expense: ${expense.title}` : undefined}
-        triggerFocusKey={expense ? `expense-${expense.id}` : undefined}
+        triggerFocusKey={menuFocusKey ?? (expense ? `expense-${expense.id}` : undefined)}
         triggerVariant={expense ? "secondary" : "primary"}
+        triggerClassName={menuFocusKey ? "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-red-400" : undefined}
+        returnFocusId={menuFocusKey ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
         description={
           expense

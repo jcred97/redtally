@@ -3,8 +3,10 @@ import type { getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expe
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import BankLogo from "../banks/BankLogo";
 import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
+import ExpenseActionMenu from "./ExpenseActionMenu";
 
 type ExpenseHistoryProps = {
   expenseGroupId: number;
@@ -38,10 +40,11 @@ export default function ExpenseHistory({
     return `/spending/${expenseGroupId}${search}#expense-history-title`;
   }
 
-  function expenseActions(expense: ExpenseHistoryProps["expenses"][number]) {
+  function expenseActions(expense: ExpenseHistoryProps["expenses"][number], menuFocusKey?: string) {
     return (
-      <div className="flex flex-wrap justify-end gap-2">
+      <>
         <EditExpenseButton
+          menuFocusKey={menuFocusKey}
           expenseGroupId={expenseGroupId}
           categories={categories}
           bankOptions={bankOptions}
@@ -58,6 +61,7 @@ export default function ExpenseHistory({
           }}
         />
         <DeleteExpenseButton
+          menuFocusKey={menuFocusKey}
           expenseGroupId={expenseGroupId}
           expense={{
             id: expense.id,
@@ -65,7 +69,7 @@ export default function ExpenseHistory({
             amountCentavos: expense.amountCentavos,
           }}
         />
-      </div>
+      </>
     );
   }
 
@@ -98,47 +102,61 @@ export default function ExpenseHistory({
               {paymentDetails && (
                 <p className="mt-1 wrap-anywhere text-sm text-gray-400">{paymentDetails}</p>
               )}
-              <div className="mt-3 flex justify-end">{expenseActions(expense)}</div>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">{expenseActions(expense)}</div>
             </li>
           );
         })}
       </ul>
 
-      <div className="hidden overflow-x-auto rounded-xl border border-gray-800 bg-gray-900 sm:block">
-        <table className="w-full text-sm">
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full border-separate border-spacing-y-1.5 text-sm [&_:is(th,td)]:px-2.5 lg:[&_:is(th,td)]:px-4">
           <caption className="sr-only">Expense history</caption>
           <thead>
-            <tr className="border-b border-gray-800 text-left text-xs uppercase tracking-wider text-gray-400">
-              <th scope="col" className="px-6 py-4">Date</th>
-              <th scope="col" className="px-6 py-4">Title</th>
-              <th scope="col" className="px-6 py-4">Category</th>
-              <th scope="col" className="px-6 py-4">Payment Method</th>
-              <th scope="col" className="px-6 py-4">Bank</th>
-              <th scope="col" className="px-6 py-4 text-right">Amount</th>
-              <th scope="col" className="px-6 py-4">Actions</th>
+            <tr className="text-left text-xs font-medium text-gray-400 [&>th]:border-b [&>th]:border-gray-800">
+              <th scope="col" className="py-4">Date</th>
+              <th scope="col" className="py-4">Title</th>
+              <th scope="col" className="py-4">Category</th>
+              <th scope="col" className="py-4">Payment Method</th>
+              <th scope="col" className="py-4">Bank</th>
+              <th scope="col" className="py-4 text-right">Amount</th>
+              <th scope="col"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
-            {expenses.map((expense) => (
-              <tr key={expense.id} className="hover:bg-gray-800/50 transition-colors">
-                <td className="px-6 py-4 text-gray-400">{formatExpenseDate(expense.date)}</td>
-                <td className="px-6 py-4 font-medium">{expense.title}</td>
-                <td className="px-6 py-4 text-gray-300">
-                  {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}
-                  {expense.category.name}
-                </td>
-                <td className="px-6 py-4 text-gray-400">
-                  {expense.paymentMethod ? paymentMethodLabels[expense.paymentMethod] : "—"}
-                </td>
-                <td className="px-6 py-4 text-gray-400">
-                  {expenseBankName(expense) ?? "—"}
-                </td>
-                <td className="px-6 py-4 text-right font-semibold text-red-400">
-                  {formatPesoAmount(expense.amountCentavos)}
-                </td>
-                <td className="px-6 py-4">{expenseActions(expense)}</td>
-              </tr>
-            ))}
+          <tbody>
+            {expenses.map((expense) => {
+              const bankName = expenseBankName(expense)?.trim();
+              const menuFocusKey = `expense-actions-${expense.id}`;
+
+              return (
+                <tr key={expense.id} className="bg-gray-900 transition-colors hover:bg-gray-800/60 focus-within:bg-gray-800/60 [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl">
+                  <td className="py-4 text-gray-400">{formatExpenseDate(expense.date)}</td>
+                  <td className="py-4 font-medium">{expense.title}</td>
+                  <td className="py-4 text-gray-300">
+                    {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}
+                    {expense.category.name}
+                  </td>
+                  <td className="py-4 text-gray-400">
+                    {expense.paymentMethod ? paymentMethodLabels[expense.paymentMethod] : "—"}
+                  </td>
+                  <td className="py-4 text-gray-400">
+                    {bankName ? (
+                      <div className="flex items-center gap-2">
+                        <BankLogo name={bankName} compact />
+                        <span>{bankName}</span>
+                      </div>
+                    ) : "—"}
+                  </td>
+                  <td className="py-4 text-right font-semibold text-red-400">
+                    {formatPesoAmount(expense.amountCentavos)}
+                  </td>
+                  <td className="py-2 text-right">
+                    <ExpenseActionMenu title={expense.title} focusKey={menuFocusKey}>
+                      {expenseActions(expense, menuFocusKey)}
+                    </ExpenseActionMenu>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

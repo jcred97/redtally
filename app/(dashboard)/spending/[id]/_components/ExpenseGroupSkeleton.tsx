@@ -75,21 +75,22 @@ export default function ExpenseGroupSkeleton() {
 
           <div
             aria-hidden="true"
-            className="hidden rounded-xl border border-gray-800 bg-gray-900 sm:block"
+            className="hidden space-y-1.5 sm:block"
           >
-            <div className="grid grid-cols-7 gap-4 border-b border-gray-800 px-6 py-4">
-              {Array.from({ length: 7 }, (_, index) => (
+            <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_2.25rem] gap-4 border-b border-gray-800 px-4 py-4">
+              {Array.from({ length: 6 }, (_, index) => (
                 <Skeleton key={index} className="h-4 w-full" />
               ))}
             </div>
             {[0, 1, 2, 3, 4].map((row) => (
               <div
                 key={row}
-                className="grid grid-cols-7 gap-4 border-b border-gray-800 px-6 py-5 last:border-b-0"
+                className="grid grid-cols-[repeat(6,minmax(0,1fr))_2.25rem] items-center gap-4 rounded-xl bg-gray-900 px-4 py-4"
               >
-                {Array.from({ length: 7 }, (_, column) => (
+                {Array.from({ length: 6 }, (_, column) => (
                   <Skeleton key={column} className="h-5 w-full" />
                 ))}
+                <Skeleton className="justify-self-center h-2 w-4" />
               </div>
             ))}
           </div>
