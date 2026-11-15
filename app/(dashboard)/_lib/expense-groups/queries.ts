@@ -18,10 +18,6 @@ export async function getExpenseGroupById(id: number) {
   return access.getById(id);
 }
 
-export async function getExpensesByExpenseGroupId(id: number) {
-  return access.getExpensesById(id);
-}
-
 export async function getExpensePageByExpenseGroupId(id: number, page: number, filters?: ExpenseHistoryFilters) {
   return access.getExpensePageById(id, page, filters);
 }

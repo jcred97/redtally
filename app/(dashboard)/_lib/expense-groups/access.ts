@@ -166,30 +166,6 @@ export function createExpenseGroupAccess(
       });
     },
 
-    async getExpensesById(id: number) {
-      const userId = await requireUserId();
-
-      if (!validId(id)) {
-        return [];
-      }
-
-      return db.expense.findMany({
-        where: {
-          expenseGroupId: id,
-          category: { expenseGroup: { userId } },
-        },
-        include: {
-          category: { select: { name: true, color: true, icon: true } },
-          bankAssignment: {
-            include: {
-              bank: { select: { name: true } },
-            },
-          },
-        },
-        orderBy: { date: "desc" },
-      });
-    },
-
     async listExpenseHistoryBankOptions(id: number) {
       const userId = await requireUserId();
       if (!validId(id)) return [];

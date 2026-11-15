@@ -105,11 +105,11 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         [bob, b, [a, legacy]],
       ] as const) {
         assert.equal((await access.getById(own.id))?.id, own.id);
-        assert.equal((await access.getExpensesById(own.id)).length, 1);
+        assert.equal((await access.getExpensePageById(own.id, 1))?.expenses.length, 1);
 
         for (const other of denied) {
           assert.equal(await access.getById(other.id), null);
-          assert.deepEqual(await access.getExpensesById(other.id), []);
+          assert.equal(await access.getExpensePageById(other.id, 1), null);
           await assert.rejects(access.rename(other.id, "Foreign rename"), /^Error: Expense group not found$/);
           await assert.rejects(access.duplicate(other.id), /^Error: Expense group not found$/);
           await assert.rejects(
@@ -130,7 +130,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         () => anonymous.list(),
         () => anonymous.listForSwitcher(),
         () => anonymous.getById(a.id),
-        () => anonymous.getExpensesById(a.id),
+        () => anonymous.getExpensePageById(a.id, 1),
         () => anonymous.create("Injected"),
         () => anonymous.rename(a.id, "Injected"),
         () => anonymous.duplicate(a.id),
@@ -138,7 +138,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         () => anonymous.create(null),
         () => anonymous.getById(Number.NaN),
         () => anonymous.getById(2_147_483_648),
-        () => anonymous.getExpensesById(2_147_483_648),
+        () => anonymous.getExpensePageById(2_147_483_648, 1),
         () => anonymous.delete(2_147_483_648),
       ]) {
         await assert.rejects(invoke(), /Sign in required/);
@@ -176,7 +176,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       const maxId = 2_147_483_647;
 
       assert.equal(await alice.getById(maxId), null);
-      assert.deepEqual(await alice.getExpensesById(maxId), []);
+      assert.equal(await alice.getExpensePageById(maxId, 1), null);
       await assert.rejects(alice.delete(maxId), /^Error: Expense group not found$/);
 
       await client.expenseGroup.create({
@@ -185,6 +185,8 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
 
       assert.equal((await alice.getById(maxId))?.id, maxId);
       assert.equal(await bob.getById(maxId), null);
+      assert.equal((await alice.getExpensePageById(maxId, 1))?.totalExpenses, 0);
+      assert.equal(await bob.getExpensePageById(maxId, 1), null);
       await assert.rejects(bob.delete(maxId), /^Error: Expense group not found$/);
       await alice.delete(maxId);
       assert.equal(await client.expenseGroup.count(), 3);
@@ -202,7 +204,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         Number.MAX_SAFE_INTEGER + 1,
       ]) {
         assert.equal(await alice.getById(id), null);
-        assert.deepEqual(await alice.getExpensesById(id), []);
+        assert.equal(await alice.getExpensePageById(id, 1), null);
         await assert.rejects(alice.rename(id, "Invalid"), /Expense group not found/);
         await assert.rejects(alice.duplicate(id), /Expense group not found/);
         await assert.rejects(alice.delete(id), /Expense group not found/);
@@ -226,7 +228,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       await alice.rename(a.id, "  Personal budget  ");
       assert.deepEqual(await alice.listForSwitcher(), [{ id: a.id, name: "Personal budget" }]);
       assert.equal((await bob.getById(b.id))?.name, b.name);
-      assert.equal((await alice.getExpensesById(a.id)).length, 1);
+      assert.equal((await alice.getExpensePageById(a.id, 1))?.totalExpenses, 1);
     });
 
     await t.test("groups with dependent records keep their categories and expenses", async () => {
@@ -235,7 +237,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         /Remove this expense group's categories, budgets, and bank assignments before deleting it/,
       );
       assert.equal((await alice.getById(a.id))?.categories.length, 1);
-      assert.equal((await alice.getExpensesById(a.id)).length, 1);
+      assert.equal((await alice.getExpensePageById(a.id, 1))?.totalExpenses, 1);
     });
 
     await t.test("duplicate assigns fresh IDs and preserves exact values, relationships, and settings", async () => {
@@ -351,10 +353,10 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(copiedLunch.bankAssignmentId, null);
       assert.equal(copiedLunch.legacyBankName, "Historical bank label");
       assert.equal((await alice.getById(source.id))?.name, "Travel");
-      assert.equal((await alice.getExpensesById(source.id)).length, 2);
+      assert.equal((await alice.getExpensePageById(source.id, 1))?.totalExpenses, 2);
     });
 
-    await t.test("expense pages bound row counts and keep an exact owner-scoped full-group summary", async () => {
+    await t.test("expense pages bound row counts and keep an exact full-group summary", async () => {
       const group = await alice.create("Paginated group");
       const empty = await alice.create("Empty pagination fixture");
       const category = await client.category.create({
@@ -413,11 +415,6 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         totalExpenses: 0,
         totalCentavos: BigInt(0),
       });
-      assert.equal(await bob.getExpensePageById(group.id, 1), null);
-      assert.equal(await alice.getExpensePageById(legacy.id, 1), null);
-      assert.equal(await alice.getExpensePageById(2_147_483_648, 1), null);
-      await assert.rejects(anonymous.getExpensePageById(group.id, 1), /Sign in required/);
-
       await client.expense.deleteMany({ where: { expenseGroupId: group.id } });
       await client.category.delete({ where: { id: category.id } });
       await client.bankAssignment.delete({ where: { id: assignment.id } });
@@ -602,7 +599,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       const source = await alice.create(prefix + "🚕123456");
       const { id } = await alice.duplicate(source.id);
       assert.equal((await alice.getById(id))?.name, prefix + " (copy)");
-      assert.deepEqual(await alice.getExpensesById(id), []);
+      assert.deepEqual((await alice.getExpensePageById(id, 1))?.expenses, []);
       await alice.delete(id);
       await alice.delete(source.id);
     });
@@ -677,7 +674,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         supportedBankPayment: false,
       });
       assert.equal(
-        (await alice.getExpensesById(a.id)).find((row) => row.id === expense.id)?.bankAssignment?.bank.name,
+        (await alice.getExpensePageById(a.id, 1))?.expenses.find((row) => row.id === expense.id)?.bankAssignment?.bank.name,
         bank.name,
       );
 
