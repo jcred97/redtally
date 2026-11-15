@@ -18,9 +18,16 @@ export async function getExpenseGroupById(id: number) {
   return access.getById(id);
 }
 
-export async function getExpensePageByExpenseGroupId(id: number, page: number, filters?: ExpenseHistoryFilters) {
-  return access.getExpensePageById(id, page, filters);
+export async function getExpensePageByExpenseGroupId(
+  id: number,
+  page: number,
+  filters?: ExpenseHistoryFilters,
+  includeDayTotals = false,
+) {
+  return access.getExpensePageById(id, page, filters, includeDayTotals);
 }
+
+export type ExpenseHistoryEntry = NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>["expenses"][number];
 
 export async function getExpenseHistoryBankOptionsByExpenseGroupId(id: number) {
   return access.listExpenseHistoryBankOptions(id);

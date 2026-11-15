@@ -404,6 +404,18 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(first.expenses[1].timeMinutes, 1435);
       assert.equal(first.expenses[2].timeMinutes, 0);
       assert.equal(first.expenses[3].timeMinutes, null);
+      assert.equal(first.expenses[0].daySummary, null);
+      const groupedFirst = await alice.getExpensePageById(group.id, 1, {}, true);
+      const groupedLast = await alice.getExpensePageById(group.id, 2, {}, true);
+      assert.ok(groupedFirst && groupedLast);
+      assert.deepEqual(groupedFirst.expenses.map(({ id }) => id), expectedIds.slice(0, 25));
+      assert.deepEqual(groupedLast.expenses.map(({ id }) => id), expectedIds.slice(25));
+      assert.deepEqual(groupedFirst.expenses[0].daySummary, {
+        count: 1, totalCentavos: BigInt(amountCentavos),
+      });
+      const otherDay = { count: 25, totalCentavos: BigInt(amountCentavos) * BigInt(25) };
+      assert.deepEqual(groupedFirst.expenses[3].daySummary, otherDay);
+      assert.deepEqual(groupedLast.expenses[0].daySummary, otherDay);
       assert.deepEqual(first.expenses[0].bankAssignment, { bank: { name: "Current bank" } });
       assert.deepEqual(last.expenses[0].date, date);
       assert.deepEqual(last.expenses[0].category, { name: "Travel", icon: "✈️" });
@@ -554,14 +566,17 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(bankFilter, { assignmentId: assignment.id });
       assert.equal(paymentMethod, "DEBIT_CARD");
       const filters = { month: "2026-10", categoryId: category.id, paymentMethod, bank: bankFilter };
-      const first = await alice.getExpensePageById(group.id, 1, filters);
-      const last = await alice.getExpensePageById(group.id, 999, filters);
+      const first = await alice.getExpensePageById(group.id, 1, filters, true);
+      const last = await alice.getExpensePageById(group.id, 999, filters, true);
       assert.ok(first && last);
       assert.deepEqual([first.page, last.page], [1, 2]);
       for (const page of [first, last]) {
         assert.equal(page.totalExpenses, 26);
         assert.equal(page.totalCentavos, BigInt(260));
         assert.equal(page.totalPages, 2);
+        for (const expense of page.expenses) {
+          assert.deepEqual(expense.daySummary, { count: 26, totalCentavos: BigInt(260) });
+        }
       }
       assert.equal(first.expenses.length, 25);
       assert.equal(last.expenses.length, 1);

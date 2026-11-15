@@ -13,7 +13,9 @@ type ExpenseHistoryFiltersProps = {
   paymentMethod?: PaymentMethod;
   bank?: string;
   monthScopeHref: string;
+  clearFiltersHref: string;
   canClearFilters: boolean;
+  grouped: boolean;
 };
 
 const fieldClass = "mt-1 block h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
@@ -29,7 +31,9 @@ export default function ExpenseHistoryFilters({
   paymentMethod,
   bank,
   monthScopeHref,
+  clearFiltersHref,
   canClearFilters,
+  grouped,
 }: ExpenseHistoryFiltersProps) {
   const categoryUnavailable =
     categoryId !== undefined && !categories.some((category) => category.id === categoryId);
@@ -43,6 +47,7 @@ export default function ExpenseHistoryFilters({
       className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
     >
       {month === undefined && <input type="hidden" name="allMonths" value="1" />}
+      {grouped && <input type="hidden" name="view" value="grouped" />}
       <label className="min-w-0 text-sm text-gray-300">
         Month
         <input
@@ -103,7 +108,7 @@ export default function ExpenseHistoryFilters({
           {month === undefined ? "This month" : "All months"}
         </Link>
         {canClearFilters && (
-          <Link href={groupPath} className="text-sm text-gray-300 underline hover:text-white">
+          <Link href={clearFiltersHref} className="text-sm text-gray-300 underline hover:text-white">
             Clear filters
           </Link>
         )}

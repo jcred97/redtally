@@ -40,15 +40,17 @@ export default async function ExpenseGroupPage({
     category?: string | string[];
     paymentMethod?: string | string[];
     bank?: string | string[];
+    view?: string | string[];
   }>;
 }) {
-  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, allMonths, category, paymentMethod: rawMethod, bank: rawBank }] =
+  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, allMonths, category, paymentMethod: rawMethod, bank: rawBank, view }] =
     await Promise.all([params, searchParams]);
   const id = Number(rawId);
   const showCategories = tab === "categories";
   const showBanks = tab === "banks";
   const showRecurring = tab === "recurring";
   const showExpenses = !showCategories && !showBanks && !showRecurring;
+  const grouped = view === "grouped";
   const requestedPage = typeof rawPage === "string" && /^[1-9]\d*$/.test(rawPage)
     ? Number(rawPage)
     : 1;
@@ -79,12 +81,16 @@ export default async function ExpenseGroupPage({
     filterParams.set("month", month);
     monthScopeParams.set("allMonths", "1");
   }
+  if (grouped) {
+    filterParams.set("view", "grouped");
+    monthScopeParams.set("view", "grouped");
+  }
   const filterQuery = filterParams.toString();
 
   const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, recurringExpenses] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
-    showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters) : null,
+    showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
@@ -96,12 +102,22 @@ export default async function ExpenseGroupPage({
   }
 
   const groupPath = `/spending/${expenseGroup.id}`;
-  const categoriesTab = "?tab=categories";
-  const banksTab = "?tab=banks";
-  const recurringTab = "?tab=recurring";
-  const tabSuffix = showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : "";
+  const expenseTab = grouped ? "?view=grouped" : "";
+  const viewSuffix = grouped ? "&view=grouped" : "";
+  const categoriesTab = `?tab=categories${viewSuffix}`;
+  const banksTab = `?tab=banks${viewSuffix}`;
+  const recurringTab = `?tab=recurring${viewSuffix}`;
+  const tabSuffix = showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : expenseTab;
   const currentGroup = { id: expenseGroup.id, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
+
+  function historyViewHref(nextGrouped: boolean) {
+    const query = new URLSearchParams(filterParams);
+    if (nextGrouped) query.set("view", "grouped");
+    else query.delete("view");
+    if (expensePage && expensePage.page > 1) query.set("page", String(expensePage.page));
+    return `${groupPath}?${query}`;
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-6 text-white">
@@ -118,7 +134,7 @@ export default async function ExpenseGroupPage({
         <div className="mt-4 flex flex-wrap items-end justify-between gap-1 border-b border-gray-800 sm:mt-6 sm:gap-4">
           <nav aria-label="Expense group views" className="flex flex-wrap">
             {[
-              { label: "Expenses", href: groupPath, current: showExpenses },
+              { label: "Expenses", href: groupPath + expenseTab, current: showExpenses },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Banks", href: groupPath + banksTab, current: showBanks },
               { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
@@ -157,25 +173,51 @@ export default async function ExpenseGroupPage({
               categoryId={categoryId}
               paymentMethod={paymentMethod}
               bank={bankFilterValue}
+              grouped={grouped}
               monthScopeHref={`${groupPath}?${monthScopeParams}`}
+              clearFiltersHref={groupPath + expenseTab}
               canClearFilters={month !== currentMonth || hasOtherFilters}
             />
-            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                <p className="mb-1 text-sm text-gray-400">Total Spent</p>
-                <p className="text-2xl font-bold">
-                  {formatPesoAmount(expensePage.totalCentavos)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                <p className="mb-1 text-sm text-gray-400">Expenses</p>
-                <p className="text-2xl font-bold">{expensePage.totalExpenses}</p>
-              </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                <p className="mb-1 text-sm text-gray-400">Group categories</p>
-                <p className="text-2xl font-bold">{expenseGroup.categories.length}</p>
-              </div>
+            <div className="mb-4 flex justify-end">
+              <nav aria-label="Expense history view" className="inline-flex gap-1 rounded-lg border border-gray-800 bg-gray-900 p-1">
+                {[
+                  { label: "Table", grouped: false },
+                  { label: "Grouped by day", grouped: true },
+                ].map((option) => {
+                  const current = grouped === option.grouped;
+                  return (
+                    <Link
+                      key={option.label}
+                      href={historyViewHref(option.grouped)}
+                      prefetch={false}
+                      scroll={false}
+                      aria-current={current ? "page" : undefined}
+                      className={`inline-flex min-h-9 items-center rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-red-400 ${current ? "bg-gray-700 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"}`}
+                    >
+                      {option.label}
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
+            {!grouped && (
+              <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                  <p className="mb-1 text-sm text-gray-400">Total Spent</p>
+                  <p className="text-2xl font-bold">
+                    {formatPesoAmount(expensePage.totalCentavos)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                  <p className="mb-1 text-sm text-gray-400">Expenses</p>
+                  <p className="text-2xl font-bold">{expensePage.totalExpenses}</p>
+                </div>
+                <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                  <p className="mb-1 text-sm text-gray-400">Group categories</p>
+                  <p className="text-2xl font-bold">{expenseGroup.categories.length}</p>
+                </div>
+              </div>
+            )}
 
             {expensePage.totalExpenses === 0 ? (
               <div className="flex flex-col items-center justify-center py-32 text-center">
@@ -199,6 +241,7 @@ export default async function ExpenseGroupPage({
                 categories={categoryOptions}
                 bankOptions={bankOptions}
                 expenses={expensePage.expenses}
+                groupedSummary={grouped ? { month, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
                 page={expensePage.page}
                 totalPages={expensePage.totalPages}
                 filterQuery={filterQuery}

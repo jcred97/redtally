@@ -33,7 +33,7 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 ### 3. Make daily phone use comfortable
 
 - [ ] Prioritize amount entry, category selection, and a sensible date default.
-- [x] Show a desktop history table and compact cards on phones. Display recorded Manila times in both layouts.
+- [x] Offer a desktop history table with compact cards on phones, and a grouped view with filtered daily subtotals. Show recorded Manila times in both views.
 - [ ] Support long names, empty states, keyboard use, and accessible dialogs and labels.
 - [x] Filter expense history by month, category, payment method, and bank. Keep selections across pages and update the expense count and total after changes.
 - [x] Calculate totals in PostgreSQL and paginate expense history.

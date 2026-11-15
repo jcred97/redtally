@@ -19,6 +19,8 @@ type ExpensePageRow = {
       categoryName: string;
       categoryIcon: string | null;
       bankName: string | null;
+      dayExpenseCount: bigint | null;
+      dayTotalCentavos: bigint | null;
     })
 );
 
@@ -195,7 +197,8 @@ export function createExpenseGroupAccess(
     async getExpensePageById(
       id: number,
       requestedPage: number,
-      { month, categoryId, paymentMethod, bank }: ExpenseHistoryFilters = {}
+      { month, categoryId, paymentMethod, bank }: ExpenseHistoryFilters = {},
+      includeDayTotals = false,
     ) {
       const userId = await requireUserId();
       if (!validId(id)) return null;
@@ -223,6 +226,11 @@ export function createExpenseGroupAccess(
           AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
       }
       const expenseFilters = Prisma.sql`${monthFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter}`;
+      // Count every matching expense on a day, including those outside the current page.
+      const dayTotals = includeDayTotals
+        ? Prisma.sql`COUNT(*) OVER (PARTITION BY date::date) AS "dayExpenseCount",
+                     SUM("amountCentavos") OVER (PARTITION BY date::date) AS "dayTotalCentavos"`
+        : Prisma.sql`NULL::bigint AS "dayExpenseCount", NULL::bigint AS "dayTotalCentavos"`;
 
       // Clamp the page and read its rows in the same database snapshot as the totals.
       const rows = await db.$queryRaw<ExpensePageRow[]>`
@@ -242,11 +250,13 @@ export function createExpenseGroupAccess(
         )
         SELECT pagination."totalExpenses", pagination."totalCentavos", pagination."totalPages", pagination.page,
           expense.id, expense.title, expense."amountCentavos", expense.date, expense."timeMinutes", expense."updatedAt", expense."categoryId",
+          expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName"
         FROM pagination
         LEFT JOIN LATERAL (
-          SELECT id, title, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId"
+          SELECT id, title, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
+            ${dayTotals}
           FROM "Expense"
           WHERE "expenseGroupId" = pagination.id
             ${expenseFilters}
@@ -276,6 +286,10 @@ export function createExpenseGroupAccess(
           amountCentavos: row.amountCentavos,
           date: row.date,
           timeMinutes: row.timeMinutes,
+          daySummary: row.dayExpenseCount === null || row.dayTotalCentavos === null ? null : {
+            count: Number(row.dayExpenseCount),
+            totalCentavos: row.dayTotalCentavos,
+          },
           updatedAt: row.updatedAt,
           categoryId: row.categoryId,
           paymentMethod: row.paymentMethod,
