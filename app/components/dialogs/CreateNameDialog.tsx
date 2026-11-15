@@ -9,7 +9,7 @@ type CreateNameDialogProps = {
   title: string;
   description: string;
   placeholder: string;
-  pendingMessage: string;
+  pendingMessage?: string;
   failureMessage: string;
   createAction: (
     formData: FormData

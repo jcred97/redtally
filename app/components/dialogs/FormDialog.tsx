@@ -27,7 +27,7 @@ type FormDialogProps = {
   disabled?: boolean;
   submitLabel?: string;
   pendingLabel?: string;
-  pendingMessage: string;
+  pendingMessage?: string;
   failureMessage: string;
   submitAction: (
     formData: FormData
@@ -183,7 +183,7 @@ export default function FormDialog({
   }
 
   let triggerClass =
-    "flex cursor-pointer items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+    "flex cursor-pointer items-center gap-1.5 bg-red-500 enabled:hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
   if (triggerVariant === "secondary") {
     triggerClass =
@@ -281,11 +281,9 @@ export default function FormDialog({
               </div>
             </form>
 
-            {pending && (
-              <p role="status" className="mt-3 text-sm text-gray-400">
-                {pendingMessage}
-              </p>
-            )}
+            <p role="status" className={pending && pendingMessage ? "mt-3 text-sm text-gray-400" : "sr-only"}>
+              {pending ? (pendingMessage ?? pendingLabel) : null}
+            </p>
           </dialog>,
           document.body
         )}

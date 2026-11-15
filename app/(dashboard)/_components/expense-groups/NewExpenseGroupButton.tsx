@@ -22,7 +22,6 @@ export default function NewExpenseGroupButton({ inSwitcher = false }: { inSwitch
       title="New Expense Group"
       description="An expense group is a workspace for your categories and expenses."
       placeholder="e.g. JC Personal"
-      pendingMessage="Creating your expense group. Please wait..."
       failureMessage="Unable to create your expense group. Please try again."
       createAction={(formData) => createExpenseGroup(null, formData)}
     />
