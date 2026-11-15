@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { getManilaToday, parseExpenseDate } from "@/app/lib/expenses/date";
 import { getRecurringDateOnOrAfter, recurrenceFrequencies, type RecurrenceFrequency } from "@/app/lib/expenses/recurrence";
 import { parseExpenseInput, parsePaymentSelection, validateBankSelection } from "../expenses/access";
+import { drainRecurringExpenses, RECURRING_WORK_BUDGET_MS } from "./worker";
 
 const NOT_FOUND = "Recurring expense not found in this expense group.";
 
@@ -49,6 +50,17 @@ export function createRecurringExpenseAccess(
   today: () => Date = () => parseExpenseDate(getManilaToday()),
 ) {
   return {
+    async runDue(expenseGroupId: number) {
+      const userId = await requireUserId();
+      const group = { id: expenseGroupId, userId };
+      if (!validId(expenseGroupId) || !(await db.expenseGroup.findUnique({ where: group, select: { id: true } }))) {
+        throw new TypeError("Expense group not found.");
+      }
+
+      const deadline = performance.now() + RECURRING_WORK_BUDGET_MS;
+      return drainRecurringExpenses(db, today(), () => performance.now() < deadline, group);
+    },
+
     async list(expenseGroupId: number) {
       const userId = await requireUserId();
       if (!validId(expenseGroupId)) return [];

@@ -24,6 +24,9 @@ import {
   getExpensePageByExpenseGroupId,
 } from "@/app/(dashboard)/_lib/expense-groups/queries";
 
+// The manual recurring-expense action uses a shorter work budget inside this limit.
+export const maxDuration = 60;
+
 export default async function ExpenseGroupPage({
   params,
   searchParams,

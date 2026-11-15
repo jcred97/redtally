@@ -7,6 +7,20 @@ import { createRecurringExpenseAccess, type RecurringExpenseCommand } from "./ac
 
 const access = createRecurringExpenseAccess(prisma, requireUserId);
 
+export type RunDueExpensesResult = Awaited<ReturnType<typeof access.runDue>> | { error: string };
+
+export async function runDueExpenses(expenseGroupId: number): Promise<RunDueExpensesResult> {
+  try {
+    const result = await access.runDue(expenseGroupId);
+    revalidatePath(`/spending/${expenseGroupId}`);
+    revalidatePath("/");
+    return result;
+  } catch (error) {
+    if (error instanceof TypeError) return { error: error.message };
+    throw error;
+  }
+}
+
 export async function changeRecurringExpense(
   expenseGroupId: number,
   id: number | null,

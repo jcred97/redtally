@@ -6,15 +6,19 @@ import { recurrenceFrequencyLabels } from "@/app/lib/expenses/recurrence";
 import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-expenses/access";
 import RecurringExpenseActions from "./RecurringExpenseActions";
 import RecurringExpenseDialog, { type RecurringExpenseOptions } from "./RecurringExpenseDialog";
+import RunRecurringExpensesButton from "./RunRecurringExpensesButton";
 
 const statusLabels = { ACTIVE: "Active", PAUSED: "Paused", NEEDS_ATTENTION: "Needs attention" };
 
 export default function RecurringExpenses({ rules, ...options }: RecurringExpenseOptions & { rules: RecurringExpenseEntry[] }) {
   return (
     <section aria-labelledby="recurring-expenses-title">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <h2 id="recurring-expenses-title" tabIndex={-1} className="text-lg font-semibold">Recurring expenses</h2>
-        {options.categories.length > 0 && <RecurringExpenseDialog {...options} />}
+        <div className="flex flex-wrap items-start gap-2">
+          {rules.length > 0 && <RunRecurringExpensesButton expenseGroupId={options.expenseGroupId} />}
+          {options.categories.length > 0 && <RecurringExpenseDialog {...options} />}
+        </div>
       </div>
       {rules.length === 0 ? (
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">

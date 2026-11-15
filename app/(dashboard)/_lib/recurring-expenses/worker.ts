@@ -3,6 +3,10 @@ import { getNextRecurringDate } from "@/app/lib/expenses/recurrence";
 import { BankSelectionError, validateBankSelection } from "../expenses/access";
 
 const BATCH_SIZE = 50;
+// Leave time for an in-flight transaction and the final backlog check.
+export const RECURRING_WORK_BUDGET_MS = 45_000;
+
+type OwnedExpenseGroup = { id: number; userId: string };
 
 // runDate is the Manila calendar day encoded at UTC midnight, like an expense date.
 export async function runRecurringExpenses(
@@ -10,6 +14,7 @@ export async function runRecurringExpenses(
   runDate: Date,
   limit = BATCH_SIZE,
   shouldContinue: () => boolean = () => true,
+  group?: OwnedExpenseGroup,
 ) {
   if (!Number.isSafeInteger(limit) || limit < 1) {
     throw new RangeError("The recurring expense batch size must be a positive integer.");
@@ -21,6 +26,7 @@ export async function runRecurringExpenses(
     WHERE rule."status" = 'ACTIVE' AND expense_group."userId" IS NOT NULL
       AND rule."nextDueDate" <= ${runDate.toISOString().slice(0, 10)}::date
       AND (rule."endDate" IS NULL OR rule."nextDueDate" <= rule."endDate")
+      ${group ? Prisma.sql`AND expense_group.id = ${group.id} AND expense_group."userId" = ${group.userId}` : Prisma.empty}
   `;
   const counts = { generated: 0, needsAttention: 0, alreadyRecorded: 0 };
 
@@ -85,11 +91,12 @@ export async function drainRecurringExpenses(
   db: PrismaClient,
   runDate: Date,
   shouldContinue: () => boolean,
+  group?: OwnedExpenseGroup,
 ) {
   const totals = { generated: 0, needsAttention: 0, alreadyRecorded: 0 };
 
   while (true) {
-    const batch = await runRecurringExpenses(db, runDate, BATCH_SIZE, shouldContinue);
+    const batch = await runRecurringExpenses(db, runDate, BATCH_SIZE, shouldContinue, group);
     totals.generated += batch.generated;
     totals.needsAttention += batch.needsAttention;
     totals.alreadyRecorded += batch.alreadyRecorded;

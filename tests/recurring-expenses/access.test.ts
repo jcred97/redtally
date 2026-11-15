@@ -68,7 +68,26 @@ test("recurring expense commands enforce ownership and preserve the intended sch
     await alice.change(group.id, rule.id, "pause", new FormData());
     await alice.change(group.id, rule.id, "resume", new FormData());
     assert.equal((await alice.list(group.id))[0].nextDueDate.toISOString().slice(0, 10), "2026-03-31");
-    assert.equal((await runRecurringExpenses(client, today())).generated, 1);
+
+    const otherGroup = await client.expenseGroup.create({ data: { name: "Other", userId: "alice" } });
+    const otherCategory = await client.category.create({ data: { name: "Utilities", expenseGroupId: otherGroup.id } });
+    const dueToday = { startDate: "2026-03-31", endDate: "2026-03-31" };
+    await alice.change(otherGroup.id, null, "create", draft({ ...dueToday, categoryId: String(otherCategory.id) }));
+    await bob.change(foreignGroup.id, null, "create", draft({ ...dueToday, categoryId: String(foreignCategory.id) }));
+
+    await assert.rejects(bob.runDue(group.id), /not found/i);
+    await assert.rejects(alice.runDue(foreignGroup.id), /not found/i);
+    const signedOut = createRecurringExpenseAccess(client, async () => { throw new Error("Sign in required"); }, today);
+    await assert.rejects(signedOut.runDue(group.id), /Sign in required/);
+    assert.equal(await client.expense.count(), 0);
+    assert.deepEqual(await alice.runDue(group.id), {
+      generated: 1, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: false,
+    });
+    assert.deepEqual(await alice.runDue(group.id), {
+      generated: 0, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: false,
+    });
+    assert.equal(await client.expense.count({ where: { expenseGroupId: { not: group.id } } }), 0);
+    assert.equal((await runRecurringExpenses(client, today())).generated, 2);
 
     await alice.change(group.id, rule.id, "edit", draft({ startDate: "2026-03-31", frequency: "DAILY" }));
     assert.equal((await alice.list(group.id))[0].nextDueDate.toISOString().slice(0, 10), "2026-04-01");
