@@ -9,7 +9,7 @@ RedTally is a budgeting and expense-management web app designed for daily use on
 Product decisions recorded on October 22, 2026:
 
 - **Private accounts for everyone.** Email/password sign-up/sign-in and per-user expense-group ownership are deployed. Better Auth runs inside the TypeScript application; Supabase is used only as the PostgreSQL host. Google sign-in can be added later.
-- **Keep the existing stack:** Next.js App Router, React, TypeScript, Tailwind CSS, Prisma, and PostgreSQL. No backend replacement or native mobile rewrite is planned for the initial milestone.
+- **Keep the existing stack** of Next.js App Router, React, TypeScript, Tailwind CSS, Better Auth for authentication, Prisma with PostgreSQL hosted on Supabase, and Vercel for deployment. See [package.json](package.json) for dependency versions. No backend replacement or native mobile rewrite is planned for the initial milestone.
 - **Web first, designed for phones.** Complete the connected expense workflow before adding PWA installation or offline synchronization.
 - Keep branding separate from business rules and database identifiers when adding features, so a future rename remains manageable.
 
