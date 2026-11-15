@@ -23,7 +23,7 @@ Implemented source includes:
 
 - Expense-group creation, home cards, and detail/history pages. Existing `/spending/[id]` URLs remain valid.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
-- Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History groups expenses by day and shows the full filtered count and subtotal for that day, even when its rows span multiple pages.
+- Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. Saved history and filtered totals refresh after changes. History uses a table on desktop and compact cards on phones.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
 - Email/password sign-up, sign-in, and sign-out through Better Auth, with authenticated server-side queries and actions using Prisma and PostgreSQL.
 - Database-backed authentication rate limiting and private ownership of new expense groups.

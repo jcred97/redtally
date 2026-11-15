@@ -401,11 +401,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       }
       assert.deepEqual(first.expenses.map(({ id }) => id), expectedIds.slice(0, 25));
       assert.deepEqual(last.expenses.map(({ id }) => id), expectedIds.slice(25));
-      assert.equal(first.expenses[0].dayExpenseCount, 1);
-      for (const expense of [...first.expenses.slice(1), ...last.expenses]) {
-        assert.equal(expense.dayExpenseCount, 25);
-        assert.equal(expense.dayTotalCentavos, BigInt(amountCentavos) * BigInt(25));
-      }
+      assert.equal(first.expenses[1].timeMinutes, 1435);
+      assert.equal(first.expenses[2].timeMinutes, 0);
+      assert.equal(first.expenses[3].timeMinutes, null);
       assert.deepEqual(first.expenses[0].bankAssignment, { bank: { name: "Current bank" } });
       assert.deepEqual(last.expenses[0].date, date);
       assert.deepEqual(last.expenses[0].category, { name: "Travel", icon: "✈️" });
@@ -564,10 +562,6 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         assert.equal(page.totalExpenses, 26);
         assert.equal(page.totalCentavos, BigInt(260));
         assert.equal(page.totalPages, 2);
-        for (const expense of page.expenses) {
-          assert.equal(expense.dayExpenseCount, 26);
-          assert.equal(expense.dayTotalCentavos, BigInt(260));
-        }
       }
       assert.equal(first.expenses.length, 25);
       assert.equal(last.expenses.length, 1);

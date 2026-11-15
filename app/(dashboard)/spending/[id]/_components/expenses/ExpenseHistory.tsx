@@ -1,8 +1,7 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import type { getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
-import { expenseTimeInput, formatExpenseDate, formatExpenseTime, parseExpenseDate } from "@/app/lib/expenses/date";
+import { expenseTimeInput, formatExpenseDate, formatExpenseTime } from "@/app/lib/expenses/date";
 import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import BankLogo from "../banks/BankLogo";
 import EditExpenseButton from "./EditExpenseButton";
@@ -14,10 +13,6 @@ type ExpenseHistoryProps = {
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
   expenses: NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>["expenses"];
-  month?: string;
-  totalExpenses: number;
-  totalCentavos: bigint;
-  emptyState: ReactNode;
   page: number;
   totalPages: number;
   filterQuery: string;
@@ -29,16 +24,9 @@ function expenseBankName(expense: ExpenseHistoryProps["expenses"][number]) {
   return expense.bankAssignment?.bank.name ?? expense.legacyBankName;
 }
 
-function expenseCountLabel(count: number) {
-  return `${count} ${count === 1 ? "expense" : "expenses"}`;
-}
-
-function historyPeriod(month: string | undefined) {
-  if (!month) return "All months";
-  const firstDay = parseExpenseDate(`${month}-01`);
-  const lastDay = new Date(firstDay);
-  lastDay.setUTCMonth(lastDay.getUTCMonth() + 1, 0);
-  return `${formatExpenseDate(firstDay)} – ${formatExpenseDate(lastDay)}`;
+function expenseDateTime(expense: ExpenseHistoryProps["expenses"][number]) {
+  const date = expense.date.toISOString().slice(0, 10);
+  return expense.timeMinutes === null ? date : `${date}T${expenseTimeInput(expense.timeMinutes)}`;
 }
 
 export default function ExpenseHistory({
@@ -46,22 +34,10 @@ export default function ExpenseHistory({
   categories,
   bankOptions,
   expenses,
-  month,
-  totalExpenses,
-  totalCentavos,
-  emptyState,
   page,
   totalPages,
   filterQuery,
 }: ExpenseHistoryProps) {
-  const expensesByDay = new Map<string, ExpenseHistoryProps["expenses"]>();
-  for (const expense of expenses) {
-    const day = expense.date.toISOString().slice(0, 10);
-    const dayExpenses = expensesByDay.get(day);
-    if (dayExpenses) dayExpenses.push(expense);
-    else expensesByDay.set(day, [expense]);
-  }
-
   function expensePageHref(page: number) {
     const query = new URLSearchParams(filterQuery);
     if (page > 1) query.set("page", String(page));
@@ -69,10 +45,9 @@ export default function ExpenseHistory({
     return `/spending/${expenseGroupId}${search}#expense-history-title`;
   }
 
-  function expenseActions(expense: ExpenseHistoryProps["expenses"][number]) {
-    const menuFocusKey = `expense-actions-${expense.id}`;
+  function expenseActions(expense: ExpenseHistoryProps["expenses"][number], menuFocusKey?: string) {
     return (
-      <ExpenseActionMenu title={expense.title} focusKey={menuFocusKey}>
+      <>
         <EditExpenseButton
           menuFocusKey={menuFocusKey}
           expenseGroupId={expenseGroupId}
@@ -100,97 +75,107 @@ export default function ExpenseHistory({
             amountCentavos: expense.amountCentavos,
           }}
         />
-      </ExpenseActionMenu>
+      </>
     );
   }
 
   return (
     <section aria-labelledby="expense-history-title">
-      <div className="rounded-xl border border-gray-800 bg-gray-900">
-        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6">
-          <div>
-            <p className="text-xs text-gray-400">{historyPeriod(month)}</p>
-            <h2 id="expense-history-title" tabIndex={-1} className="mt-1 text-lg font-semibold">
-              {expenseCountLabel(totalExpenses)}
-            </h2>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-xs text-gray-400">Total spent</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums">{formatPesoAmount(totalCentavos)}</p>
-          </div>
-        </header>
-        {totalExpenses === 0 ? emptyState : Array.from(expensesByDay, ([day, dayExpenses]) => {
-          const dateLabel = formatExpenseDate(day);
-          const [{ dayExpenseCount, dayTotalCentavos }] = dayExpenses;
+      <h2 id="expense-history-title" tabIndex={-1} className="mb-4 text-lg font-semibold">
+        Expenses
+      </h2>
+
+      <ul className="space-y-3 sm:hidden">
+        {expenses.map((expense) => {
+          const paymentDetails = [
+            expense.paymentMethod && paymentMethodLabels[expense.paymentMethod],
+            expenseBankName(expense),
+          ].filter(Boolean).join(" · ");
 
           return (
-            <section key={day} aria-labelledby={`expense-day-${day}`}>
-              <header className="flex items-center justify-between gap-3 border-y border-gray-800 bg-gray-800/55 px-4 py-3 sm:px-6">
-                <div>
-                  <h3 id={`expense-day-${day}`} className="text-sm font-medium">
-                    <time dateTime={day}>{dateLabel}</time>
-                  </h3>
-                  <p className="mt-1 text-xs text-gray-400">{expenseCountLabel(dayExpenseCount)}</p>
-                </div>
-                <p className="text-sm font-semibold tabular-nums text-red-400">
-                  <span className="sr-only">Daily total </span>{formatPesoAmount(dayTotalCentavos)}
+            <li key={expense.id} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="min-w-0 flex-1 break-words font-medium">
+                  {expense.title}
+                </h3>
+                <p className="whitespace-nowrap font-semibold text-red-400">
+                  {formatPesoAmount(expense.amountCentavos)}
                 </p>
-              </header>
-              <ul className="divide-y divide-gray-800">
-                {dayExpenses.map((expense) => {
-                  const bankName = expenseBankName(expense)?.trim();
-                  const time = expense.timeMinutes;
-
-                  return (
-                    <li
-                      key={expense.id}
-                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 px-3 py-3 transition-colors hover:bg-gray-800/40 focus-within:bg-gray-800/40 sm:grid-cols-[minmax(0,1fr)_8rem_7.5rem_auto] sm:gap-x-4 sm:px-6"
-                    >
-                      <div className="min-w-0">
-                        <h4 className="wrap-anywhere text-sm font-medium sm:text-base">{expense.title}</h4>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
-                          <span className="wrap-anywhere">
-                            {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}
-                            {expense.category.name}
-                          </span>
-                          {bankName && (
-                            <>
-                              <span aria-hidden="true">/</span>
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                <BankLogo name={bankName} compact />
-                                <span className="wrap-anywhere">{bankName}</span>
-                              </span>
-                            </>
-                          )}
-                          {expense.paymentMethod && (
-                            <>
-                              <span aria-hidden="true">/</span>
-                              <span>{paymentMethodLabels[expense.paymentMethod]}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="col-start-1 row-start-2 text-xs text-gray-400 sm:col-start-2 sm:row-start-1 sm:text-right">
-                        {time === null ? (
-                          <time dateTime={day} className="hidden sm:inline">{dateLabel}</time>
-                        ) : (
-                          <time dateTime={`${day}T${expenseTimeInput(time)}`}>
-                            <span className="mt-1 inline-block text-gray-300 sm:mt-0">{formatExpenseTime(time)}</span>
-                            <span className="mt-1 hidden sm:block">{dateLabel}</span>
-                          </time>
-                        )}
-                      </div>
-                      <p className="col-start-2 row-start-1 text-right text-sm font-semibold tabular-nums sm:col-start-3">
-                        {formatPesoAmount(expense.amountCentavos)}
-                      </p>
-                      <div className="col-start-3 row-start-1 sm:col-start-4">{expenseActions(expense)}</div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+              </div>
+              <p className="mt-2 break-words text-sm text-gray-400">
+                <time dateTime={expenseDateTime(expense)}>
+                  {formatExpenseDate(expense.date)}
+                  {expense.timeMinutes !== null && `, ${formatExpenseTime(expense.timeMinutes)}`}
+                </time>
+                {" · "}{expense.category.name}
+              </p>
+              {paymentDetails && (
+                <p className="mt-1 wrap-anywhere text-sm text-gray-400">{paymentDetails}</p>
+              )}
+              <div className="mt-3 flex flex-wrap justify-end gap-2">{expenseActions(expense)}</div>
+            </li>
           );
         })}
+      </ul>
+
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full border-separate border-spacing-y-1.5 text-sm [&_:is(th,td)]:px-2.5 lg:[&_:is(th,td)]:px-4">
+          <caption className="sr-only">Expense history</caption>
+          <thead>
+            <tr className="text-left text-xs font-medium text-gray-400 [&>th]:border-b [&>th]:border-gray-800">
+              <th scope="col" className="py-4">Date &amp; time</th>
+              <th scope="col" className="py-4">Title</th>
+              <th scope="col" className="py-4">Category</th>
+              <th scope="col" className="py-4">Payment Method</th>
+              <th scope="col" className="py-4">Bank</th>
+              <th scope="col" className="py-4 text-right">Amount</th>
+              <th scope="col"><span className="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {expenses.map((expense) => {
+              const bankName = expenseBankName(expense)?.trim();
+              const menuFocusKey = `expense-actions-${expense.id}`;
+
+              return (
+                <tr key={expense.id} className="bg-gray-900 transition-colors hover:bg-gray-800/60 focus-within:bg-gray-800/60 [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl">
+                  <td className="py-4 text-gray-400">
+                    <time dateTime={expenseDateTime(expense)}>
+                      {formatExpenseDate(expense.date)}
+                      {expense.timeMinutes !== null && (
+                        <span className="mt-0.5 block whitespace-nowrap text-xs">{formatExpenseTime(expense.timeMinutes)}</span>
+                      )}
+                    </time>
+                  </td>
+                  <td className="py-4 font-medium">{expense.title}</td>
+                  <td className="py-4 text-gray-300">
+                    {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}
+                    {expense.category.name}
+                  </td>
+                  <td className="py-4 text-gray-400">
+                    {expense.paymentMethod ? paymentMethodLabels[expense.paymentMethod] : "—"}
+                  </td>
+                  <td className="py-4 text-gray-400">
+                    {bankName ? (
+                      <div className="flex items-center gap-2">
+                        <BankLogo name={bankName} compact />
+                        <span>{bankName}</span>
+                      </div>
+                    ) : "—"}
+                  </td>
+                  <td className="py-4 text-right font-semibold text-red-400">
+                    {formatPesoAmount(expense.amountCentavos)}
+                  </td>
+                  <td className="py-2 text-right">
+                    <ExpenseActionMenu title={expense.title} focusKey={menuFocusKey}>
+                      {expenseActions(expense, menuFocusKey)}
+                    </ExpenseActionMenu>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
       {totalPages > 1 && (
         <nav aria-label="Expense history pages" className="mt-4 flex items-center justify-end gap-3">
