@@ -159,7 +159,7 @@ export function createExpenseGroupAccess(
         include: {
           categories: {
             include: {
-              _count: { select: { expenses: true } },
+              _count: { select: { expenses: true, recurringExpenses: true } },
             },
           },
         },

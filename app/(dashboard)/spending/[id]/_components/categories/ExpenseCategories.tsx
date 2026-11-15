@@ -9,7 +9,7 @@ export default function ExpenseCategories({
     id: number;
     name: string;
     icon: string | null;
-    _count: { expenses: number };
+    _count: { expenses: number; recurringExpenses: number };
   }[];
 }) {
   return (
@@ -39,6 +39,7 @@ export default function ExpenseCategories({
                 expenseGroupId={expenseGroupId}
                 category={{ id: category.id, name: category.name }}
                 expenseCount={category._count.expenses}
+                recurringExpenseCount={category._count.recurringExpenses}
               />
             </li>
           ))}

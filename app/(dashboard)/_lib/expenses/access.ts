@@ -23,11 +23,13 @@ type PaymentSelection = {
 
 type BankPaymentSettings = Pick<BankAssignment, (typeof bankPaymentMethodFields)[BankPaymentMethod]>;
 
+export class BankSelectionError extends TypeError {}
+
 function validId(id: number): boolean {
   return Number.isSafeInteger(id) && id > 0 && id <= MAX_RECORD_ID;
 }
 
-function parseExpenseInput(input: ExpenseInput) {
+export function parseExpenseInput(input: ExpenseInput) {
   if (typeof input.title !== "string" || !input.title.trim()) {
     throw new TypeError("Title is required");
   }
@@ -57,7 +59,7 @@ function parseExpenseInput(input: ExpenseInput) {
   return { title, amountCentavos, date: parseExpenseDate(input.date) };
 }
 
-function parsePaymentSelection(input: ExpenseInput): PaymentSelection | undefined {
+export function parsePaymentSelection(input: ExpenseInput): PaymentSelection | undefined {
   const { paymentMethod: method, bankAssignmentId: bank } = input;
   if (method == null && bank == null) return undefined;
 
@@ -81,14 +83,14 @@ function parsePaymentSelection(input: ExpenseInput): PaymentSelection | undefine
   return { paymentMethod, bankAssignmentId };
 }
 
-async function validateBankSelection(
+export async function validateBankSelection(
   tx: Prisma.TransactionClient,
   expenseGroupId: number,
   { paymentMethod, bankAssignmentId }: PaymentSelection
 ) {
   if (bankAssignmentId === null) return;
   if (!paymentMethod || paymentMethod === PaymentMethod.CASH) {
-    throw new TypeError("Choose a card, transfer, or bank payment method to select a bank.");
+    throw new BankSelectionError("Choose a card, transfer, or bank payment method to select a bank.");
   }
 
   // Keep the checked assignment and catalog entry stable until the expense write commits.
@@ -102,7 +104,7 @@ async function validateBankSelection(
     FOR SHARE OF assignment, bank
   `;
   if (!assignment?.[bankPaymentMethodFields[paymentMethod]]) {
-    throw new TypeError("This bank is unavailable for the selected payment method in this expense group.");
+    throw new BankSelectionError("This bank is unavailable for the selected payment method in this expense group.");
   }
 }
 

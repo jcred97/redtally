@@ -78,16 +78,22 @@ export function createCategoryAccess(
       const where = ownedCategory(expenseGroupId, categoryId, userId);
 
       try {
-        // The foreign key also rejects deletion if an expense is added concurrently.
+        // The foreign keys also reject deletion if a dependent record is added concurrently.
         const result = await db.category.deleteMany({
-          where: { ...where, expenses: { none: {} } },
+          where: { ...where, expenses: { none: {} }, recurringExpenses: { none: {} } },
         });
         if (result.count > 0) {
           return;
         }
 
         // Check only owned categories when choosing the error to show.
-        if (await db.category.findFirst({ where, select: { id: true } })) {
+        const category = await db.category.findFirst({
+          where, select: { _count: { select: { recurringExpenses: true } } },
+        });
+        if (category?._count.recurringExpenses) {
+          throw new TypeError("Move or delete this category's recurring expenses first.");
+        }
+        if (category) {
           throw new TypeError("Move or delete this category's expenses first.");
         }
 
@@ -97,7 +103,7 @@ export function createCategoryAccess(
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2003"
         ) {
-          throw new TypeError("Move or delete this category's expenses first.");
+          throw new TypeError("Move or delete this category's expenses and recurring expenses first.");
         }
 
         throw error;

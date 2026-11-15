@@ -33,7 +33,9 @@ Sessions last seven days and can renew after one day. Server-rendered pages only
 
 The Banks tab includes a Philippine starter catalog. Expense group owners can enable banks and choose the payment methods they use in each group. In the expense form, the optional bank picker shows only banks enabled for the selected payment method. Apply the committed migrations to populate the catalog in an existing database.
 
-The app is an early prototype. Email verification, password recovery, Google sign-in, recurring entries, exchange rates, and offline synchronization are not implemented. The standalone categories page is a placeholder. Budget management is planned. Expense and budget amounts use exact integer centavos; see the migration notes below before deploying this version to an existing database.
+The Recurring tab lets owners schedule daily, weekly, monthly, and yearly expenses, optionally ending on a specific date. Scheduled entries use their original Manila calendar date and appear in regular history. Short months use their last day and retain the original day for subsequent months. A past start date queues catch-up. Paused or blocked schedules can resume with missed dates skipped or included. Deleting a schedule preserves the expenses it already posted.
+
+The app is an early prototype. Email verification, password recovery, Google sign-in, exchange rates, and offline synchronization are not implemented. The standalone categories page is a placeholder. Budget management is planned. Expense and budget amounts use exact integer centavos; see the migration notes below before deploying this version to an existing database.
 
 Full-screen loading feedback is reserved for sign-in, sign-up, and sign-out. After successful authentication and navigation, the home header stays visible while expense-group cards load into a skeleton. Expense-group navigation shows a page-shaped skeleton inside the signed-in layout while its data loads. Skeletons crossfade into content, respect reduced motion, and never display made-up amounts or names. There is no global loading placeholder. Saves and edits keep their pending/error feedback inside the form dialog.
 
@@ -65,7 +67,13 @@ Available scripts:
 | `npm run lint` | Run ESLint |
 | `npm run build` | Generate Prisma client and build Next.js |
 | `npm start` | Serve an existing production build |
-| `npm test` | Run money, date, authentication, ownership, and isolated PostgreSQL migration tests without a live database |
+| `npm test` | Run money, date, recurring expense, authentication, ownership, and isolated PostgreSQL migration tests without a live database |
+
+### Recurring expense worker
+
+Apply migration `20261115120000_recurring_expenses` before deploying the matching app, and set a separate random `CRON_SECRET` in Vercel Production. The cron in `vercel.json` invokes `/api/cron/recurring-expenses` daily during the 1 a.m. Manila hour. The endpoint requires `Authorization: Bearer <CRON_SECRET>`. For an isolated local database, set the same variable in `.env` and call the endpoint with that header to exercise a run.
+
+Each invocation works through up to 50 due occurrences, oldest first. The next run processes any remaining active dates, including dates missed during downtime. An ineligible bank puts its schedule in Needs attention so other schedules keep posting. Review the Vercel function logs for posted counts, schedules that need attention, and whether catch-up remains.
 
 ### Exact money and migration
 
@@ -117,11 +125,12 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/layout.tsx` | Shared navigation for signed-in pages |
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
 | `app/(dashboard)/_home/expense-groups/` | Home expense-group section and its private `_components/` |
-| `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by category, expense group, and expense |
+| `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group detail and history route with category and expense component folders |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |
+| `app/api/cron/recurring-expenses/` | Protected scheduled worker entry point |
 | `app/lib/auth/` | Better Auth configuration, browser and server clients, and session checks |
 | `app/lib/expenses/` | Expense dates and exact centavo parsing, formatting, and totals |
 | `app/components/` | Shared auth, dialog, and feedback components |
@@ -130,6 +139,7 @@ Authenticated pages render per request because their session check uses request 
 | `server/db/migrations/` | Database migration history |
 | `tests/auth/` | Authentication and session tests |
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
+| `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
 | `tests/db/migrations/` | Tests for PostgreSQL migrations and data preservation |
 | `public/branding/` | Active RedTally header logo and handwritten R coin favicon |
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |

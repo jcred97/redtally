@@ -11,12 +11,14 @@ type CategoryActionsProps = {
   expenseGroupId: number;
   category: { id: number; name: string };
   expenseCount: number;
+  recurringExpenseCount: number;
 };
 
 export default function CategoryActions({
   expenseGroupId,
   category,
   expenseCount,
+  recurringExpenseCount,
 }: CategoryActionsProps) {
   const nameId = useId();
 
@@ -63,7 +65,7 @@ export default function CategoryActions({
         </div>
       </FormDialog>
 
-      {expenseCount === 0 ? (
+      {expenseCount === 0 && recurringExpenseCount === 0 ? (
         <FormDialog
           triggerLabel="Delete"
           triggerAriaLabel={`Delete category: ${category.name}`}
@@ -83,7 +85,9 @@ export default function CategoryActions({
         </FormDialog>
       ) : (
         <p className="basis-full text-xs text-gray-400">
-          Move or delete its expenses first to delete this category.
+          {recurringExpenseCount > 0
+            ? "Move or delete its recurring expenses first to delete this category."
+            : "Move or delete its expenses first to delete this category."}
         </p>
       )}
     </div>

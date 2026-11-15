@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getManilaToday, parseExpenseMonth } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
+import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
 import {
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryPaymentMethod,
@@ -15,6 +16,7 @@ import ExpenseHistory from "./_components/expenses/ExpenseHistory";
 import ExpenseHistoryFilters from "./_components/expenses/ExpenseHistoryFilters";
 import NewCategoryButton from "./_components/categories/NewCategoryButton";
 import NewExpenseButton from "./_components/expenses/NewExpenseButton";
+import RecurringExpenses from "./_components/recurring-expenses/RecurringExpenses";
 import {
   getExpenseGroupById,
   getExpenseGroupOptions,
@@ -42,11 +44,13 @@ export default async function ExpenseGroupPage({
   const id = Number(rawId);
   const showCategories = tab === "categories";
   const showBanks = tab === "banks";
-  const showExpenses = !showCategories && !showBanks;
+  const showRecurring = tab === "recurring";
+  const showExpenses = !showCategories && !showBanks && !showRecurring;
   const requestedPage = typeof rawPage === "string" && /^[1-9]\d*$/.test(rawPage)
     ? Number(rawPage)
     : 1;
-  const currentMonth = getManilaToday().slice(0, 7);
+  const today = getManilaToday();
+  const currentMonth = today.slice(0, 7);
   const month = parseExpenseMonth(rawMonth) ?? (allMonths === "1" ? undefined : currentMonth);
   const requestedCategory = typeof category === "string" && /^[1-9]\d{0,9}$/.test(category)
     ? Number(category)
@@ -74,13 +78,14 @@ export default async function ExpenseGroupPage({
   }
   const filterQuery = filterParams.toString();
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, recurringExpenses] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
-    showExpenses ? getExpenseBankOptions(id) : [],
+    showExpenses || showRecurring ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
+    showRecurring ? getRecurringExpenses(id) : null,
   ]);
 
   if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog)) {
@@ -90,7 +95,8 @@ export default async function ExpenseGroupPage({
   const groupPath = `/spending/${expenseGroup.id}`;
   const categoriesTab = "?tab=categories";
   const banksTab = "?tab=banks";
-  const tabSuffix = showBanks ? banksTab : showCategories ? categoriesTab : "";
+  const recurringTab = "?tab=recurring";
+  const tabSuffix = showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : "";
   const currentGroup = { id: expenseGroup.id, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
 
@@ -112,6 +118,7 @@ export default async function ExpenseGroupPage({
               { label: "Expenses", href: groupPath, current: showExpenses },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Banks", href: groupPath + banksTab, current: showBanks },
+              { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
             ].map(({ label, href, current }) => (
               <Link
                 key={label}
@@ -123,7 +130,7 @@ export default async function ExpenseGroupPage({
               </Link>
             ))}
           </nav>
-          {!showBanks && (
+          {(showExpenses || showCategories) && (
             <div className="ml-auto min-w-0 pb-2 [&_button]:ml-auto [&_button]:whitespace-nowrap [&_p]:text-right max-sm:[&_button]:px-2.5 max-sm:[&_button]:text-xs">
               {showCategories ? (
                 <NewCategoryButton expenseGroupId={expenseGroup.id} />
@@ -195,6 +202,15 @@ export default async function ExpenseGroupPage({
               />
             )}
           </>
+        ) : recurringExpenses ? (
+          <RecurringExpenses
+            key={expenseGroup.id}
+            expenseGroupId={expenseGroup.id}
+            today={today}
+            categories={categoryOptions}
+            banks={bankOptions}
+            rules={recurringExpenses}
+          />
         ) : bankCatalog ? (
           <ExpenseGroupBanks key={expenseGroup.id} expenseGroupId={expenseGroup.id} banks={bankCatalog} />
         ) : (

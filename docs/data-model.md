@@ -10,6 +10,8 @@ User
        -> Budget (optional, one per calendar month)
        -> BankAssignment -> Bank (shared catalog)
             -> Expense (optional bank assignment)
+       -> RecurringExpense (references a category and optionally a bank assignment)
+            -> RecurringExpenseOccurrence -> Expense (until the expense is deleted)
 ```
 
 ## Models and rules
@@ -22,6 +24,8 @@ User
 | `Budget` | Optional monthly target for a group | Positive integer centavos; month stored as a PostgreSQL DATE on the first day; unique group/month |
 | `Bank` | Shared institution catalog | Unique normalized key; active flag; assigned banks cannot be deleted |
 | `BankAssignment` | Enables a bank for a group and configures supported payment methods | Unique group/bank; four capabilities default to enabled; referenced assignments cannot be deleted |
+| `RecurringExpense` | Schedule and next due date for an expense in one group | Same-group category and bank assignment; positive integer centavos; calendar dates with an inclusive optional end date |
+| `RecurringExpenseOccurrence` | Records that the worker posted a scheduled date | Unique schedule and due date; survives expense deletion until the schedule itself is deleted |
 
 Application names are mapped to the existing database identifiers. These naming improvements require no additional migration or record changes:
 
@@ -45,6 +49,8 @@ Existing bank text remains unchanged in the physical `Expense.bank` column, acce
 
 Category display names and totals are derived by queries/UI rather than duplicated as stored Salesforce formula/roll-up fields. Monthly budget keys and bank assignment keys use PostgreSQL composite uniqueness rather than concatenated strings.
 
+Migration `20261115120000_recurring_expenses` adds the schedule and occurrence tables with row-level security and no Data API policies. The worker creates the expense, records its scheduled date, and advances the schedule in one transaction. Duplicating an expense group copies its ordinary expense history and starts with an empty Recurring tab.
+
 ## Data-preserving rollout
 
 Migration `20261022150000_core_expense_group_model` runs in one transaction. It adds the new tables, adds/backfills each expense's group ID, and strengthens foreign keys. It neither renames nor recreates the original tables, resets sequences, nor changes existing amounts, titles, dates, bank text, categories, or group names. Existing `/spending/[id]` URLs remain supported.
@@ -53,7 +59,7 @@ Back up the existing application rows and migration history before applying it. 
 
 ## Deferred
 
-Email verification/delivery, password recovery, Google sign-in, and administrative assignment of preserved groups are deferred. Daily, yearly, and custom budget periods, exchange rates and original-currency snapshots, recurring templates/jobs, and automation settings are deferred. Expense dates are calendar days: new entries default to today's `Asia/Manila` day, use UTC midnight in the existing timestamp column, and display the UTC calendar day. No existing timestamp values are rewritten. Budget months remain PostgreSQL DATE values.
+Email verification/delivery, password recovery, Google sign-in, and administrative assignment of preserved groups are deferred. Daily, yearly, and custom budget periods, exchange rates and original-currency snapshots, and user-configurable automation settings are deferred. Expense dates are calendar days: new entries default to today's `Asia/Manila` day, use UTC midnight in the existing timestamp column, and display the UTC calendar day. No existing timestamp values are rewritten. Budget months remain PostgreSQL DATE values.
 
 ## Authentication and ownership
 

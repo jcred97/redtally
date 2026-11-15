@@ -22,6 +22,19 @@ enum PaymentMethod {
   @@map("TransactionType")
 }
 
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum RecurringExpenseStatus {
+  ACTIVE
+  PAUSED
+  NEEDS_ATTENTION
+}
+
 model ExpenseGroup {
   id                 Int                 @id @default(autoincrement())
   name               String
@@ -29,6 +42,7 @@ model ExpenseGroup {
   budgets            Budget[]
   bankAssignments    BankAssignment[]
   expenseSubmissions ExpenseSubmission[]
+  recurringExpenses  RecurringExpense[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   // Null means preserved, unclaimed legacy data; never visible to signed-in users.
@@ -47,6 +61,7 @@ model Category {
   expenseGroupId Int          @map("spendingId")
   expenseGroup   ExpenseGroup @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "Category_spendingId_fkey")
   expenses       Expense[]
+  recurringExpenses RecurringExpense[]
   createdAt      DateTime     @default(now())
 
   @@unique([id, expenseGroupId], map: "Category_id_spendingId_key")
@@ -68,6 +83,7 @@ model Expense {
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   submission       ExpenseSubmission?
+  recurringOccurrence RecurringExpenseOccurrence?
 
   @@index([expenseGroupId, date])
   @@index([categoryId, expenseGroupId])
@@ -84,6 +100,43 @@ model ExpenseSubmission {
   expense        Expense?     @relation(fields: [expenseId], references: [id], onDelete: SetNull)
 
   @@id([expenseGroupId, id])
+}
+
+model RecurringExpense {
+  id               Int                         @id @default(autoincrement())
+  expenseGroupId   Int
+  expenseGroup     ExpenseGroup                @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  categoryId       Int
+  category         Category                    @relation(fields: [categoryId, expenseGroupId], references: [id, expenseGroupId], onDelete: Restrict, onUpdate: Cascade)
+  bankAssignmentId Int?
+  bankAssignment   BankAssignment?             @relation(fields: [bankAssignmentId, expenseGroupId], references: [id, expenseGroupId], onDelete: Restrict, onUpdate: Cascade)
+  title            String
+  amountCentavos   Int
+  paymentMethod    PaymentMethod?
+  frequency        RecurrenceFrequency
+  startDate        DateTime                    @db.Date
+  endDate          DateTime?                   @db.Date
+  nextDueDate      DateTime                    @db.Date
+  status           RecurringExpenseStatus      @default(ACTIVE)
+  occurrences      RecurringExpenseOccurrence[]
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+
+  @@index([expenseGroupId])
+  @@index([categoryId, expenseGroupId])
+  @@index([bankAssignmentId, expenseGroupId])
+  @@index([status, nextDueDate, id])
+}
+
+model RecurringExpenseOccurrence {
+  recurringExpenseId Int
+  recurringExpense   RecurringExpense @relation(fields: [recurringExpenseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  dueDate            DateTime         @db.Date
+  // An occurrence stays recorded when its expense is deleted.
+  expenseId          Int?             @unique
+  expense            Expense?         @relation(fields: [expenseId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@id([recurringExpenseId, dueDate])
 }
 
 // Monthly targets for now, matching the Salesforce application.
@@ -122,6 +175,7 @@ model BankAssignment {
   supportedBankTransfer Boolean      @default(true)
   supportedBankPayment  Boolean      @default(true)
   expenses              Expense[]
+  recurringExpenses     RecurringExpense[]
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
