@@ -2,8 +2,15 @@ import { Prisma, type PrismaClient, type RecurringExpense } from "@/generated/pr
 import { getNextRecurringDate } from "@/app/lib/expenses/recurrence";
 import { BankSelectionError, validateBankSelection } from "../expenses/access";
 
+const BATCH_SIZE = 50;
+
 // runDate is the Manila calendar day encoded at UTC midnight, like an expense date.
-export async function runRecurringExpenses(db: PrismaClient, runDate: Date, limit = 50) {
+export async function runRecurringExpenses(
+  db: PrismaClient,
+  runDate: Date,
+  limit = BATCH_SIZE,
+  shouldContinue: () => boolean = () => true,
+) {
   if (!Number.isSafeInteger(limit) || limit < 1) {
     throw new RangeError("The recurring expense batch size must be a positive integer.");
   }
@@ -17,7 +24,7 @@ export async function runRecurringExpenses(db: PrismaClient, runDate: Date, limi
   `;
   const counts = { generated: 0, needsAttention: 0, alreadyRecorded: 0 };
 
-  for (let attempt = 0; attempt < limit; attempt++) {
+  for (let attempt = 0; attempt < limit && shouldContinue(); attempt++) {
     const result = await db.$transaction(async (tx) => {
       // A shared group lock keeps the rule's ownership stable during the write.
       const [rule] = await tx.$queryRaw<RecurringExpense[]>`
@@ -72,4 +79,25 @@ export async function runRecurringExpenses(db: PrismaClient, runDate: Date, limi
     SELECT EXISTS (SELECT 1 ${dueRules})
   `;
   return { ...counts, hasCatchUpRemaining: remaining.exists };
+}
+
+export async function drainRecurringExpenses(
+  db: PrismaClient,
+  runDate: Date,
+  shouldContinue: () => boolean,
+) {
+  const totals = { generated: 0, needsAttention: 0, alreadyRecorded: 0 };
+
+  while (true) {
+    const batch = await runRecurringExpenses(db, runDate, BATCH_SIZE, shouldContinue);
+    totals.generated += batch.generated;
+    totals.needsAttention += batch.needsAttention;
+    totals.alreadyRecorded += batch.alreadyRecorded;
+
+    const processed = batch.generated + batch.needsAttention + batch.alreadyRecorded;
+    // An incomplete batch can mean the remaining rows are locked or time ran out.
+    if (!batch.hasCatchUpRemaining || processed < BATCH_SIZE || !shouldContinue()) {
+      return { ...totals, hasCatchUpRemaining: batch.hasCatchUpRemaining };
+    }
+  }
 }

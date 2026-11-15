@@ -6,7 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type Prisma } from "../../generated/prisma/client";
-import { runRecurringExpenses } from "../../app/(dashboard)/_lib/recurring-expenses/worker";
+import { drainRecurringExpenses, runRecurringExpenses } from "../../app/(dashboard)/_lib/recurring-expenses/worker";
 import { parseExpenseDate } from "../../app/lib/expenses/date";
 
 test("recurring expense worker posts each due occurrence atomically", async (t) => {
@@ -162,9 +162,55 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
     await t.test("a rule cannot reference another group's category", async () => {
       await assert.rejects(createRule("2027-01-31", { categoryId: legacyCategory.id }), { code: "P2003" });
     });
+
+    await t.test("one drain posts more than the single-batch limit", async () => {
+      const endDate = parseExpenseDate("2027-06-24");
+      const rule = await createRule("2027-05-01", { frequency: "DAILY", endDate });
+
+      assert.deepEqual(await drainRecurringExpenses(client, endDate, () => true), {
+        generated: 55, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: false,
+      });
+      assert.equal(await client.recurringExpenseOccurrence.count({
+        where: { recurringExpenseId: rule.id, expenseId: { not: null } },
+      }), 55);
+    });
+
+    await t.test("a drain stops between occurrences when its budget expires and the next drain resumes", async () => {
+      const endDate = parseExpenseDate("2027-07-05");
+      const rule = await createRule("2027-07-01", { frequency: "DAILY", endDate });
+      let checksRemaining = 2;
+
+      assert.deepEqual(await drainRecurringExpenses(client, endDate, () => checksRemaining-- > 0), {
+        generated: 2, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: true,
+      });
+      const current = await client.recurringExpense.findUniqueOrThrow({ where: { id: rule.id } });
+      assert.deepEqual(current.nextDueDate, parseExpenseDate("2027-07-03"));
+
+      assert.deepEqual(await drainRecurringExpenses(client, endDate, () => true), {
+        generated: 3, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: false,
+      });
+      assert.equal(await client.recurringExpenseOccurrence.count({ where: { recurringExpenseId: rule.id } }), 5);
+    });
   } finally {
     await prisma?.$disconnect();
     await server.stop();
     await db.close();
   }
+});
+
+test("a drain exits when all due work is locked by another invocation", async () => {
+  let claims = 0;
+  // The claim skips locked rows, while the backlog query can still see them.
+  const client = {
+    async $transaction(work: (tx: { $queryRaw(): Promise<never[]> }) => Promise<unknown>) {
+      assert.equal(++claims, 1);
+      return work({ $queryRaw: async () => [] });
+    },
+    $queryRaw: async () => [{ exists: true }],
+  } as unknown as PrismaClient;
+
+  assert.deepEqual(await drainRecurringExpenses(client, parseExpenseDate("2027-04-01"), () => true), {
+    generated: 0, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: true,
+  });
+  assert.equal(claims, 1);
 });

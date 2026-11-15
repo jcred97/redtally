@@ -73,7 +73,7 @@ Available scripts:
 
 Apply migration `20261115120000_recurring_expenses` before deploying the matching app, and set a separate random `CRON_SECRET` in Vercel Production. The cron in `vercel.json` invokes `/api/cron/recurring-expenses` daily during the 1 a.m. Manila hour. The endpoint requires `Authorization: Bearer <CRON_SECRET>`. For an isolated local database, set the same variable in `.env` and call the endpoint with that header to exercise a run.
 
-Each invocation works through up to 50 due occurrences, oldest first. The next run processes any remaining active dates, including dates missed during downtime. An ineligible bank puts its schedule in Needs attention so other schedules keep posting. Review the Vercel function logs for posted counts, schedules that need attention, and whether catch-up remains.
+Each invocation processes due occurrences oldest first in batches of 50. It stops starting transactions after 45 seconds to leave room for in-flight work within the 60-second function limit. If due work remains, the response reports `hasCatchUpRemaining` and the function logs a warning with the run counts. The next scheduled run resumes automatically, or an operator can call the same protected endpoint to continue sooner. An ineligible bank puts its schedule in Needs attention so other schedules keep posting.
 
 ### Exact money and migration
 
