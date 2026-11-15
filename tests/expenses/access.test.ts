@@ -265,6 +265,30 @@ test("expense writes validate money, dates, category membership, and current own
       assert.equal(sumCentavos(saved.map((expense) => expense.amountCentavos)), 30150);
     });
 
+    await t.test("expense times can be saved, edited, and cleared without changing the expense day", async () => {
+      const submission = randomUUID();
+      const input = { ...validInput, time: "00:00" };
+      const save = (time: string) => alice.create(aliceGroup.id, aliceCategory.id, { ...input, time }, submission);
+      await assert.rejects(save("24:00"), /Enter a valid expense time/);
+      const expense = await save(input.time);
+      assert.equal(expense.timeMinutes, 0);
+      assert.equal((await save(input.time)).id, expense.id);
+      await assert.rejects(save(""), /already saved with different details/);
+      await assert.rejects(db.query(
+        'UPDATE "Expense" SET "timeMinutes" = 1440 WHERE id = $1', [expense.id],
+      ), /Expense_timeMinutes_check/);
+
+      const changed = await alice.update(
+        aliceGroup.id, expense.id, aliceCategory.id, { ...input, time: "23:55" }, expense.updatedAt.toISOString(),
+      );
+      assert.equal(changed.timeMinutes, 1435);
+      const cleared = await alice.update(
+        aliceGroup.id, expense.id, aliceCategory.id, { ...input, time: "" }, changed.updatedAt.toISOString(),
+      );
+      assert.equal(cleared.timeMinutes, null);
+      assert.deepEqual(cleared.date, expense.date);
+    });
+
     await t.test("a failed write leaves the submission available for a corrected retry", async () => {
       const submissionId = randomUUID();
       await assert.rejects(

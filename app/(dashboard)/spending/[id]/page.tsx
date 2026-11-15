@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getManilaToday, parseExpenseMonth } from "@/app/lib/expenses/date";
-import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
 import {
@@ -160,50 +159,32 @@ export default async function ExpenseGroupPage({
               monthScopeHref={`${groupPath}?${monthScopeParams}`}
               canClearFilters={month !== currentMonth || hasOtherFilters}
             />
-            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                <p className="mb-1 text-sm text-gray-400">Total Spent</p>
-                <p className="text-2xl font-bold">
-                  {formatPesoAmount(expensePage.totalCentavos)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                <p className="mb-1 text-sm text-gray-400">Expenses</p>
-                <p className="text-2xl font-bold">{expensePage.totalExpenses}</p>
-              </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                <p className="mb-1 text-sm text-gray-400">Group categories</p>
-                <p className="text-2xl font-bold">{expenseGroup.categories.length}</p>
-              </div>
-            </div>
-
-            {expensePage.totalExpenses === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 text-center">
-                <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-gray-800 bg-gray-900">
-                  <span className="text-2xl">💸</span>
-                </div>
-                <h2 id="expense-history-title" tabIndex={-1} className="font-medium text-gray-300">
-                  {hasFilters ? "No expenses match these filters" : "No expenses yet"}
-                </h2>
-                {!hasFilters && (
-                  <p className="mt-1 text-sm text-gray-500">
-                    {categoryOptions.length === 0
-                      ? "Add a category in the Categories tab to start recording expenses."
-                      : "Click + New Expense to add your first expense."}
+            <ExpenseHistory
+              expenseGroupId={expenseGroup.id}
+              categories={categoryOptions}
+              bankOptions={bankOptions}
+              expenses={expensePage.expenses}
+              month={month}
+              totalExpenses={expensePage.totalExpenses}
+              totalCentavos={expensePage.totalCentavos}
+              page={expensePage.page}
+              totalPages={expensePage.totalPages}
+              filterQuery={filterQuery}
+              emptyState={
+                <div className="border-t border-gray-800 px-4 py-16 text-center">
+                  <p className="font-medium text-gray-300">
+                    {hasFilters ? "No expenses match these filters" : "No expenses yet"}
                   </p>
-                )}
-              </div>
-            ) : (
-              <ExpenseHistory
-                expenseGroupId={expenseGroup.id}
-                categories={categoryOptions}
-                bankOptions={bankOptions}
-                expenses={expensePage.expenses}
-                page={expensePage.page}
-                totalPages={expensePage.totalPages}
-                filterQuery={filterQuery}
-              />
-            )}
+                  {!hasFilters && (
+                    <p className="mt-1 text-sm text-gray-400">
+                      {categoryOptions.length === 0
+                        ? "Add a category in the Categories tab to start recording expenses."
+                        : "Click + New Expense to add your first expense."}
+                    </p>
+                  )}
+                </div>
+              }
+            />
           </>
         ) : recurringExpenses ? (
           <RecurringExpenses

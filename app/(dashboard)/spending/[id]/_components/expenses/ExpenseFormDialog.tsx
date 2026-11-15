@@ -6,7 +6,7 @@ import {
   createExpense,
   updateExpense,
 } from "@/app/(dashboard)/_lib/expenses/mutations";
-import { getManilaToday } from "@/app/lib/expenses/date";
+import { expenseTimeInput, getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoInput } from "@/app/lib/expenses/money";
 import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
@@ -16,6 +16,7 @@ export type EditableExpense = {
   title: string;
   amountCentavos: number;
   date: string;
+  timeMinutes: number | null;
   updatedAt: string;
   categoryId: number;
   paymentMethod: PaymentMethod | null;
@@ -44,6 +45,7 @@ export default function ExpenseFormDialog({
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [bankAssignmentId, setBankAssignmentId] = useState("");
@@ -74,6 +76,7 @@ export default function ExpenseFormDialog({
       setTitle(expense.title);
       setAmount(formatPesoInput(expense.amountCentavos));
       setDate(expense.date.slice(0, 10));
+      setTime(expenseTimeInput(expense.timeMinutes));
       setCategoryId(String(expense.categoryId));
       setPaymentMethod(expense.paymentMethod ?? "");
       setBankAssignmentId(String(expense.bankAssignmentId ?? ""));
@@ -82,6 +85,7 @@ export default function ExpenseFormDialog({
       setTitle("");
       setAmount("");
       setDate(getManilaToday());
+      setTime("");
       setCategoryId(String(categories[0]?.id ?? ""));
       setPaymentMethod("");
       setBankAssignmentId("");
@@ -182,19 +186,36 @@ export default function ExpenseFormDialog({
           </p>
         </div>
 
-        <div>
-          <label htmlFor={`${fieldId}-date`} className="text-sm text-gray-400">
-            Date
-          </label>
-          <input
-            id={`${fieldId}-date`}
-            name="date"
-            type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            required
-            className={inputClass}
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="min-w-0">
+            <label htmlFor={`${fieldId}-date`} className="text-sm text-gray-400">
+              Date
+            </label>
+            <input
+              id={`${fieldId}-date`}
+              name="date"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+              className={inputClass}
+            />
+          </div>
+          <div className="min-w-0">
+            <label htmlFor={`${fieldId}-time`} className="text-sm text-gray-400">
+              Time <span className="text-xs">(optional)</span>
+            </label>
+            <input
+              id={`${fieldId}-time`}
+              name="time"
+              type="time"
+              value={time}
+              onChange={(event) => setTime(event.target.value)}
+              aria-describedby={`${fieldId}-time-zone`}
+              className={inputClass}
+            />
+            <p id={`${fieldId}-time-zone`} className="mt-1 text-xs text-gray-400">Manila time</p>
+          </div>
         </div>
 
         <div>

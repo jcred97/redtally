@@ -20,7 +20,7 @@ User
 | --- | --- | --- |
 | `ExpenseGroup` | Container for a set of expenses, categories, budgets, and bank choices | Maps to `Spending`; nullable user owner preserves unclaimed legacy groups; referenced groups cannot be deleted |
 | `Category` | Classifies expenses within one group | Existing IDs, names, icons, colors, and parent IDs are preserved |
-| `Expense` | Positive PHP amount, date, title, optional notes and payment details | Integer centavos; category and optional bank assignment must belong to its group |
+| `Expense` | Positive PHP amount, date, title, optional Manila time, notes, and payment details | Integer centavos; nullable `timeMinutes` between 0 and 1439; category and optional bank assignment must belong to its group |
 | `Budget` | Optional monthly target for a group | Positive integer centavos; month stored as a PostgreSQL DATE on the first day; unique group/month |
 | `Bank` | Shared institution catalog | Unique normalized key; active flag; assigned banks cannot be deleted |
 | `BankAssignment` | Enables a bank for a group and configures supported payment methods | Unique group/bank; four capabilities default to enabled; referenced assignments cannot be deleted |
@@ -59,7 +59,9 @@ Back up the existing application rows and migration history before applying it. 
 
 ## Deferred
 
-Email verification/delivery, password recovery, Google sign-in, and administrative assignment of preserved groups are deferred. Daily, yearly, and custom budget periods, exchange rates and original-currency snapshots, and user-configurable automation settings are deferred. Expense dates are calendar days: new entries default to today's `Asia/Manila` day, use UTC midnight in the existing timestamp column, and display the UTC calendar day. No existing timestamp values are rewritten. Budget months remain PostgreSQL DATE values.
+Email verification/delivery, password recovery, Google sign-in, and administrative assignment of preserved groups are deferred. Daily, yearly, and custom budget periods, exchange rates and original-currency snapshots, and user-configurable automation settings are deferred.
+
+New expenses default to today's `Asia/Manila` calendar day. The existing timestamp column stores that day at UTC midnight, and `timeMinutes` stores the optional Manila clock time as minutes since midnight. The migration preserves existing timestamps and leaves their time field empty. Recurring expenses are generated with a date and an empty time. Budget months remain PostgreSQL DATE values.
 
 ## Authentication and ownership
 

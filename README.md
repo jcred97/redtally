@@ -23,7 +23,7 @@ Implemented source includes:
 
 - Expense-group creation, home cards, and detail/history pages. Existing `/spending/[id]` URLs remain valid.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
-- Owner-only expense entry and editing with a title, peso amount, calendar date, and a category from the current group. Saved history and totals refresh after changes. Phone screens use compact expense cards; desktop screens retain the table.
+- Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History groups expenses by day and shows the full filtered count and subtotal for that day, even when its rows span multiple pages.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
 - Email/password sign-up, sign-in, and sign-out through Better Auth, with authenticated server-side queries and actions using Prisma and PostgreSQL.
 - Database-backed authentication rate limiting and private ownership of new expense groups.
@@ -39,7 +39,7 @@ The app is an early prototype. Email verification, password recovery, Google sig
 
 Full-screen loading feedback is reserved for sign-in, sign-up, and sign-out. After successful authentication and navigation, the home header stays visible while expense-group cards load into a skeleton. Expense-group navigation shows a page-shaped skeleton inside the signed-in layout while its data loads. Skeletons crossfade into content, respect reduced motion, and never display made-up amounts or names. There is no global loading placeholder. Saves and edits keep their pending/error feedback inside the form dialog.
 
-New expense dates represent calendar days. The form defaults to today's date in `Asia/Manila`; selected days are stored at UTC midnight in the existing timestamp column and displayed using UTC so the day does not shift between browser time zones. Existing stored timestamps are not rewritten.
+The form defaults to today's date in `Asia/Manila`. The database stores the selected day at UTC midnight and the optional Manila time separately. Legacy expenses and newly posted recurring expenses display their date until a time is entered. Apply migration `20261116010000_expense_time` before deploying this version.
 
 ## Local development
 

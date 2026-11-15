@@ -93,6 +93,7 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
         assert.equal(expense?.expenseGroupId, group.id);
         assert.equal(expense?.categoryId, category.id);
         assert.deepEqual(expense?.date, dueDate);
+        assert.equal(expense?.timeMinutes, null);
       }
       assert.equal(await client.recurringExpenseOccurrence.count({
         where: { recurringExpenseId: { in: [paused.id, unclaimed.id] } },

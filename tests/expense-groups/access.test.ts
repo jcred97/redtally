@@ -276,6 +276,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           title: "Ticket",
           amountCentavos: 115_042,
           date,
+          timeMinutes: 480,
           notes: "Window seat",
           paymentMethod: "CREDIT_CARD",
         },
@@ -341,6 +342,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(copiedTicket.title, "Ticket");
       assert.equal(copiedTicket.amountCentavos, 115_042);
       assert.deepEqual(copiedTicket.date, date);
+      assert.equal(copiedTicket.timeMinutes, 480);
       assert.equal(copiedTicket.notes, "Window seat");
       assert.equal(copiedTicket.paymentMethod, "CREDIT_CARD");
       const otherCategory = copy.categories.find((row) => row.color === null);
@@ -374,16 +376,18 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           categoryId: category.id,
           title: `Expense ${index + 1}`,
           amountCentavos,
-          date: index === 0 ? new Date("2026-10-25T00:00:00Z") : date,
+          date: index === 0 ? new Date("2026-10-25T00:00:00Z")
+            : index === 2 ? new Date("2026-10-24T18:14:00Z") : date,
+          timeMinutes: index === 1 ? 1435 : index === 3 ? 0 : null,
           legacyBankName: "Legacy bank",
           paymentMethod: "CASH",
           bankAssignmentId: index === 0 ? assignment.id : undefined,
         })),
-        select: { id: true, date: true },
+        select: { id: true, title: true },
       });
-      const expectedIds = expenses
-        .sort((left, right) => right.date.getTime() - left.date.getTime() || right.id - left.id)
-        .map(({ id }) => id);
+      const sortedTitles = [1, 2, 4, 3, ...Array.from({ length: 22 }, (_, index) => 26 - index)];
+      const idsByTitle = new Map(expenses.map(({ title, id }) => [title, id]));
+      const expectedIds = sortedTitles.map((number) => idsByTitle.get(`Expense ${number}`));
 
       const first = await alice.getExpensePageById(group.id, 0);
       const last = await alice.getExpensePageById(group.id, Number.MAX_SAFE_INTEGER);
@@ -397,6 +401,11 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       }
       assert.deepEqual(first.expenses.map(({ id }) => id), expectedIds.slice(0, 25));
       assert.deepEqual(last.expenses.map(({ id }) => id), expectedIds.slice(25));
+      assert.equal(first.expenses[0].dayExpenseCount, 1);
+      for (const expense of [...first.expenses.slice(1), ...last.expenses]) {
+        assert.equal(expense.dayExpenseCount, 25);
+        assert.equal(expense.dayTotalCentavos, BigInt(amountCentavos) * BigInt(25));
+      }
       assert.deepEqual(first.expenses[0].bankAssignment, { bank: { name: "Current bank" } });
       assert.deepEqual(last.expenses[0].date, date);
       assert.deepEqual(last.expenses[0].category, { name: "Travel", icon: "✈️" });
@@ -555,6 +564,10 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         assert.equal(page.totalExpenses, 26);
         assert.equal(page.totalCentavos, BigInt(260));
         assert.equal(page.totalPages, 2);
+        for (const expense of page.expenses) {
+          assert.equal(expense.dayExpenseCount, 26);
+          assert.equal(expense.dayTotalCentavos, BigInt(260));
+        }
       }
       assert.equal(first.expenses.length, 25);
       assert.equal(last.expenses.length, 1);

@@ -15,10 +15,12 @@ type ExpensePageRow = {
   page: bigint;
 } & (
   | { id: null }
-  | (Pick<Expense, "id" | "title" | "amountCentavos" | "date" | "updatedAt" | "categoryId" | "paymentMethod" | "bankAssignmentId" | "legacyBankName"> & {
+  | (Pick<Expense, "id" | "title" | "amountCentavos" | "date" | "timeMinutes" | "updatedAt" | "categoryId" | "paymentMethod" | "bankAssignmentId" | "legacyBankName"> & {
       categoryName: string;
       categoryIcon: string | null;
       bankName: string | null;
+      dayExpenseCount: bigint;
+      dayTotalCentavos: bigint;
     })
 );
 
@@ -241,16 +243,20 @@ export function createExpenseGroupAccess(
           WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
         )
         SELECT pagination."totalExpenses", pagination."totalCentavos", pagination."totalPages", pagination.page,
-          expense.id, expense.title, expense."amountCentavos", expense.date, expense."updatedAt", expense."categoryId",
+          expense.id, expense.title, expense."amountCentavos", expense.date, expense."timeMinutes", expense."updatedAt", expense."categoryId",
+          expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName"
         FROM pagination
         LEFT JOIN LATERAL (
-          SELECT id, title, "amountCentavos", date, "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId"
+          SELECT id, title, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
+            COUNT(*) OVER day AS "dayExpenseCount",
+            SUM("amountCentavos") OVER day AS "dayTotalCentavos"
           FROM "Expense"
           WHERE "expenseGroupId" = pagination.id
             ${expenseFilters}
-          ORDER BY date DESC, id DESC
+          WINDOW day AS (PARTITION BY date::date)
+          ORDER BY date::date DESC, "timeMinutes" DESC NULLS LAST, date DESC, id DESC
           LIMIT ${EXPENSES_PAGE_SIZE}
           OFFSET (pagination.page - 1) * ${EXPENSES_PAGE_SIZE}
         ) expense ON true
@@ -259,7 +265,7 @@ export function createExpenseGroupAccess(
         LEFT JOIN "ExpenseGroupBank" assignment
           ON assignment.id = expense."bankAssignmentId" AND assignment."expenseGroupId" = pagination.id
         LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
-        ORDER BY expense.date DESC, expense.id DESC
+        ORDER BY expense.date::date DESC, expense."timeMinutes" DESC NULLS LAST, expense.date DESC, expense.id DESC
       `;
 
       const [summary] = rows;
@@ -275,6 +281,9 @@ export function createExpenseGroupAccess(
           title: row.title,
           amountCentavos: row.amountCentavos,
           date: row.date,
+          timeMinutes: row.timeMinutes,
+          dayExpenseCount: Number(row.dayExpenseCount),
+          dayTotalCentavos: row.dayTotalCentavos,
           updatedAt: row.updatedAt,
           categoryId: row.categoryId,
           paymentMethod: row.paymentMethod,
@@ -381,6 +390,7 @@ export function createExpenseGroupAccess(
                         title: expense.title,
                         amountCentavos: expense.amountCentavos,
                         date: expense.date,
+                        timeMinutes: expense.timeMinutes,
                         notes: expense.notes,
                         legacyBankName: expense.legacyBankName,
                         paymentMethod: expense.paymentMethod,

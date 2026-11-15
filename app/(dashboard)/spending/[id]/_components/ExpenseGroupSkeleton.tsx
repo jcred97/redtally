@@ -38,63 +38,35 @@ export default function ExpenseGroupSkeleton() {
           ))}
           <Skeleton className="h-10 w-28 rounded-lg sm:col-span-2 lg:col-span-1" />
         </div>
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {["Total Spent", "Expenses", "Group categories"].map((label) => (
-            <div
-              key={label}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-5"
-            >
-              <p className="mb-1 text-sm text-gray-400">{label}</p>
-              <Skeleton className="h-8 w-28" />
+        <div aria-hidden="true" className="rounded-xl border border-gray-800 bg-gray-900">
+          <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-5 w-24" />
             </div>
-          ))}
-        </div>
-
-        <section aria-labelledby="loading-expenses-title">
-          <h2 id="loading-expenses-title" className="mb-4 text-lg font-semibold">
-            Expenses
-          </h2>
-
-          <div aria-hidden="true" className="space-y-3 sm:hidden">
+            <Skeleton className="h-5 w-20" />
+          </div>
+          <div className="flex items-center justify-between gap-4 border-y border-gray-800 bg-gray-800/55 px-4 py-3 sm:px-6">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <Skeleton className="h-4 w-16" />
+          </div>
+          <div className="divide-y divide-gray-800">
             {[0, 1, 2].map((index) => (
-              <div
-                key={index}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4"
-              >
-                <div className="flex justify-between gap-3">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-6 w-20" />
+              <div key={index} className="flex items-center gap-4 px-4 py-4 sm:px-6">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-5 w-40 max-w-full" />
+                  <Skeleton className="h-4 w-52 max-w-full" />
                 </div>
-                <Skeleton className="mt-2 h-5 w-2/3" />
-                <div className="mt-3 flex justify-end">
-                  <Skeleton className="h-9 w-16 rounded-lg" />
-                </div>
+                <Skeleton className="hidden h-4 w-20 sm:block" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-2 w-4" />
               </div>
             ))}
           </div>
-
-          <div
-            aria-hidden="true"
-            className="hidden space-y-1.5 sm:block"
-          >
-            <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_2.25rem] gap-4 border-b border-gray-800 px-4 py-4">
-              {Array.from({ length: 6 }, (_, index) => (
-                <Skeleton key={index} className="h-4 w-full" />
-              ))}
-            </div>
-            {[0, 1, 2, 3, 4].map((row) => (
-              <div
-                key={row}
-                className="grid grid-cols-[repeat(6,minmax(0,1fr))_2.25rem] items-center gap-4 rounded-xl bg-gray-900 px-4 py-4"
-              >
-                {Array.from({ length: 6 }, (_, column) => (
-                  <Skeleton key={column} className="h-5 w-full" />
-                ))}
-                <Skeleton className="justify-self-center h-2 w-4" />
-              </div>
-            ))}
-          </div>
-        </section>
+        </div>
       </main>
     </div>
   );

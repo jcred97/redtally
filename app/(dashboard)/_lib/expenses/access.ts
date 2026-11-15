@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { PaymentMethod, Prisma, type BankAssignment, type PrismaClient } from "@/generated/prisma/client";
 import { parsePesoAmount } from "@/app/lib/expenses/money";
-import { parseExpenseDate } from "@/app/lib/expenses/date";
+import { parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { bankPaymentMethodFields, type BankPaymentMethod } from "@/app/lib/expenses/payment";
 
 const MAX_RECORD_ID = 2_147_483_647;
@@ -12,6 +12,7 @@ type ExpenseInput = {
   title: unknown;
   amount: unknown;
   date: unknown;
+  time?: unknown;
   paymentMethod?: unknown;
   bankAssignmentId?: unknown;
 };
@@ -155,6 +156,7 @@ export function createExpenseAccess(
       }
 
       const values = parseExpenseInput(input);
+      const timeMinutes = parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
       const payload = [categoryId, values.title, values.amountCentavos, values.date];
@@ -163,7 +165,8 @@ export function createExpenseAccess(
         ? [payment.paymentMethod, payment.bankAssignmentId]
         : [];
       const payloadHash = createHash("sha256")
-        .update(JSON.stringify([...payload, ...paymentPayload]))
+        // Date-only submissions must continue to match drafts saved before time support.
+        .update(JSON.stringify([...payload, ...paymentPayload, ...(timeMinutes === null ? [] : [{ timeMinutes }])]))
         .digest("hex");
 
       try {
@@ -182,6 +185,7 @@ export function createExpenseAccess(
           return tx.expense.create({
             data: {
               ...values,
+              timeMinutes,
               paymentMethod: payment?.paymentMethod,
               ...(payment?.bankAssignmentId == null ? {} : {
                 bankAssignment: {
@@ -247,6 +251,7 @@ export function createExpenseAccess(
       }
 
       const values = parseExpenseInput(input);
+      const timeMinutes = input.time === undefined ? undefined : parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
       const updatedAt = new Date(
         typeof expectedUpdatedAt === "string" ? expectedUpdatedAt : NaN
@@ -291,6 +296,7 @@ export function createExpenseAccess(
             // The composite foreign key keeps the replacement category in this group.
             data: {
               ...values,
+              timeMinutes,
               ...paymentChanges,
               categoryId,
               updatedAt: nextUpdatedAt,

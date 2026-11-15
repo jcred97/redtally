@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  expenseTimeInput,
   formatExpenseDate,
+  formatExpenseTime,
   getManilaToday,
   parseExpenseDate,
+  parseExpenseTime,
 } from "../../app/lib/expenses/date";
 
 test("expense calendar dates are exact UTC-midnight values, including leap days", () => {
@@ -49,4 +52,21 @@ test("expense display preserves the stored calendar day", () => {
   const date = parseExpenseDate("2026-01-01");
   assert.equal(formatExpenseDate(date), "Jan 1, 2026");
   assert.equal(formatExpenseDate(date.toISOString()), "Jan 1, 2026");
+});
+
+test("optional Manila expense times preserve midnight and reject invalid clock values", () => {
+  assert.equal(parseExpenseTime(""), null);
+  assert.equal(expenseTimeInput(null), "");
+  for (const [input, minutes, label] of [
+    ["00:00", 0, "12:00 AM"],
+    ["12:05", 725, "12:05 PM"],
+    ["23:55", 1435, "11:55 PM"],
+  ] as const) {
+    assert.equal(parseExpenseTime(input), minutes);
+    assert.equal(expenseTimeInput(minutes), input);
+    assert.equal(formatExpenseTime(minutes), label);
+  }
+  for (const invalid of ["24:00", "12:60", "9:00", "12:00:01", "12:00Z", 0]) {
+    assert.throws(() => parseExpenseTime(invalid), /Enter a valid expense time/);
+  }
 });

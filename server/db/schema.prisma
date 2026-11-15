@@ -72,6 +72,7 @@ model Expense {
   title            String
   amountCentavos   Int
   date             DateTime
+  timeMinutes      Int?            @db.SmallInt
   notes            String?
   legacyBankName   String?         @map("bank")
   bankAssignmentId Int?

@@ -1,4 +1,4 @@
-/** Expense dates are calendar dates stored at UTC midnight, not payment instants. */
+/** Store the selected calendar day at UTC midnight. */
 export function parseExpenseDate(value: unknown): Date {
   if (typeof value !== "string") {
     throw new TypeError("Enter a valid expense date.");
@@ -23,6 +23,29 @@ export function parseExpenseMonth(value: unknown): string | undefined {
   if (typeof value === "string" && value.length === 7 && /^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
     return value;
   }
+}
+
+/** Optional Manila clock time, independent of the stored calendar day. */
+export function parseExpenseTime(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string" || value.length !== 5 || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+    throw new TypeError("Enter a valid expense time.");
+  }
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function expenseTimeInput(timeMinutes: number | null): string {
+  if (timeMinutes === null) return "";
+  const hours = String(Math.floor(timeMinutes / 60)).padStart(2, "0");
+  const minutes = String(timeMinutes % 60).padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+export function formatExpenseTime(timeMinutes: number): string {
+  const hours = Math.floor(timeMinutes / 60);
+  const minutes = String(timeMinutes % 60).padStart(2, "0");
+  return `${hours % 12 || 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
 }
 
 /** Use the Philippine calendar day for the new-expense form's default. */
