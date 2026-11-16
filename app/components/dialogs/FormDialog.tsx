@@ -278,7 +278,7 @@ export default function FormDialog({
                   autoFocus={destructive}
                   onClick={closeDialog}
                   disabled={pending}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                  className="cursor-pointer px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel
                 </button>
