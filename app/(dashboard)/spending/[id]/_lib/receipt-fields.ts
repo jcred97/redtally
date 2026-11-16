@@ -1,11 +1,17 @@
-import { parseExpenseDay } from "@/app/lib/expenses/date";
+import { parseExpenseDay, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoInput, parsePesoAmount } from "@/app/lib/expenses/money";
 
-export type ReceiptSuggestions = { title?: string; amount?: string; date?: string };
+export type ReceiptSuggestions = { title?: string; amount?: string; date?: string; time?: string };
 
+const titleLabel = /^(?:(?:expense|transaction|payment|purchase) (?:title|description)(?=$|[\s:=])|title(?=$|\s*[:=])|description(?=\s*[:=]))/i;
 const merchantLabel = /^(?:merchant(?: name)?|payee(?: name)?|vendor(?: name)?|store(?: name)?|biller(?: name)?|paid to)(?=$|[\s:=])/i;
 const totalLabel = /^(?:total amount paid|amount paid|total paid|amount charged|grand total|total amount|net total|total|kabuuang halaga|halagang binayaran)\b/i;
-const dateLabel = /^(?:(?:transaction|purchase|receipt|invoice) date(?:\s*(?:and|[&/])\s*time)?|date\s*\/\s*time|date|paid on)\b/i;
+const dateLabel = /^(?:(?:(?:transaction|purchase|receipt|invoice) )?date(?:\s*(?:and|[&/])\s*time)?|paid on)\b/i;
+const timeLabel = /^(?:(?:transaction|purchase|receipt|invoice|payment) time|time of (?:transaction|purchase|payment)|time|paid at)(?=$|\s*[:=]|\s+\d)/i;
+const timeZoneLabel = /^(?:(?:transaction|receipt) )?(?:time\s*zone|tz)(?=$|[\s:=])/i;
+const manilaTimeZone = /^(?:pht|phst|asia\/manila|manila(?: time)?|philippine standard time|(?:utc|gmt)?\s*\+\s*0?8(?::?00)?)$/i;
+const dateAndClock = /^(.+?)(?:\s*[,·|]\s*|\s+|(?<=\d)T)(?:at\s+|time\s*[:=]\s*)?(\d{1,2}:\d{2}.*)$/i;
+const ambiguousNumericDate = /^(?:0?[1-9]|1[0-2])([-/.])(?:0?[1-9]|1[0-2])\1(?!0000)\d{4}$/;
 const currencyLabel = /^(?:(?:transaction|account|receipt)\s+)?(?:currency|ccy)(?=$|[\s:=])/i;
 const nonExpenseStatus = /^(?:(?:full |partial )?refund(?:ed)?(?:\s+(?:successful|processed|completed|receipt))?|(?:payment|transaction)\s+(?:failed|cancelled|canceled|pending|declined)|(?:payment|transaction)\s+status\s*:\s*(?:failed|cancelled|canceled|pending|declined)|money received|payment received|(?:cash[ -]?in)\s+(?:successful|completed|receipt))\b/i;
 const foreignMoney = /(?:[$€£¥₩฿₹₫₽]\s*\d|\d[\d,.]*\s*[$€£¥₩฿₹₫₽])/;
@@ -28,9 +34,13 @@ function getLabeledValues(lines: string[], label: RegExp) {
 
 function readTitle(lines: string[]) {
   const validTitle = (value: string) => value.length <= 100 && /\p{L}{2}/u.test(value) &&
-    !dateLabel.test(value) && !totalLabel.test(value) &&
+    !titleLabel.test(value) && !dateLabel.test(value) &&
+    !timeLabel.test(value) && !timeZoneLabel.test(value) && !totalLabel.test(value) && !currencyLabel.test(value) &&
     !/^(?:gcash|maya|merchant|vendor|payee|biller|store|receipt|invoice|transaction|info|details|n\/?a|(?:payment|transaction) successful)$/i.test(value) &&
-    !/^(?:merchant|vendor|payee|biller|store|receipt|invoice|transaction|date|total|ref(?:erence)?)(?:\s*:|\s+(?:no\.?|number|date|\d))/i.test(value);
+    !/^(?:merchant|vendor|payee|biller|store|paid to|receipt|invoice|transaction|date|total|ref(?:erence)?)(?:\s*[:=]|\s+(?:no\.?|number|date|\d))/i.test(value);
+  const explicitTitle = singleValue(getLabeledValues(lines, titleLabel).filter(validTitle));
+  if (explicitTitle) return explicitTitle;
+
   const labeled = getLabeledValues(lines, merchantLabel);
   if (labeled.length) return singleValue(labeled.filter(validTitle));
 
@@ -67,8 +77,7 @@ function isoDate(year: string, month: string, day: string) {
   return parseExpenseDay(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`);
 }
 
-function readDate(value: string) {
-  const calendar = value.replace(/(?:\s*[,·|]\s*|\s+)(?:at\s+)?\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]m)?(?:\s+(?:PHT|GMT\+8|UTC\+8))?$/i, "");
+function readCalendarDate(calendar: string) {
   const yearFirst = /^(\d{4})([-/])(\d{1,2})\2(\d{1,2})$/.exec(calendar);
   if (yearFirst) return isoDate(yearFirst[1], yearFirst[3], yearFirst[4]);
 
@@ -88,6 +97,49 @@ function readDate(value: string) {
   return isoDate(monthFirst?.[3] ?? dayFirst![3], String(month), monthFirst?.[2] ?? dayFirst![1]);
 }
 
+function readTimestamp(value: string) {
+  const [, printedDate = value, clock] = dateAndClock.exec(value) ?? [];
+  const calendar = printedDate.trim();
+  const date = readCalendarDate(calendar);
+  return { date, clock: date || ambiguousNumericDate.test(calendar) ? clock : undefined };
+}
+
+function isManilaTimeZone(zone: string): boolean {
+  return manilaTimeZone.test(zone.replace(/^\((.+)\)$|^\[(.+)\]$/, "$1$2"));
+}
+
+function readClock(value: string) {
+  const match = /^(\d{1,2}):(\d{2})(?::([0-5]\d))?(?:\s*([ap])\.?\s*m\.?)?\s*(.*)$/i.exec(value);
+  if (!match) return undefined;
+  const [, rawHours, minutes, , period, zone] = match;
+  if (zone && !isManilaTimeZone(zone)) return undefined;
+
+  let hours = Number(rawHours);
+  if (period) {
+    if (hours < 1 || hours > 12) return undefined;
+    hours = hours % 12 + (period.toLowerCase() === "p" ? 12 : 0);
+  }
+
+  const clock = `${String(hours).padStart(2, "0")}:${minutes}`;
+  try {
+    return parseExpenseTime(clock) === null ? undefined : clock;
+  } catch {
+    return undefined;
+  }
+}
+
+function suggestTime(lines: string[], timestamps: ReturnType<typeof readTimestamp>[]) {
+  const zones = getLabeledValues(lines, timeZoneLabel);
+  if (zones.some((zone) => !isManilaTimeZone(zone))) return undefined;
+
+  const values = [
+    ...getLabeledValues(lines, timeLabel),
+    ...timestamps.flatMap(({ clock }) => clock ? [clock] : []),
+  ];
+  const times = validValues(values, readClock);
+  if (times.length === values.length) return singleValue(times);
+}
+
 function validValues(values: string[], read: (value: string) => string | undefined) {
   return values.flatMap((value) => {
     const parsed = read(value);
@@ -102,11 +154,14 @@ export function suggestReceiptFields(text: string): ReceiptSuggestions {
   const title = readTitle(lines);
   const amount = hasForeignCurrency(lines) ? undefined : singleValue(validValues(getLabeledValues(lines, totalLabel), readAmount));
   const labeledDates = getLabeledValues(lines, dateLabel);
-  const date = singleValue(validValues(labeledDates.length ? labeledDates : lines, readDate));
+  const timestamps = (labeledDates.length ? labeledDates : lines).map(readTimestamp);
+  const date = singleValue(timestamps.flatMap(({ date }) => date ? [date] : []));
+  const time = suggestTime(lines, timestamps);
 
   return {
     ...(title ? { title } : {}),
     ...(amount ? { amount } : {}),
     ...(date ? { date } : {}),
+    ...(time ? { time } : {}),
   };
 }

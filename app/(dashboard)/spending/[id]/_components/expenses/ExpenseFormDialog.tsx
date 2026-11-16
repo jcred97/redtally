@@ -118,6 +118,9 @@ export default function ExpenseFormDialog({
       case "date":
         setDate(value);
         break;
+      case "time":
+        setTime(value);
+        break;
     }
   }
 

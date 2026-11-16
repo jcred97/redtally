@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react";
-import { formatExpenseDate, parseExpenseDate } from "@/app/lib/expenses/date";
+import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
 import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
 
@@ -8,9 +8,17 @@ const imageTypes = ["image/png", "image/jpeg", "image/webp"];
 const maxImageBytes = 8 * 1024 * 1024;
 const maxImagePixels = 16_000_000;
 const fields = [
-  { field: "title", label: "merchant", format: (value: string) => value },
+  { field: "title", label: "title", format: (value: string) => value },
   { field: "amount", label: "amount", format: (value: string) => formatPesoAmount(parsePesoAmount(value)) },
   { field: "date", label: "date", format: (value: string) => formatExpenseDate(parseExpenseDate(value)) },
+  {
+    field: "time",
+    label: "time",
+    format: (value: string) => {
+      const minutes = parseExpenseTime(value);
+      return minutes === null ? value : formatExpenseTime(minutes);
+    },
+  },
 ] as const;
 
 const buttonClass = "cursor-pointer rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-200 transition-colors hover:border-gray-500 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-60";
@@ -231,7 +239,7 @@ export default function ReceiptImageInput({
             <p role="status" className="sr-only">{applied}</p>
           </div>
         ) : (
-          <p role="status" className="text-sm text-gray-300">No clear merchant, amount, or date was found. Enter the details below or try another image.</p>
+          <p role="status" className="text-sm text-gray-300">No clear title, amount, date, or time was found. Enter the details below or try another image.</p>
         )
       )}
     </section>
