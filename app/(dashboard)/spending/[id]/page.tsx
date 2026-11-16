@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getManilaToday, parseExpenseMonth } from "@/app/lib/expenses/date";
+import { getManilaToday, parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
@@ -36,6 +36,7 @@ export default async function ExpenseGroupPage({
     tab?: string | string[];
     page?: string | string[];
     month?: string | string[];
+    day?: string | string[];
     allMonths?: string | string[];
     category?: string | string[];
     paymentMethod?: string | string[];
@@ -43,7 +44,7 @@ export default async function ExpenseGroupPage({
     view?: string | string[];
   }>;
 }) {
-  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, allMonths, category, paymentMethod: rawMethod, bank: rawBank, view }] =
+  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, day: rawDay, allMonths, category, paymentMethod: rawMethod, bank: rawBank, view }] =
     await Promise.all([params, searchParams]);
   const id = Number(rawId);
   const showCategories = tab === "categories";
@@ -56,7 +57,8 @@ export default async function ExpenseGroupPage({
     : 1;
   const today = getManilaToday();
   const currentMonth = today.slice(0, 7);
-  const month = parseExpenseMonth(rawMonth) ?? (allMonths === "1" ? undefined : currentMonth);
+  const day = parseExpenseDay(rawDay);
+  const month = day?.slice(0, 7) ?? parseExpenseMonth(rawMonth) ?? (allMonths === "1" ? undefined : currentMonth);
   const requestedCategory = typeof category === "string" && /^[1-9]\d{0,9}$/.test(category)
     ? Number(category)
     : undefined;
@@ -66,7 +68,7 @@ export default async function ExpenseGroupPage({
   const paymentMethod = parseExpenseHistoryPaymentMethod(rawMethod);
   const bank = parseExpenseHistoryBankFilter(rawBank);
   const bankFilterValue = bank && typeof rawBank === "string" ? rawBank : undefined;
-  const filters = { month, categoryId, paymentMethod, bank };
+  const filters = { day, month, categoryId, paymentMethod, bank };
   const filterParams = new URLSearchParams();
   if (categoryId !== undefined) filterParams.set("category", String(categoryId));
   if (paymentMethod !== undefined) filterParams.set("paymentMethod", paymentMethod);
@@ -74,7 +76,10 @@ export default async function ExpenseGroupPage({
   const hasOtherFilters = filterParams.size > 0;
   const hasFilters = month !== undefined || hasOtherFilters;
   const monthScopeParams = new URLSearchParams(filterParams);
-  if (month === undefined) {
+  if (day) {
+    filterParams.set("day", day);
+    monthScopeParams.set("month", day.slice(0, 7));
+  } else if (month === undefined) {
     filterParams.set("allMonths", "1");
     monthScopeParams.set("month", currentMonth);
   } else {
@@ -170,13 +175,14 @@ export default async function ExpenseGroupPage({
               categories={categoryOptions}
               banks={historyBankOptions}
               month={month}
+              day={day}
               categoryId={categoryId}
               paymentMethod={paymentMethod}
               bank={bankFilterValue}
               grouped={grouped}
               monthScopeHref={`${groupPath}?${monthScopeParams}`}
               clearFiltersHref={groupPath + expenseTab}
-              canClearFilters={month !== currentMonth || hasOtherFilters}
+              canClearFilters={day !== undefined || month !== currentMonth || hasOtherFilters}
             />
             <div className="mb-4 flex justify-end">
               <nav aria-label="Expense history view" className="inline-flex gap-1 rounded-lg border border-gray-800 bg-gray-900 p-1">
@@ -241,7 +247,7 @@ export default async function ExpenseGroupPage({
                 categories={categoryOptions}
                 bankOptions={bankOptions}
                 expenses={expensePage.expenses}
-                groupedSummary={grouped ? { month, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
+                groupedSummary={grouped ? { day, month, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
                 page={expensePage.page}
                 totalPages={expensePage.totalPages}
                 filterQuery={filterQuery}

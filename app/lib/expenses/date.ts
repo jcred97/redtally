@@ -19,6 +19,15 @@ export function parseExpenseDate(value: unknown): Date {
   return date;
 }
 
+export function parseExpenseDay(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length !== 10) return undefined;
+  try {
+    return parseExpenseDate(value).toISOString().slice(0, 10);
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+  }
+}
+
 export function parseExpenseMonth(value: unknown): string | undefined {
   if (typeof value === "string" && value.length === 7 && /^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
     return value;

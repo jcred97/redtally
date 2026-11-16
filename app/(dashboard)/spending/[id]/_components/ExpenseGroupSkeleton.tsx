@@ -28,15 +28,15 @@ export default function ExpenseGroupSkeleton() {
       <main className="py-6 sm:py-8">
         <div
           aria-hidden="true"
-          className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+          className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto] xl:items-end"
         >
-          {["w-12", "w-16", "w-24", "w-10"].map((width) => (
+          {["w-12", "w-14", "w-16", "w-24", "w-10"].map((width) => (
             <div key={width}>
               <Skeleton className={`h-5 ${width}`} />
               <Skeleton className="mt-1 h-10 w-full rounded-lg" />
             </div>
           ))}
-          <Skeleton className="h-10 w-28 rounded-lg sm:col-span-2 lg:col-span-1" />
+          <Skeleton className="h-10 w-28 rounded-lg sm:col-span-2 lg:col-span-5 xl:col-span-1" />
         </div>
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {["Total Spent", "Expenses", "Group categories"].map((label) => (

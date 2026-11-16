@@ -9,7 +9,8 @@ function expenseCount(count: number) {
   return `${count} ${count === 1 ? "expense" : "expenses"}`;
 }
 
-function formatPeriod(month: string | undefined) {
+function formatPeriod(month: string | undefined, day: string | undefined) {
+  if (day) return formatExpenseDate(day);
   if (!month) return "All months";
   const first = parseExpenseDate(`${month}-01`);
   const last = new Date(first);
@@ -19,12 +20,14 @@ function formatPeriod(month: string | undefined) {
 
 export default function GroupedExpenseHistory({
   expenses,
+  day: selectedDay,
   month,
   totalExpenses,
   totalCentavos,
   renderActions,
 }: {
   expenses: ExpenseHistoryEntry[];
+  day?: string;
   month?: string;
   totalExpenses: number;
   totalCentavos: bigint;
@@ -42,7 +45,7 @@ export default function GroupedExpenseHistory({
     <div className="rounded-xl border border-gray-800 bg-gray-900">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6">
         <div>
-          <p className="text-xs text-gray-400">{formatPeriod(month)}</p>
+          <p className="text-xs text-gray-400">{formatPeriod(month, selectedDay)}</p>
           <p className="mt-1 text-lg font-semibold">{expenseCount(totalExpenses)}</p>
         </div>
         <div className="ml-auto text-right">

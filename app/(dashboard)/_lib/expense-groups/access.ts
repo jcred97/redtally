@@ -1,5 +1,5 @@
 import { PaymentMethod, Prisma, type Expense, type PrismaClient } from "@/generated/prisma/client";
-import { parseExpenseMonth } from "@/app/lib/expenses/date";
+import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 
 // Expense-group IDs use PostgreSQL's signed INTEGER column.
 const MAX_EXPENSE_GROUP_ID = 2_147_483_647;
@@ -33,6 +33,7 @@ type ExpenseGroupSummary = {
 };
 
 export type ExpenseHistoryFilters = {
+  day?: string;
   month?: string;
   categoryId?: number;
   paymentMethod?: PaymentMethod;
@@ -197,20 +198,24 @@ export function createExpenseGroupAccess(
     async getExpensePageById(
       id: number,
       requestedPage: number,
-      { month, categoryId, paymentMethod, bank }: ExpenseHistoryFilters = {},
+      { day, month, categoryId, paymentMethod, bank }: ExpenseHistoryFilters = {},
       includeDayTotals = false,
     ) {
       const userId = await requireUserId();
       if (!validId(id)) return null;
 
       const page = Number.isSafeInteger(requestedPage) && requestedPage >= 1 ? requestedPage : 1;
+      const selectedDay = parseExpenseDay(day);
       const selectedMonth = parseExpenseMonth(month);
       const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
       // The date column stores UTC calendar dates. Use the same bounds for totals and rows.
-      const monthFilter = monthStart
-        ? Prisma.sql`AND date >= ${monthStart}::timestamp
-                     AND date < ${monthStart}::timestamp + INTERVAL '1 month'`
-        : Prisma.empty;
+      const dateFilter = selectedDay
+        ? Prisma.sql`AND date >= ${selectedDay}::timestamp
+                     AND date < ${selectedDay}::timestamp + INTERVAL '1 day'`
+        : monthStart
+          ? Prisma.sql`AND date >= ${monthStart}::timestamp
+                       AND date < ${monthStart}::timestamp + INTERVAL '1 month'`
+          : Prisma.empty;
       const categoryFilter = categoryId !== undefined && validId(categoryId)
         ? Prisma.sql`AND "categoryId" = ${categoryId}`
         : Prisma.empty;
@@ -225,7 +230,7 @@ export function createExpenseGroupAccess(
           AND bank ~ '[^[:space:]]'
           AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
       }
-      const expenseFilters = Prisma.sql`${monthFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter}`;
+      const expenseFilters = Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter}`;
       // Count every matching expense on a day, including those outside the current page.
       const dayTotals = includeDayTotals
         ? Prisma.sql`COUNT(*) OVER (PARTITION BY date::date) AS "dayExpenseCount",

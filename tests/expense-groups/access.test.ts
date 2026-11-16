@@ -459,7 +459,8 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           categoryId: category.id,
           title: `Food expense ${index + 1}`,
           amountCentavos: 10,
-          date: new Date(index === 0 ? "2026-10-01T00:00:00Z" : "2026-10-31T23:59:59.999Z"),
+          date: new Date(index === 0 ? "2026-10-01T00:00:00Z"
+            : index === 1 ? "2026-10-31T00:00:00Z" : "2026-10-31T23:59:59.999Z"),
         })),
         select: { id: true, date: true },
       });
@@ -488,6 +489,17 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         .sort((left, right) => right.date.getTime() - left.date.getTime() || right.id - left.id)
         .map(({ id }) => id);
       assert.deepEqual([...first.expenses, ...second.expenses].map(({ id }) => id), expectedIds);
+
+      const dayFilters = { ...filters, month: "2026-11", day: "2026-10-31" };
+      const dayPage = await alice.getExpensePageById(group.id, 1, dayFilters, true);
+      assert.ok(dayPage);
+      assert.deepEqual(dayPage.expenses.map(({ id }) => id), expectedIds.slice(0, 25));
+      assert.equal(dayPage.totalCentavos, BigInt(250));
+      assert.deepEqual(dayPage.expenses[0].daySummary, { count: 25, totalCentavos: BigInt(250) });
+      assert.equal(await bob.getExpensePageById(group.id, 1, dayFilters), null);
+
+      const invalidDay = await alice.getExpensePageById(group.id, 1, { ...filters, day: "2026-10-32" });
+      assert.equal(invalidDay?.totalExpenses, 26);
 
       const monthOnly = await alice.getExpensePageById(group.id, 1, { month: filters.month });
       const categoryOnly = await alice.getExpensePageById(group.id, 1, { categoryId: filters.categoryId });
@@ -580,6 +592,8 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       }
       assert.equal(first.expenses.length, 25);
       assert.equal(last.expenses.length, 1);
+      const exactDay = await alice.getExpensePageById(group.id, 2, { ...filters, day: "2026-10-24" }, true);
+      assert.deepEqual(exactDay, last);
       assert.deepEqual(
         [...first.expenses, ...last.expenses].map(({ id }) => id),
         matches.map(({ id }) => id).sort((left, right) => right - left),

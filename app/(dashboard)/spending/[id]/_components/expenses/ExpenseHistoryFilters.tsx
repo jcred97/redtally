@@ -2,6 +2,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
+import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import styles from "./ExpenseHistoryFilters.module.css";
 
 type ExpenseHistoryFiltersProps = {
@@ -9,6 +10,7 @@ type ExpenseHistoryFiltersProps = {
   categories: { id: number; name: string }[];
   banks: { value: string; label: string }[];
   month?: string;
+  day?: string;
   categoryId?: number;
   paymentMethod?: PaymentMethod;
   bank?: string;
@@ -27,6 +29,7 @@ export default function ExpenseHistoryFilters({
   categories,
   banks,
   month,
+  day,
   categoryId,
   paymentMethod,
   bank,
@@ -44,23 +47,11 @@ export default function ExpenseHistoryFilters({
       action={groupPath}
       aria-label="Expense history filters"
       prefetch={false}
-      className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end"
+      className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto] xl:items-end"
     >
       {month === undefined && <input type="hidden" name="allMonths" value="1" />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
-      <label className="min-w-0 text-sm text-gray-300">
-        Month
-        <input
-          type="month"
-          name="month"
-          defaultValue={month ?? ""}
-          min="0001-01"
-          max="9999-12"
-          pattern="[0-9]{4}-(0[1-9]|1[0-2])"
-          placeholder="YYYY-MM"
-          className={fieldClass}
-        />
-      </label>
+      <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} />
       <label className="min-w-0 text-sm text-gray-300">
         Category
         <select name="category" defaultValue={categoryId ?? ""} className={selectClass}>
@@ -97,7 +88,7 @@ export default function ExpenseHistoryFilters({
           ))}
         </select>
       </div>
-      <div className="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-1">
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-5 xl:col-span-1">
         <button
           type="submit"
           className="h-10 cursor-pointer rounded-lg border border-gray-700 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-red-400"
@@ -105,7 +96,7 @@ export default function ExpenseHistoryFilters({
           Apply filters
         </button>
         <Link href={monthScopeHref} className="text-sm text-gray-300 underline hover:text-white">
-          {month === undefined ? "This month" : "All months"}
+          {day ? "Full month" : month === undefined ? "This month" : "All months"}
         </Link>
         {canClearFilters && (
           <Link href={clearFiltersHref} className="text-sm text-gray-300 underline hover:text-white">

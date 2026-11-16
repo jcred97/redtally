@@ -14,7 +14,7 @@ type ExpenseHistoryProps = {
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
   expenses: ExpenseHistoryEntry[];
-  groupedSummary?: { month?: string; totalExpenses: number; totalCentavos: bigint };
+  groupedSummary?: { day?: string; month?: string; totalExpenses: number; totalCentavos: bigint };
   page: number;
   totalPages: number;
   filterQuery: string;
