@@ -169,7 +169,7 @@ export default function ExpenseFormDialog({
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
-        <div className={`grid items-start gap-2.5 md:gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
+        <div className={`grid items-start gap-2 md:gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
           <div className={`grid grid-cols-2 gap-x-2.5 sm:gap-x-3 sm:gap-y-3 ${expense ? "gap-y-1.5" : "gap-y-1"}`}>
             <div className={expense ? "col-span-2 min-w-0" : fieldRowClass}>
               <label htmlFor={`${fieldId}-title`} className={labelClass}>Title</label>
@@ -220,7 +220,7 @@ export default function ExpenseFormDialog({
               </select>
             </div>
 
-            <div className="min-w-0">
+            <div className={expense ? "min-w-0" : fieldRowClass}>
               <label htmlFor={`${fieldId}-date`} className={labelClass}>Date</label>
               <input
                 id={`${fieldId}-date`}
@@ -232,7 +232,7 @@ export default function ExpenseFormDialog({
                 className={inputClass}
               />
             </div>
-            <div className="min-w-0">
+            <div className={expense ? "min-w-0" : fieldRowClass}>
               <label htmlFor={`${fieldId}-time`} className={labelClass}>
                 Time <span className="text-xs">(Manila, optional)</span>
               </label>

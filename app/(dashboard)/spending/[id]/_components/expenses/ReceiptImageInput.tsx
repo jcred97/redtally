@@ -186,7 +186,7 @@ export default function ReceiptImageInput({
   const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
 
   return (
-    <section ref={section} aria-labelledby={headingId} className="min-w-0 space-y-2 rounded-lg border border-gray-800 p-2.5">
+    <section ref={section} aria-labelledby={headingId} className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-gray-800 p-2 sm:gap-2 sm:p-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <h3 id={headingId} className={preview ? "sr-only" : "text-sm font-medium text-gray-200"}>
           Receipt image{!preview && <span className="text-xs font-normal text-gray-400"> (optional)</span>}
