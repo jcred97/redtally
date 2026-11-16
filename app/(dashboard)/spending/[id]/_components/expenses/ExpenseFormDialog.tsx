@@ -10,6 +10,8 @@ import { expenseTimeInput, getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoInput } from "@/app/lib/expenses/money";
 import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
+import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
+import ReceiptImageInput from "./ReceiptImageInput";
 
 export type EditableExpense = {
   id: number;
@@ -105,6 +107,20 @@ export default function ExpenseFormDialog({
     }
   }
 
+  function applyReceiptSuggestion(field: keyof ReceiptSuggestions, value: string) {
+    switch (field) {
+      case "title":
+        setTitle(value);
+        break;
+      case "amount":
+        setAmount(value);
+        break;
+      case "date":
+        setDate(value);
+        break;
+    }
+  }
+
   async function saveExpenseInGroup(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
     formData.set("paymentMethod", paymentMethod);
@@ -147,6 +163,8 @@ export default function ExpenseFormDialog({
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
+        {!expense && <ReceiptImageInput onApply={applyReceiptSuggestion} />}
+
         <div>
           <label htmlFor={`${fieldId}-title`} className="text-sm text-gray-400">
             Title
