@@ -26,6 +26,7 @@ type DateOrder = "" | "mdy" | "dmy";
 
 type PreviewRow = {
   rowNumber: number;
+  sourcePage?: number;
   values: { date: string; title: string; amount: string };
 } & (
   | { expense: ExpenseImportRow; key: string; centavos: number }
@@ -58,7 +59,7 @@ function guessColumns(headers: string[]): ColumnMapping {
 }
 
 function readPreviewRows(sheet: ImportSheet, columns: ColumnMapping, dateOrder: DateOrder): PreviewRow[] {
-  return sheet.rows.slice(1).map(({ rowNumber, cells }) => {
+  return sheet.rows.slice(1).map(({ rowNumber, cells, sourcePage }) => {
     const values = {
       date: cells[Number(columns.date)] ?? "",
       title: cells[Number(columns.title)] ?? "",
@@ -67,9 +68,9 @@ function readPreviewRows(sheet: ImportSheet, columns: ColumnMapping, dateOrder: 
     try {
       const expense = normalizeExpenseImportRow(rowNumber, values, crypto.randomUUID(), dateOrder || undefined);
       const centavos = parsePesoAmount(expense.amount);
-      return { rowNumber, values, expense, centavos, key: expenseImportKey(expense.title, expense.date, centavos) };
+      return { rowNumber, sourcePage, values, expense, centavos, key: expenseImportKey(expense.title, expense.date, centavos) };
     } catch (error) {
-      return { rowNumber, values, error: error instanceof Error ? error.message : "Invalid expense." };
+      return { rowNumber, sourcePage, values, error: error instanceof Error ? error.message : "Invalid expense." };
     }
   });
 }
@@ -100,6 +101,7 @@ export default function ImportExpensesButton({
   const [imported, setImported] = useState(0);
 
   const sheet = sheets[sheetIndex];
+  const pdf = sheet?.pdf;
   const headers = sheet?.rows[0]?.cells ?? [];
   const rowCount = Math.max(0, (sheet?.rows.length ?? 0) - 1);
   const mappedColumns = fields.map(({ key }) => columns[key]);
@@ -132,7 +134,10 @@ export default function ImportExpensesButton({
 
   function changeSheet(index: number, availableSheets = sheets) {
     setSheetIndex(index);
-    setColumns(guessColumns(availableSheets[index]?.rows[0]?.cells ?? []));
+    const nextSheet = availableSheets[index];
+    setColumns(nextSheet?.pdf
+      ? { date: "0", title: "1", amount: "2" }
+      : guessColumns(nextSheet?.rows[0]?.cells ?? []));
     clearPreview();
   }
 
@@ -230,7 +235,7 @@ export default function ImportExpensesButton({
         triggerLabel="Import expenses"
         triggerVariant="secondary"
         title="Import expenses"
-        description="Choose a file with column headers, then preview the expenses before saving."
+        description="Choose a spreadsheet or bank statement, then preview the expenses before saving."
         dialogSize="wide"
         onOpenAction={reset}
         disabled={categories.length === 0}
@@ -245,13 +250,14 @@ export default function ImportExpensesButton({
           <input
             id={`${fieldId}-file`}
             type="file"
-            accept=".csv,.tsv,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            accept=".csv,.tsv,.xlsx,.pdf,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"
             aria-describedby={`${fieldId}-file-hint`}
             onChange={changeFile}
             className="mt-1.5 w-full min-w-0 cursor-pointer text-sm text-gray-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-gray-700 file:bg-gray-800 file:px-3 file:py-2 file:text-white hover:file:bg-gray-700"
           />
           <p id={`${fieldId}-file-hint`} className="mt-2 text-xs text-gray-400">
-            CSV, TSV, or Excel (.xlsx). Up to {MAX_IMPORT_ROWS} data rows per import. The original file stays on this device.
+            CSV, TSV, Excel (.xlsx), or a PDF bank statement with selectable text. Up to {MAX_IMPORT_ROWS} rows per import.
+            The original file stays on this device.
           </p>
           {reading && <p className="mt-2 text-sm text-gray-300" role="status">Reading file…</p>}
         </div>
@@ -275,28 +281,43 @@ export default function ImportExpensesButton({
 
         {sheet && rowCount > 0 && rowCount <= MAX_IMPORT_ROWS && (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {fields.map(({ key, label }) => (
-                <label key={key} className="block min-w-0 text-sm text-gray-300">
-                  {label} column
-                  <select
-                    value={columns[key]}
-                    onChange={(event) => {
-                      setColumns({ ...columns, [key]: event.target.value });
-                      clearPreview();
-                    }}
-                    className={selectClass}
-                  >
-                    <option value="">Choose a column</option>
-                    {headers.map((heading, index) => (
-                      <option key={index} value={index}>
-                        {heading.trim() ? `${displayCell(heading)} (column ${index + 1})` : `Column ${index + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
-            </div>
+            {pdf ? (
+              <div className="space-y-2 text-sm">
+                <p className="text-gray-300">
+                  RedTally reads the date, description, and debit columns. Compare the preview with your statement and
+                  deselect transfers or other debits you don’t track as expenses.
+                </p>
+                {pdf.pagesWithoutText.length > 0 && (
+                  <p className="text-amber-300" role="status">
+                    RedTally could not check {pdf.pagesWithoutText.length === 1 ? "page" : "pages"} {pdf.pagesWithoutText.join(", ")}
+                    {" "}for expenses because no selectable text was found.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {fields.map(({ key, label }) => (
+                  <label key={key} className="block min-w-0 text-sm text-gray-300">
+                    {label} column
+                    <select
+                      value={columns[key]}
+                      onChange={(event) => {
+                        setColumns({ ...columns, [key]: event.target.value });
+                        clearPreview();
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="">Choose a column</option>
+                      {headers.map((heading, index) => (
+                        <option key={index} value={index}>
+                          {heading.trim() ? `${displayCell(heading)} (column ${index + 1})` : `Column ${index + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            )}
             {hasMapping && !distinctColumns && (
               <p role="alert" className="text-sm text-red-400">Choose a different column for each expense field.</p>
             )}
@@ -352,7 +373,7 @@ export default function ImportExpensesButton({
                 <thead className="sticky top-0 bg-gray-800 text-xs text-gray-300">
                   <tr>
                     <th scope="col" className="w-10 px-2 py-2">Add</th>
-                    <th scope="col" className="w-10 px-2 py-2">Row</th>
+                    <th scope="col" className={pdf ? "w-14 px-2 py-2" : "w-10 px-2 py-2"}>{pdf ? "Page" : "Row"}</th>
                     <th scope="col" className="px-2 py-2">Description</th>
                     <th scope="col" className="w-24 px-2 py-2">Date</th>
                     <th scope="col" className="w-28 px-2 py-2 text-right">Amount</th>
@@ -371,7 +392,7 @@ export default function ImportExpensesButton({
                           className="size-4 accent-red-500"
                         />
                       </td>
-                      <td className="p-2 text-gray-400">{row.rowNumber}</td>
+                      <td className="p-2 text-gray-400">{pdf ? row.sourcePage : row.rowNumber}</td>
                       <td className="space-y-1 wrap-break-word p-2">
                         <p>{"expense" in row ? row.expense.title : displayCell(row.values.title)}</p>
                         {"error" in row && <p className="text-xs text-red-400">{row.error}</p>}

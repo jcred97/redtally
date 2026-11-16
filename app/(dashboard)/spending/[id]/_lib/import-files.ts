@@ -3,7 +3,8 @@ import { MAX_IMPORT_ROWS } from "@/app/lib/expenses/import";
 
 export type ImportSheet = {
   name: string;
-  rows: Array<{ rowNumber: number; cells: string[] }>;
+  pdf?: { pagesWithoutText: number[] };
+  rows: Array<{ rowNumber: number; cells: string[]; sourcePage?: number }>;
 };
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -99,8 +100,21 @@ export async function readExpenseImportFile(file: File): Promise<ImportSheet[]> 
     case "xlsx":
       sheets = await readWorkbook(file);
       break;
+    case "pdf": {
+      const [{ readStatementPdfText }, { parseStatementRows }] = await Promise.all([
+        import("./pdf-text"),
+        import("./statement-rows"),
+      ]);
+      const pages = await readStatementPdfText(file);
+      sheets = [{
+        name: file.name,
+        pdf: { pagesWithoutText: pages.filter(({ items }) => !items.length).map(({ pageNumber }) => pageNumber) },
+        rows: parseStatementRows(pages),
+      }];
+      break;
+    }
     default:
-      throw new Error("Choose a .csv, .tsv, or .xlsx file.");
+      throw new Error("Choose a .csv, .tsv, .xlsx, or .pdf file.");
   }
 
   if (!sheets.some(({ rows }) => rows.length > 0)) throw new Error("The file has no rows to import.");
