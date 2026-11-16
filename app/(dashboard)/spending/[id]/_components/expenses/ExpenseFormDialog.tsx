@@ -147,7 +147,7 @@ export default function ExpenseFormDialog({
   const inputClass =
     "mt-0.5 min-h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-1 sm:px-3 sm:py-2";
   const labelClass = "block text-sm leading-tight text-gray-400";
-  const paymentRowClass = "col-span-2 grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-2.5 max-[365px]:block sm:block";
+  const fieldRowClass = `col-span-2 grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-2.5 max-[365px]:block ${expense ? "sm:block" : ""}`;
 
   return (
     <div>
@@ -170,8 +170,8 @@ export default function ExpenseFormDialog({
         submitAction={saveExpenseInGroup}
       >
         <div className={`grid items-start gap-2.5 md:gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
-          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 sm:gap-x-3 sm:gap-y-3">
-            <div className="col-span-2 min-w-0">
+          <div className={`grid grid-cols-2 gap-x-2.5 sm:gap-x-3 sm:gap-y-3 ${expense ? "gap-y-1.5" : "gap-y-1"}`}>
+            <div className={expense ? "col-span-2 min-w-0" : fieldRowClass}>
               <label htmlFor={`${fieldId}-title`} className={labelClass}>Title</label>
               <input
                 id={`${fieldId}-title`}
@@ -186,7 +186,7 @@ export default function ExpenseFormDialog({
               />
             </div>
 
-            <div className="min-w-0">
+            <div className={expense ? "min-w-0" : fieldRowClass}>
               <label htmlFor={`${fieldId}-amount`} className={labelClass}>Amount (PHP)</label>
               <input
                 id={`${fieldId}-amount`}
@@ -201,9 +201,9 @@ export default function ExpenseFormDialog({
                 aria-describedby={`${fieldId}-amount-help`}
                 className={inputClass}
               />
-              <p id={`${fieldId}-amount-help`} className="sr-only mt-1 text-xs text-gray-400 md:not-sr-only">Up to two decimal places.</p>
+              <p id={`${fieldId}-amount-help`} className="sr-only col-start-2 mt-1 text-xs text-gray-400 md:not-sr-only">Up to two decimal places.</p>
             </div>
-            <div className="min-w-0">
+            <div className={expense ? "min-w-0" : fieldRowClass}>
               <label htmlFor={`${fieldId}-category`} className={labelClass}>Category</label>
               <select
                 id={`${fieldId}-category`}
@@ -211,7 +211,7 @@ export default function ExpenseFormDialog({
                 value={categoryId}
                 onChange={(event) => setCategoryId(event.target.value)}
                 required
-                className={inputClass}
+                className={`${inputClass} enabled:cursor-pointer`}
               >
                 <option value="">Select a category</option>
                 {categories.map((category) => (
@@ -246,7 +246,7 @@ export default function ExpenseFormDialog({
               />
             </div>
 
-            <div className={paymentRowClass}>
+            <div className={fieldRowClass}>
               <label htmlFor={`${fieldId}-payment-method`} className={labelClass}>Payment method</label>
               <div className="relative min-w-0">
                 <select
@@ -254,7 +254,7 @@ export default function ExpenseFormDialog({
                   name="paymentMethod"
                   value={paymentMethod}
                   onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
-                  className={`${inputClass} appearance-none pr-7 sm:pr-7`}
+                  className={`${inputClass} appearance-none pr-7 enabled:cursor-pointer sm:pr-7`}
                 >
                   <option value="">No payment method</option>
                   {Object.entries(paymentMethodLabels).map(([method, label]) => (
@@ -264,11 +264,11 @@ export default function ExpenseFormDialog({
                 <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-1.5 -translate-y-1/2 rotate-45 border-r-2 border-b-2 border-current" />
               </div>
             </div>
-            <div className={paymentRowClass}>
+            <div className={fieldRowClass}>
               <label htmlFor={`${fieldId}-bank`} className={labelClass}>
                 Bank <span className="text-xs">(optional)</span>
               </label>
-              <div className={`${inputClass} relative flex items-center gap-2 focus-within:border-red-400 has-disabled:cursor-not-allowed has-disabled:opacity-60`}>
+              <div className={`${inputClass} relative flex cursor-pointer items-center gap-2 focus-within:border-red-400 has-disabled:cursor-not-allowed has-disabled:opacity-60`}>
                 {/* The native picker handles interaction while the visible value can wrap. */}
                 <span aria-hidden="true" className="min-w-0 flex-1 wrap-anywhere leading-tight">{bankLabel}</span>
                 <span aria-hidden="true" className="mb-0.5 mr-0.5 size-1.5 shrink-0 rotate-45 border-r-2 border-b-2 border-current" />
@@ -279,7 +279,7 @@ export default function ExpenseFormDialog({
                   onChange={(event) => setBankAssignmentId(event.target.value)}
                   disabled={!canSelectBank}
                   aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
-                  className="absolute inset-0 size-full min-w-0 opacity-0 disabled:cursor-not-allowed"
+                  className="absolute inset-0 size-full min-w-0 opacity-0 enabled:cursor-pointer disabled:cursor-not-allowed"
                 >
                   <option value="">No bank</option>
                   {showUnavailableBank && <option value={bankAssignmentId} disabled>{bankLabel}</option>}
