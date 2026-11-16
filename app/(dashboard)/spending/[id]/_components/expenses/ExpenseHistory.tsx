@@ -99,10 +99,8 @@ export default function ExpenseHistory({
         <>
           <ul className="space-y-3 sm:hidden">
             {expenses.map((expense) => {
-              const paymentDetails = [
-                expense.paymentMethod && paymentMethodLabels[expense.paymentMethod],
-                expenseBankName(expense),
-              ].filter(Boolean).join(" · ");
+              const paymentLabel = expense.paymentMethod && paymentMethodLabels[expense.paymentMethod];
+              const bankName = expenseBankName(expense)?.trim();
 
               return (
                 <li key={expense.id} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
@@ -121,8 +119,17 @@ export default function ExpenseHistory({
                     </time>
                     {" · "}{expense.category.name}
                   </p>
-                  {paymentDetails && (
-                    <p className="mt-1 wrap-anywhere text-sm text-gray-400">{paymentDetails}</p>
+                  {(paymentLabel || bankName) && (
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-400">
+                      {paymentLabel && <span>{paymentLabel}</span>}
+                      {paymentLabel && bankName && <span aria-hidden="true">·</span>}
+                      {bankName && (
+                        <span className="flex min-w-0 items-center gap-2">
+                          <BankLogo name={bankName} compact />
+                          <span className="wrap-anywhere">{bankName}</span>
+                        </span>
+                      )}
+                    </p>
                   )}
                   <div className="mt-3 flex flex-wrap justify-end gap-2">{expenseActions(expense)}</div>
                 </li>

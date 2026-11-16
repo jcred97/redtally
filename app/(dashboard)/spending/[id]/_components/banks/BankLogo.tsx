@@ -14,6 +14,7 @@ const bankLogos = new Set([
   "pnb",
   "unionbank",
   "eastwest-bank",
+  "gcash",
   "cimb-bank-philippines",
   "gotyme-bank",
   "maya-bank",
