@@ -25,6 +25,7 @@ Implemented source includes:
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
+- **Import expenses** reads CSV, TSV, and Excel `.xlsx` files up to 5 MB in the browser. Choose a worksheet if needed, map the description, date, and amount columns, and select an existing category for the batch. The preview shows invalid rows and possible duplicates before you choose what to save. Each import supports up to 500 data rows and saves positive PHP expenses.
 - Email/password sign-up, sign-in, and sign-out through Better Auth, with authenticated server-side queries and actions using Prisma and PostgreSQL.
 - Database-backed authentication rate limiting and private ownership of new expense groups.
 - Philippine peso display formatting.

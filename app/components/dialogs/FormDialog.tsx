@@ -22,9 +22,11 @@ type FormDialogProps = {
   returnFocusId?: string;
   title: string;
   description: string;
+  dialogSize?: "default" | "wide";
   children: ReactNode;
   onOpenAction: () => void;
   disabled?: boolean;
+  submitDisabled?: boolean;
   submitLabel?: string;
   pendingLabel?: string;
   pendingMessage?: string;
@@ -44,9 +46,11 @@ export default function FormDialog({
   returnFocusId,
   title,
   description,
+  dialogSize = "default",
   children,
   onOpenAction,
   disabled = false,
+  submitDisabled = false,
   submitLabel = "Create",
   pendingLabel = "Creating...",
   pendingMessage,
@@ -155,7 +159,7 @@ export default function FormDialog({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (disabled || submitting.current || pending) {
+    if (disabled || submitDisabled || submitting.current || pending) {
       return;
     }
 
@@ -230,7 +234,7 @@ export default function FormDialog({
             }}
             onClose={handleClose}
             onClick={handleBackdropClick}
-            className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-xl border border-gray-800 bg-gray-900 p-6 text-white backdrop:bg-black/60"
+            className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-xl border border-gray-800 bg-gray-900 p-6 text-white backdrop:bg-black/60 ${dialogSize === "wide" ? "max-w-3xl" : "max-w-md"}`}
           >
             <h2
               id={`${dialogId}-title`}
@@ -273,8 +277,8 @@ export default function FormDialog({
                 </button>
                 <button
                   type="submit"
-                  disabled={pending}
-                  className="cursor-pointer px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:cursor-wait disabled:opacity-50"
+                  disabled={pending || submitDisabled}
+                  className={`cursor-pointer px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 ${pending ? "disabled:cursor-wait" : "disabled:cursor-not-allowed"}`}
                 >
                   {pending ? pendingLabel : submitLabel}
                 </button>

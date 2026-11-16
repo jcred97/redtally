@@ -14,6 +14,7 @@ import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/E
 import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
 import ExpenseHistory from "./_components/expenses/ExpenseHistory";
 import ExpenseHistoryFilters from "./_components/expenses/ExpenseHistoryFilters";
+import ImportExpensesButton from "./_components/expenses/ImportExpensesButton";
 import NewCategoryButton from "./_components/categories/NewCategoryButton";
 import NewExpenseButton from "./_components/expenses/NewExpenseButton";
 import RecurringExpenses from "./_components/recurring-expenses/RecurringExpenses";
@@ -159,7 +160,10 @@ export default async function ExpenseGroupPage({
               {showCategories ? (
                 <NewCategoryButton expenseGroupId={expenseGroup.id} />
               ) : (
-                <NewExpenseButton expenseGroupId={expenseGroup.id} categories={categoryOptions} bankOptions={bankOptions} />
+                <div className="flex flex-wrap items-start justify-end gap-2 [&_button]:ml-0">
+                  <ImportExpensesButton key={expenseGroup.id} expenseGroupId={expenseGroup.id} categories={categoryOptions} />
+                  <NewExpenseButton expenseGroupId={expenseGroup.id} categories={categoryOptions} bankOptions={bankOptions} />
+                </div>
               )}
             </div>
           )}
