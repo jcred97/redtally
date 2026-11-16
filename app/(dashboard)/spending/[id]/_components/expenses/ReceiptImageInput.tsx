@@ -186,68 +186,64 @@ export default function ReceiptImageInput({
   const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
 
   return (
-    <section ref={section} aria-labelledby={headingId} className="@container min-w-0 space-y-2 rounded-lg border border-gray-800 p-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <h3 id={headingId} className="text-sm font-medium text-gray-200">
-          Receipt image <span className="text-xs font-normal text-gray-400">(optional)</span>
+    <section ref={section} aria-labelledby={headingId} className="min-w-0 space-y-2 rounded-lg border border-gray-800 p-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 id={headingId} className={preview ? "sr-only" : "text-sm font-medium text-gray-200"}>
+          Receipt image{!preview && <span className="text-xs font-normal text-gray-400"> (optional)</span>}
         </h3>
+        {preview && (
+          <a href={preview.url} target="_blank" rel="noreferrer" className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-md bg-gray-950 focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
+            <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className="size-9 object-contain" />
+          </a>
+        )}
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" className={`${buttonClass} min-h-9`} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
-            Paste receipt image
+          <button type="button" aria-label="Paste receipt image" className={`${buttonClass} min-h-9`} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
+            {preview ? "Paste" : "Paste receipt image"}
           </button>
           <button type="button" className={`${buttonClass} min-h-9`} onClick={() => picker.current?.click()}>
             Choose image
           </button>
           <input ref={picker} type="file" accept={imageTypes.join(",")} hidden onChange={chooseImage} />
+          {preview && (
+            <button type="button" aria-label="Remove image" className="min-h-9 cursor-pointer px-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400" onClick={reset}>
+              Remove
+            </button>
+          )}
         </div>
       </div>
-      <p className="text-xs text-gray-400">PNG, JPEG, or WebP up to 8 MB. Read on this device.</p>
+      {!preview && <p className="text-xs text-gray-400">PNG, JPEG, or WebP up to 8 MB. Read on this device.</p>}
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {status && (
         <p role="status" className="text-sm text-gray-300">{status === "clipboard" ? "Waiting for clipboard…" : "Reading receipt…"}</p>
       )}
-      {preview && (
-        <div className={`grid gap-2 ${hasSuggestions ? "@min-[17rem]:grid-cols-[5rem_minmax(0,1fr)]" : ""}`}>
-          <div className={hasSuggestions ? "min-w-0" : "flex items-start gap-2"}>
-            <a href={preview.url} target="_blank" rel="noreferrer" className="block w-fit max-w-full rounded-lg focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
-              <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className={`h-auto rounded-lg bg-gray-950 object-contain ${hasSuggestions ? "max-h-28 w-full" : "max-h-28 max-w-36"}`} />
-            </a>
-            <button type="button" aria-label="Remove image" className="min-h-7 cursor-pointer text-xs text-gray-300 underline hover:text-white" onClick={reset}>
-              Remove
-            </button>
-          </div>
-          {suggestions && (
-            hasSuggestions ? (
-              <div className="min-w-0 space-y-1">
-                <p className="text-xs text-gray-300">Check suggestions against the image.</p>
-                <ul className="space-y-1 text-sm">
-                  {fields.map(({ field, label, format }) => {
-                    const value = suggestions[field];
-                    if (!value) return null;
-                    return (
-                      <li key={field} className="flex items-center justify-between gap-1.5">
-                        <div className="min-w-0 wrap-anywhere leading-tight">
-                          <span className="block text-xs text-gray-400 capitalize">{label}</span>
-                          <span className="text-white">{format(value)}</span>
-                        </div>
-                        <button type="button" className={`${buttonClass} min-h-8 shrink-0`} onClick={() => {
-                          onApply(field, value);
-                          setApplied(`Applied suggested ${label}.`);
-                        }}>
-                          Use {label}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p role="status" className="sr-only">{applied}</p>
-              </div>
-            ) : (
-              <p role="status" className="text-sm text-gray-300">No clear title, amount, date, or time was found. Enter the details manually or try another image.</p>
-            )
-          )}
-        </div>
-      )}
+      {suggestions && (hasSuggestions ? (
+        <>
+          <ul className="grid grid-cols-2 gap-1.5">
+            {fields.map(({ field, label, format }) => {
+              const value = suggestions[field];
+              if (!value) return null;
+              const valueId = `${headingId}-${field}`;
+              return (
+                <li key={field} className="min-w-0">
+                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} flex h-full min-h-11 w-full flex-col justify-center py-1 text-left leading-tight`} onClick={() => {
+                    onApply(field, value);
+                    setApplied(`Applied suggested ${label}.`);
+                  }}>
+                    <span className="flex w-full justify-between gap-2 text-xs">
+                      <span className="capitalize text-gray-400">{label}</span>
+                      <span className="text-gray-200">Use</span>
+                    </span>
+                    <span id={valueId} className="wrap-anywhere text-white">{format(value)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p role="status" className="sr-only">{applied}</p>
+        </>
+      ) : (
+        <p role="status" className="text-sm text-gray-300">No clear title, amount, date, or time was found. Enter the details manually or try another image.</p>
+      ))}
     </section>
   );
 }

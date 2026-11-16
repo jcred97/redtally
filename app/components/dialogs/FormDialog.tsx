@@ -21,7 +21,7 @@ type FormDialogProps = {
   destructive?: boolean;
   returnFocusId?: string;
   title: string;
-  description: string;
+  description?: string;
   dialogSize?: "default" | "wide";
   compact?: boolean;
   children: ReactNode;
@@ -228,7 +228,7 @@ export default function FormDialog({
             ref={dialogRef}
             id={dialogId}
             aria-labelledby={`${dialogId}-title`}
-            aria-describedby={`${dialogId}-description`}
+            aria-describedby={description ? `${dialogId}-description` : undefined}
             onCancel={(event) => {
               if (submitting.current || pending) {
                 event.preventDefault();
@@ -240,13 +240,15 @@ export default function FormDialog({
           >
             <h2
               id={`${dialogId}-title`}
-              className="mb-1 shrink-0 text-lg font-semibold text-white"
+              className={`shrink-0 text-lg font-semibold text-white ${description ? "mb-1" : "mb-3"}`}
             >
               {title}
             </h2>
-            <p id={`${dialogId}-description`} className={`shrink-0 text-sm text-gray-400 ${compact ? "mb-3" : "mb-5"}`}>
-              {description}
-            </p>
+            {description && (
+              <p id={`${dialogId}-description`} className={`shrink-0 text-sm text-gray-400 ${compact ? "mb-3" : "mb-5"}`}>
+                {description}
+              </p>
+            )}
 
             <form
               onSubmit={handleSubmit}
