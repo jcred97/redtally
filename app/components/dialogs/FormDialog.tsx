@@ -23,6 +23,7 @@ type FormDialogProps = {
   title: string;
   description: string;
   dialogSize?: "default" | "wide";
+  compact?: boolean;
   children: ReactNode;
   onOpenAction: () => void;
   disabled?: boolean;
@@ -47,6 +48,7 @@ export default function FormDialog({
   title,
   description,
   dialogSize = "default",
+  compact = false,
   children,
   onOpenAction,
   disabled = false,
@@ -234,26 +236,29 @@ export default function FormDialog({
             }}
             onClose={handleClose}
             onClick={handleBackdropClick}
-            className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-xl border border-gray-800 bg-gray-900 p-6 text-white backdrop:bg-black/60 ${dialogSize === "wide" ? "max-w-3xl" : "max-w-md"}`}
+            className={`m-auto rounded-xl border border-gray-800 bg-gray-900 text-white backdrop:bg-black/60 ${dialogSize === "wide" ? "max-w-3xl" : "max-w-md"} ${compact ? "max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] flex-col overflow-hidden p-3 open:flex sm:p-5" : "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto p-6"}`}
           >
             <h2
               id={`${dialogId}-title`}
-              className="text-lg font-semibold text-white mb-1"
+              className="mb-1 shrink-0 text-lg font-semibold text-white"
             >
               {title}
             </h2>
-            <p id={`${dialogId}-description`} className="text-sm text-gray-400 mb-5">
+            <p id={`${dialogId}-description`} className={`shrink-0 text-sm text-gray-400 ${compact ? "mb-3" : "mb-5"}`}>
               {description}
             </p>
 
             <form
               onSubmit={handleSubmit}
+              className={compact ? "flex min-h-0 flex-col" : undefined}
               aria-busy={pending}
               aria-describedby={error ? `${dialogId}-error` : undefined}
             >
-              <fieldset disabled={pending} className="mb-4 space-y-4">
-                {children}
-              </fieldset>
+              <div className={compact ? "mb-3 min-h-0 overflow-y-auto" : "mb-4"}>
+                <fieldset disabled={pending} className={compact ? "min-w-0 space-y-4" : "space-y-4"}>
+                  {children}
+                </fieldset>
+              </div>
 
               {error && (
                 <p
@@ -265,7 +270,7 @@ export default function FormDialog({
                 </p>
               )}
 
-              <div className="flex gap-3 justify-end">
+              <div className="flex shrink-0 justify-end gap-3">
                 <button
                   type="button"
                   autoFocus={destructive}

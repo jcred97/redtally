@@ -21,7 +21,7 @@ const fields = [
   },
 ] as const;
 
-const buttonClass = "cursor-pointer rounded-lg border border-gray-700 px-3 py-1.5 text-sm text-gray-200 transition-colors hover:border-gray-500 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-60";
+const buttonClass = "shrink-0 cursor-pointer rounded-lg border border-gray-700 px-2.5 text-sm text-gray-200 transition-colors hover:border-gray-500 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-60";
 
 type Preview = { url: string; width: number; height: number };
 
@@ -186,61 +186,67 @@ export default function ReceiptImageInput({
   const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
 
   return (
-    <section ref={section} aria-labelledby={headingId} className="space-y-2 rounded-lg border border-gray-800 p-3">
-      <h3 id={headingId} className="text-sm font-medium text-gray-200">
-        Receipt image <span className="text-xs font-normal text-gray-400">(optional)</span>
-      </h3>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={buttonClass} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
-          Paste receipt image
-        </button>
-        <button type="button" className={buttonClass} onClick={() => picker.current?.click()}>
-          Choose image
-        </button>
-        <input ref={picker} type="file" accept={imageTypes.join(",")} hidden onChange={chooseImage} />
-      </div>
-      <p className="text-xs text-gray-400">RedTally reads the image on this device. PNG, JPEG, or WebP up to 8 MB.</p>
-      {preview && (
-        <div className="space-y-2">
-          <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className="h-auto max-h-48 w-full rounded-lg bg-gray-950 object-contain" />
-          <button type="button" className="cursor-pointer text-xs text-gray-300 underline hover:text-white" onClick={reset}>
-            Remove image
+    <section ref={section} aria-labelledby={headingId} className="@container min-w-0 space-y-2 rounded-lg border border-gray-800 p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <h3 id={headingId} className="text-sm font-medium text-gray-200">
+          Receipt image <span className="text-xs font-normal text-gray-400">(optional)</span>
+        </h3>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" className={`${buttonClass} min-h-9`} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
+            Paste receipt image
           </button>
+          <button type="button" className={`${buttonClass} min-h-9`} onClick={() => picker.current?.click()}>
+            Choose image
+          </button>
+          <input ref={picker} type="file" accept={imageTypes.join(",")} hidden onChange={chooseImage} />
         </div>
-      )}
+      </div>
+      <p className="text-xs text-gray-400">PNG, JPEG, or WebP up to 8 MB. Read on this device.</p>
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {status && (
         <p role="status" className="text-sm text-gray-300">{status === "clipboard" ? "Waiting for clipboard…" : "Reading receipt…"}</p>
       )}
-      {suggestions && (
-        hasSuggestions ? (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-300">Compare these suggestions with the image before applying them.</p>
-            <dl className="space-y-1.5 text-sm">
-              {fields.map(({ field, label, format }) => {
-                const value = suggestions[field];
-                if (!value) return null;
-                return (
-                  <div key={field}>
-                    <dt className="text-xs text-gray-400 capitalize">{label}</dt>
-                    <dd className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="min-w-0 wrap-anywhere text-white">{format(value)}</span>
-                      <button type="button" className={buttonClass} onClick={() => {
-                        onApply(field, value);
-                        setApplied(`Applied suggested ${label}.`);
-                      }}>
-                        Use {label}
-                      </button>
-                    </dd>
-                  </div>
-                );
-              })}
-            </dl>
-            <p role="status" className="sr-only">{applied}</p>
+      {preview && (
+        <div className={`grid gap-2 ${hasSuggestions ? "@min-[17rem]:grid-cols-[5rem_minmax(0,1fr)]" : ""}`}>
+          <div className={hasSuggestions ? "min-w-0" : "flex items-start gap-2"}>
+            <a href={preview.url} target="_blank" rel="noreferrer" className="block w-fit max-w-full rounded-lg focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
+              <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className={`h-auto rounded-lg bg-gray-950 object-contain ${hasSuggestions ? "max-h-28 w-full" : "max-h-28 max-w-36"}`} />
+            </a>
+            <button type="button" aria-label="Remove image" className="min-h-7 cursor-pointer text-xs text-gray-300 underline hover:text-white" onClick={reset}>
+              Remove
+            </button>
           </div>
-        ) : (
-          <p role="status" className="text-sm text-gray-300">No clear title, amount, date, or time was found. Enter the details below or try another image.</p>
-        )
+          {suggestions && (
+            hasSuggestions ? (
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs text-gray-300">Check suggestions against the image.</p>
+                <ul className="space-y-1 text-sm">
+                  {fields.map(({ field, label, format }) => {
+                    const value = suggestions[field];
+                    if (!value) return null;
+                    return (
+                      <li key={field} className="flex items-center justify-between gap-1.5">
+                        <div className="min-w-0 wrap-anywhere leading-tight">
+                          <span className="block text-xs text-gray-400 capitalize">{label}</span>
+                          <span className="text-white">{format(value)}</span>
+                        </div>
+                        <button type="button" className={`${buttonClass} min-h-8 shrink-0`} onClick={() => {
+                          onApply(field, value);
+                          setApplied(`Applied suggested ${label}.`);
+                        }}>
+                          Use {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p role="status" className="sr-only">{applied}</p>
+              </div>
+            ) : (
+              <p role="status" className="text-sm text-gray-300">No clear title, amount, date, or time was found. Enter the details manually or try another image.</p>
+            )
+          )}
+        </div>
       )}
     </section>
   );

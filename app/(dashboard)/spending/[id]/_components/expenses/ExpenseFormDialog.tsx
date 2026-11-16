@@ -57,9 +57,9 @@ export default function ExpenseFormDialog({
     ? bankOptions.filter((bank) => bank.paymentMethods.includes(paymentMethod))
     : [];
   const bankHelp = paymentMethod === ""
-    ? "Choose a payment method to see eligible banks."
+    ? "Choose a payment method first."
     : paymentMethod === "CASH"
-      ? "Cash expenses don't use a bank."
+      ? "Unavailable for cash."
       : eligibleBanks.length === 0
         ? "Enable a bank for this payment method in the Banks tab."
         : null;
@@ -141,7 +141,8 @@ export default function ExpenseFormDialog({
   }
 
   const inputClass =
-    "mt-2 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white outline-none focus:border-red-400 disabled:opacity-60";
+    "mt-1 min-h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-2.5 py-2 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3";
+  const labelClass = "block text-sm leading-tight text-gray-400";
 
   return (
     <div>
@@ -153,6 +154,8 @@ export default function ExpenseFormDialog({
         triggerClassName={menuFocusKey ? "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-red-400" : undefined}
         returnFocusId={menuFocusKey ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
+        dialogSize="wide"
+        compact
         description={
           expense
             ? "Update this expense in your group."
@@ -166,150 +169,132 @@ export default function ExpenseFormDialog({
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
-        {!expense && <ReceiptImageInput onApply={applyReceiptSuggestion} />}
+        <div className={`grid items-start gap-3 sm:gap-4 ${expense ? "" : "sm:grid-cols-2"}`}>
+          <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 sm:gap-x-3 sm:gap-y-3">
+            <div className="col-span-2 min-w-0">
+              <label htmlFor={`${fieldId}-title`} className={labelClass}>Title</label>
+              <input
+                id={`${fieldId}-title`}
+                name="title"
+                type="text"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+                maxLength={100}
+                placeholder="e.g. Lunch"
+                className={inputClass}
+              />
+            </div>
 
-        <div>
-          <label htmlFor={`${fieldId}-title`} className="text-sm text-gray-400">
-            Title
-          </label>
-          <input
-            id={`${fieldId}-title`}
-            name="title"
-            type="text"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            required
-            maxLength={100}
-            placeholder="e.g. Lunch"
-            className={inputClass}
-          />
-        </div>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-amount`} className={labelClass}>Amount (PHP)</label>
+              <input
+                id={`${fieldId}-amount`}
+                name="amount"
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                required
+                maxLength={20}
+                placeholder="150.75"
+                aria-describedby={`${fieldId}-amount-help`}
+                className={inputClass}
+              />
+              <p id={`${fieldId}-amount-help`} className="mt-1 text-xs text-gray-400">Up to two decimal places.</p>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-category`} className={labelClass}>Category</label>
+              <select
+                id={`${fieldId}-category`}
+                name="categoryId"
+                value={categoryId}
+                onChange={(event) => setCategoryId(event.target.value)}
+                required
+                className={inputClass}
+              >
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
 
-        <div>
-          <label htmlFor={`${fieldId}-amount`} className="text-sm text-gray-400">
-            Amount (PHP)
-          </label>
-          <input
-            id={`${fieldId}-amount`}
-            name="amount"
-            type="text"
-            inputMode="decimal"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            required
-            maxLength={20}
-            placeholder="150.75"
-            aria-describedby={`${fieldId}-amount-help`}
-            className={inputClass}
-          />
-          <p id={`${fieldId}-amount-help`} className="mt-1 text-xs text-gray-400">
-            Enter pesos with up to two decimal places.
-          </p>
-        </div>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-date`} className={labelClass}>Date</label>
+              <input
+                id={`${fieldId}-date`}
+                name="date"
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                required
+                className={inputClass}
+              />
+            </div>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-time`} className={labelClass}>
+                Time <span className="text-xs">(optional)</span>
+              </label>
+              <input
+                id={`${fieldId}-time`}
+                name="time"
+                type="time"
+                value={time}
+                onChange={(event) => setTime(event.target.value)}
+                aria-describedby={`${fieldId}-time-zone`}
+                className={inputClass}
+              />
+              <p id={`${fieldId}-time-zone`} className="mt-1 text-xs text-gray-400">Manila time</p>
+            </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="min-w-0">
-            <label htmlFor={`${fieldId}-date`} className="text-sm text-gray-400">
-              Date
-            </label>
-            <input
-              id={`${fieldId}-date`}
-              name="date"
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              required
-              className={inputClass}
-            />
-          </div>
-          <div className="min-w-0">
-            <label htmlFor={`${fieldId}-time`} className="text-sm text-gray-400">
-              Time <span className="text-xs">(optional)</span>
-            </label>
-            <input
-              id={`${fieldId}-time`}
-              name="time"
-              type="time"
-              value={time}
-              onChange={(event) => setTime(event.target.value)}
-              aria-describedby={`${fieldId}-time-zone`}
-              className={inputClass}
-            />
-            <p id={`${fieldId}-time-zone`} className="mt-1 text-xs text-gray-400">Manila time</p>
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor={`${fieldId}-category`} className="text-sm text-gray-400">
-            Category
-          </label>
-          <select
-            id={`${fieldId}-category`}
-            name="categoryId"
-            value={categoryId}
-            onChange={(event) => setCategoryId(event.target.value)}
-            required
-            className={inputClass}
-          >
-            <option value="">Select a category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor={`${fieldId}-payment-method`} className="text-sm text-gray-400">
-            Payment method
-          </label>
-          <select
-            id={`${fieldId}-payment-method`}
-            name="paymentMethod"
-            value={paymentMethod}
-            onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
-            className={inputClass}
-          >
-            <option value="">No payment method</option>
-            {Object.entries(paymentMethodLabels).map(([method, label]) => (
-              <option key={method} value={method}>{label}</option>
-            ))}
-          </select>
-        </div>
-
-        {(!expense || canSelectBank) && (
-          <div>
-            <label htmlFor={`${fieldId}-bank`} className="text-sm text-gray-400">
-              Bank <span className="text-xs">(optional)</span>
-            </label>
-            <select
-              id={`${fieldId}-bank`}
-              name="bankAssignmentId"
-              value={bankAssignmentId}
-              onChange={(event) => setBankAssignmentId(event.target.value)}
-              disabled={!canSelectBank}
-              aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
-              className={inputClass}
-            >
-              <option value="">No bank</option>
-              {showUnavailableBank && (
-                <option value={bankAssignmentId} disabled>{expense?.bankName} (previously selected)</option>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-payment-method`} className={labelClass}>Payment method</label>
+              <select
+                id={`${fieldId}-payment-method`}
+                name="paymentMethod"
+                value={paymentMethod}
+                onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
+                className={inputClass}
+              >
+                <option value="">No payment method</option>
+                {Object.entries(paymentMethodLabels).map(([method, label]) => (
+                  <option key={method} value={method}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-bank`} className={labelClass}>
+                Bank <span className="text-xs">(optional)</span>
+              </label>
+              <select
+                id={`${fieldId}-bank`}
+                name="bankAssignmentId"
+                value={bankAssignmentId}
+                onChange={(event) => setBankAssignmentId(event.target.value)}
+                disabled={!canSelectBank}
+                aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
+                className={inputClass}
+              >
+                <option value="">No bank</option>
+                {showUnavailableBank && (
+                  <option value={bankAssignmentId} disabled>{expense?.bankName} (previously selected)</option>
+                )}
+                {eligibleBanks.map((bank) => (
+                  <option key={bank.id} value={bank.id}>{bank.name}</option>
+                ))}
+              </select>
+              {bankHelp && (
+                <p id={`${fieldId}-bank-help`} className="mt-1 text-xs text-gray-400">{bankHelp}</p>
               )}
-              {eligibleBanks.map((bank) => (
-                <option key={bank.id} value={bank.id}>{bank.name}</option>
-              ))}
-            </select>
-            {bankHelp && (
-              <p id={`${fieldId}-bank-help`} className="mt-1 text-xs text-gray-400">
-                {bankHelp}
-              </p>
+            </div>
+            {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
+              <p className="col-span-2 wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
           </div>
-        )}
-        {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
-          <p className="wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
-        )}
+
+          {!expense && <ReceiptImageInput onApply={applyReceiptSuggestion} />}
+        </div>
       </FormDialog>
 
       {!hasCategories && (
