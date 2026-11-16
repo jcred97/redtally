@@ -92,11 +92,7 @@ export default function ExpenseHistory({
   }
 
   return (
-    <section aria-labelledby="expense-history-title">
-      <h2 id="expense-history-title" tabIndex={-1} className="mb-4 text-lg font-semibold">
-        Expenses
-      </h2>
-
+    <>
       {groupedSummary ? (
         <GroupedExpenseHistory expenses={expenses} {...groupedSummary} renderActions={expenseMenu} />
       ) : (
@@ -221,6 +217,6 @@ export default function ExpenseHistory({
           )}
         </nav>
       )}
-    </section>
+    </>
   );
 }

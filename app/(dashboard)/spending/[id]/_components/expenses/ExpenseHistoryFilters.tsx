@@ -47,7 +47,7 @@ export default function ExpenseHistoryFilters({
       action={groupPath}
       aria-label="Expense history filters"
       prefetch={false}
-      className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto] xl:items-end"
+      className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)_minmax(0,1fr)]"
     >
       {month === undefined && <input type="hidden" name="allMonths" value="1" />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
@@ -64,8 +64,8 @@ export default function ExpenseHistoryFilters({
           ))}
         </select>
       </label>
-      <div className="min-w-0">
-        <label htmlFor="expense-filter-payment-method" className="text-sm text-gray-300">Payment method</label>
+      <div className="min-w-0 text-sm text-gray-300">
+        <label htmlFor="expense-filter-payment-method">Payment method</label>
         <select
           id="expense-filter-payment-method"
           name="paymentMethod"
@@ -78,8 +78,8 @@ export default function ExpenseHistoryFilters({
           ))}
         </select>
       </div>
-      <div className="min-w-0">
-        <label htmlFor="expense-filter-bank" className="text-sm text-gray-300">Bank</label>
+      <div className="min-w-0 text-sm text-gray-300">
+        <label htmlFor="expense-filter-bank">Bank</label>
         <select id="expense-filter-bank" name="bank" defaultValue={bank ?? ""} className={selectClass}>
           <option value="">All banks</option>
           {bankUnavailable && <option value={bank}>Unavailable bank</option>}
@@ -88,21 +88,23 @@ export default function ExpenseHistoryFilters({
           ))}
         </select>
       </div>
-      <div className="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-5 xl:col-span-1">
+      <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link href={monthScopeHref} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+            {day ? "Full month" : month === undefined ? "This month" : "All months"}
+          </Link>
+          {canClearFilters && (
+            <Link href={clearFiltersHref} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+              Clear filters
+            </Link>
+          )}
+        </div>
         <button
           type="submit"
-          className="h-10 cursor-pointer rounded-lg border border-gray-700 px-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-red-400"
+          className="ml-auto h-10 cursor-pointer whitespace-nowrap rounded-lg border border-gray-700 px-4 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-red-400"
         >
           Apply filters
         </button>
-        <Link href={monthScopeHref} className="text-sm text-gray-300 underline hover:text-white">
-          {day ? "Full month" : month === undefined ? "This month" : "All months"}
-        </Link>
-        {canClearFilters && (
-          <Link href={clearFiltersHref} className="text-sm text-gray-300 underline hover:text-white">
-            Clear filters
-          </Link>
-        )}
       </div>
     </Form>
   );

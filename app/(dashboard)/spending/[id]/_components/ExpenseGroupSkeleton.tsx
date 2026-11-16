@@ -28,7 +28,7 @@ export default function ExpenseGroupSkeleton() {
       <main className="py-6 sm:py-8">
         <div
           aria-hidden="true"
-          className="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto] xl:items-end"
+          className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)_minmax(0,1fr)]"
         >
           {["w-12", "w-14", "w-16", "w-24", "w-10"].map((width) => (
             <div key={width}>
@@ -36,7 +36,14 @@ export default function ExpenseGroupSkeleton() {
               <Skeleton className="mt-1 h-10 w-full rounded-lg" />
             </div>
           ))}
-          <Skeleton className="h-10 w-28 rounded-lg sm:col-span-2 lg:col-span-5 xl:col-span-1" />
+          <div className="col-span-full flex items-center justify-between gap-5 border-t border-gray-800 pt-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-10 w-28 rounded-lg" />
+          </div>
+        </div>
+        <div aria-hidden="true" className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <span className="text-lg font-semibold">Expenses</span>
+          <Skeleton className="h-10 w-44 rounded-lg" />
         </div>
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {["Total Spent", "Expenses", "Group categories"].map((label) => (
@@ -50,11 +57,7 @@ export default function ExpenseGroupSkeleton() {
           ))}
         </div>
 
-        <section aria-labelledby="loading-expenses-title">
-          <h2 id="loading-expenses-title" className="mb-4 text-lg font-semibold">
-            Expenses
-          </h2>
-
+        <div aria-hidden="true">
           <div aria-hidden="true" className="space-y-3 sm:hidden">
             {[0, 1, 2].map((index) => (
               <div
@@ -94,7 +97,7 @@ export default function ExpenseGroupSkeleton() {
               </div>
             ))}
           </div>
-        </section>
+        </div>
       </main>
     </div>
   );

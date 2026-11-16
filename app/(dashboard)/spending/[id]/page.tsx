@@ -184,75 +184,78 @@ export default async function ExpenseGroupPage({
               clearFiltersHref={groupPath + expenseTab}
               canClearFilters={day !== undefined || month !== currentMonth || hasOtherFilters}
             />
-            <div className="mb-4 flex justify-end">
-              <nav aria-label="Expense history view" className="inline-flex gap-1 rounded-lg border border-gray-800 bg-gray-900 p-1">
-                {[
-                  { label: "Table", grouped: false },
-                  { label: "Grouped by day", grouped: true },
-                ].map((option) => {
-                  const current = grouped === option.grouped;
-                  return (
-                    <Link
-                      key={option.label}
-                      href={historyViewHref(option.grouped)}
-                      prefetch={false}
-                      scroll={false}
-                      aria-current={current ? "page" : undefined}
-                      className={`inline-flex min-h-9 items-center rounded-md px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-red-400 ${current ? "bg-gray-700 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"}`}
-                    >
-                      {option.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-            {!grouped && (
-              <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                  <p className="mb-1 text-sm text-gray-400">Total Spent</p>
-                  <p className="text-2xl font-bold">
-                    {formatPesoAmount(expensePage.totalCentavos)}
-                  </p>
+            <section aria-labelledby="expense-history-title">
+              <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <h2 id="expense-history-title" tabIndex={-1} className="text-lg font-semibold">Expenses</h2>
+                <nav aria-label="Expense history view" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">
+                  {[
+                    { label: "Table", grouped: false },
+                    { label: "Grouped by day", grouped: true },
+                  ].map((option) => {
+                    const current = grouped === option.grouped;
+                    return (
+                      <Link
+                        key={option.label}
+                        href={historyViewHref(option.grouped)}
+                        prefetch={false}
+                        scroll={false}
+                        aria-current={current ? "page" : undefined}
+                        className={`inline-flex min-h-9 items-center rounded-md px-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-red-400 ${current ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-900 hover:text-white"}`}
+                      >
+                        {option.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </header>
+              {!grouped && (
+                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                    <p className="mb-1 text-sm text-gray-400">Total Spent</p>
+                    <p className="text-2xl font-bold">
+                      {formatPesoAmount(expensePage.totalCentavos)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                    <p className="mb-1 text-sm text-gray-400">Expenses</p>
+                    <p className="text-2xl font-bold">{expensePage.totalExpenses}</p>
+                  </div>
+                  <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+                    <p className="mb-1 text-sm text-gray-400">Group categories</p>
+                    <p className="text-2xl font-bold">{expenseGroup.categories.length}</p>
+                  </div>
                 </div>
-                <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                  <p className="mb-1 text-sm text-gray-400">Expenses</p>
-                  <p className="text-2xl font-bold">{expensePage.totalExpenses}</p>
-                </div>
-                <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-                  <p className="mb-1 text-sm text-gray-400">Group categories</p>
-                  <p className="text-2xl font-bold">{expenseGroup.categories.length}</p>
-                </div>
-              </div>
-            )}
+              )}
 
-            {expensePage.totalExpenses === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 text-center">
-                <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-gray-800 bg-gray-900">
-                  <span className="text-2xl">💸</span>
-                </div>
-                <h2 id="expense-history-title" tabIndex={-1} className="font-medium text-gray-300">
-                  {hasFilters ? "No expenses match these filters" : "No expenses yet"}
-                </h2>
-                {!hasFilters && (
-                  <p className="mt-1 text-sm text-gray-500">
-                    {categoryOptions.length === 0
-                      ? "Add a category in the Categories tab to start recording expenses."
-                      : "Click + New Expense to add your first expense."}
+              {expensePage.totalExpenses === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 text-center">
+                  <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-gray-800 bg-gray-900">
+                    <span className="text-2xl">💸</span>
+                  </div>
+                  <p className="font-medium text-gray-300">
+                    {hasFilters ? "No expenses match these filters" : "No expenses yet"}
                   </p>
-                )}
-              </div>
-            ) : (
-              <ExpenseHistory
-                expenseGroupId={expenseGroup.id}
-                categories={categoryOptions}
-                bankOptions={bankOptions}
-                expenses={expensePage.expenses}
-                groupedSummary={grouped ? { day, month, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
-                page={expensePage.page}
-                totalPages={expensePage.totalPages}
-                filterQuery={filterQuery}
-              />
-            )}
+                  {!hasFilters && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      {categoryOptions.length === 0
+                        ? "Add a category in the Categories tab to start recording expenses."
+                        : "Click + New Expense to add your first expense."}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <ExpenseHistory
+                  expenseGroupId={expenseGroup.id}
+                  categories={categoryOptions}
+                  bankOptions={bankOptions}
+                  expenses={expensePage.expenses}
+                  groupedSummary={grouped ? { day, month, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
+                  page={expensePage.page}
+                  totalPages={expensePage.totalPages}
+                  filterQuery={filterQuery}
+                />
+              )}
+            </section>
           </>
         ) : recurringExpenses ? (
           <RecurringExpenses
