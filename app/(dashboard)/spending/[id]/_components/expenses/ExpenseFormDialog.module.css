@@ -38,11 +38,6 @@
     cursor: pointer;
   }
 
-  .dateTime:enabled:hover {
-    border-color: var(--color-red-400);
-    background-color: color-mix(in srgb, var(--color-red-400) 8%, var(--color-gray-800));
-  }
-
   .dateTime:enabled::-webkit-calendar-picker-indicator {
     cursor: pointer;
   }
