@@ -6,14 +6,14 @@ test("suggests the merchant, paid total, and calendar day of a printed receipt",
   assert.deepEqual(suggestReceiptFields([
     "Merchant: Pine Street Cafe", "Date: 2026-11-16", "Subtotal: 200.00", "VAT 24.00",
     "Total Paid: PHP 224.00", "Cash: 500.00", "Change: 276.00",
-  ].join("\n")), { title: "Pine Street Cafe", amount: "224.00", date: "2026-11-16" });
+  ].join("\n")), { merchant: "Pine Street Cafe", amount: "224.00", date: "2026-11-16" });
 });
 
 test("handles separate e-wallet label and value lines and repeated equivalent totals", () => {
   assert.deepEqual(suggestReceiptFields([
     "GCash", "Payment Successful", "Paid to", "7-Eleven", "Nov 16, 2026 · 9:36 AM",
     "Total Amount", "₱1,024.25", "Amount Paid: P 1,024.25", "Convenience Fee: PHP 15.00",
-  ].join("\n")), { title: "7-Eleven", amount: "1024.25", date: "2026-11-16", time: "09:36" });
+  ].join("\n")), { merchant: "7-Eleven", amount: "1024.25", date: "2026-11-16", time: "09:36" });
 });
 
 test("normalizes labeled receipt times and preserves the printed calendar day", () => {
@@ -40,16 +40,20 @@ test("omits ambiguous, unrelated, malformed, and foreign clock times", () => {
 test("can use a business header and an unambiguous day-first date", () => {
   assert.deepEqual(suggestReceiptFields([
     "SALES INVOICE", "PINE STREET CAFE", "Receipt Date 16/11/2026", "Kabuuang Halaga: 200 pesos",
-  ].join("\n")), { title: "PINE STREET CAFE", amount: "200.00", date: "2026-11-16" });
+  ].join("\n")), { merchant: "PINE STREET CAFE", amount: "200.00", date: "2026-11-16" });
 });
 
-test("uses a labeled title or transaction description, with the merchant as a fallback", () => {
-  assert.deepEqual(suggestReceiptFields("Merchant: Pine Street Cafe\nTitle: Team lunch"), { title: "Team lunch" });
+test("suggests the labeled title and merchant independently", () => {
+  assert.deepEqual(suggestReceiptFields("Merchant: Pine Street Cafe\nTitle: Team lunch"), { title: "Team lunch", merchant: "Pine Street Cafe" });
   assert.deepEqual(suggestReceiptFields("Transaction Description\nMonthly internet bill"), { title: "Monthly internet bill" });
   assert.deepEqual(suggestReceiptFields("Description: Airport taxi"), { title: "Airport taxi" });
   assert.deepEqual(suggestReceiptFields("Description\nLatte 150.00\nTotal: 150.00"), { amount: "150.00" });
-  assert.deepEqual(suggestReceiptFields("Title\nMerchant: Pine Street Cafe"), { title: "Pine Street Cafe" });
-  assert.deepEqual(suggestReceiptFields("Title: Team lunch\nTransaction Description: Office supplies\nMerchant: Pine Street Cafe"), { title: "Pine Street Cafe" });
+  assert.deepEqual(suggestReceiptFields("Title\nMerchant Name: Pine Street Cafe"), { merchant: "Pine Street Cafe" });
+  assert.deepEqual(suggestReceiptFields("Title: Team lunch\nTransaction Description: Office supplies\nMerchant: Pine Street Cafe"), { merchant: "Pine Street Cafe" });
+  assert.deepEqual(suggestReceiptFields("Title: Airport ride\nMerchant: Grab\nPaid to: Grab"), { title: "Airport ride", merchant: "Grab" });
+  assert.deepEqual(suggestReceiptFields("Title: Airport ride\nMerchant: Grab\nPaid to: Shopee"), { title: "Airport ride" });
+  assert.deepEqual(suggestReceiptFields("Title\nPaid To\nH&M"), { merchant: "H&M" });
+  assert.deepEqual(suggestReceiptFields(`Vendor: ${"A".repeat(101)}`), {});
 });
 
 test("omits conflicting totals, ambiguous dates, and fields with only incidental evidence", () => {

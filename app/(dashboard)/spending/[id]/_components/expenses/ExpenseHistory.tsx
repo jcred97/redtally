@@ -59,6 +59,7 @@ export default function ExpenseHistory({
           expense={{
             id: expense.id,
             title: expense.title,
+            merchant: expense.merchant,
             amountCentavos: expense.amountCentavos,
             date: expense.date.toISOString(),
             timeMinutes: expense.timeMinutes,
@@ -105,9 +106,10 @@ export default function ExpenseHistory({
               return (
                 <li key={expense.id} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <h3 className="min-w-0 flex-1 break-words font-medium">
-                      {expense.title}
-                    </h3>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="wrap-anywhere font-medium">{expense.title}</h3>
+                      {expense.merchant && <p className="mt-0.5 wrap-anywhere text-xs text-gray-400">{expense.merchant}</p>}
+                    </div>
                     <p className="whitespace-nowrap font-semibold text-red-400">
                       {formatPesoAmount(expense.amountCentavos)}
                     </p>
@@ -165,7 +167,12 @@ export default function ExpenseHistory({
                           )}
                         </time>
                       </td>
-                      <td className="py-4 font-medium">{expense.title}</td>
+                      <td className="py-4 font-medium">
+                        {expense.title}
+                        {expense.merchant && (
+                          <p className="mt-0.5 w-0 min-w-full wrap-anywhere text-xs font-normal text-gray-400">{expense.merchant}</p>
+                        )}
+                      </td>
                       <td className="py-4 text-gray-300">
                         {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}
                         {expense.category.name}

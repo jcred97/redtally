@@ -84,6 +84,7 @@ export default function GroupedExpenseHistory({
                   >
                     <div className="min-w-0">
                       <h4 className="wrap-anywhere text-sm font-medium sm:text-base">{expense.title}</h4>
+                      {expense.merchant && <p className="mt-0.5 wrap-anywhere text-xs text-gray-400">{expense.merchant}</p>}
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
                         <span className="wrap-anywhere">
                           {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}

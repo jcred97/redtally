@@ -15,7 +15,7 @@ type ExpensePageRow = {
   page: bigint;
 } & (
   | { id: null }
-  | (Pick<Expense, "id" | "title" | "amountCentavos" | "date" | "timeMinutes" | "updatedAt" | "categoryId" | "paymentMethod" | "bankAssignmentId" | "legacyBankName"> & {
+  | (Pick<Expense, "id" | "title" | "merchant" | "amountCentavos" | "date" | "timeMinutes" | "updatedAt" | "categoryId" | "paymentMethod" | "bankAssignmentId" | "legacyBankName"> & {
       categoryName: string;
       categoryIcon: string | null;
       bankName: string | null;
@@ -254,13 +254,13 @@ export function createExpenseGroupAccess(
           WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
         )
         SELECT pagination."totalExpenses", pagination."totalCentavos", pagination."totalPages", pagination.page,
-          expense.id, expense.title, expense."amountCentavos", expense.date, expense."timeMinutes", expense."updatedAt", expense."categoryId",
+          expense.id, expense.title, expense.merchant, expense."amountCentavos", expense.date, expense."timeMinutes", expense."updatedAt", expense."categoryId",
           expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName"
         FROM pagination
         LEFT JOIN LATERAL (
-          SELECT id, title, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
+          SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
             ${dayTotals}
           FROM "Expense"
           WHERE "expenseGroupId" = pagination.id
@@ -288,6 +288,7 @@ export function createExpenseGroupAccess(
         expenses: rows.filter((row) => row.id !== null).map((row) => ({
           id: row.id,
           title: row.title,
+          merchant: row.merchant,
           amountCentavos: row.amountCentavos,
           date: row.date,
           timeMinutes: row.timeMinutes,
@@ -399,6 +400,7 @@ export function createExpenseGroupAccess(
                       }
                       return {
                         title: expense.title,
+                        merchant: expense.merchant,
                         amountCentavos: expense.amountCentavos,
                         date: expense.date,
                         timeMinutes: expense.timeMinutes,

@@ -274,6 +274,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           categoryId: category.id,
           bankAssignmentId: assignment.id,
           title: "Ticket",
+          merchant: "Travel agency",
           amountCentavos: 115_042,
           date,
           timeMinutes: 480,
@@ -340,6 +341,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(copiedTicket.expenseGroupId, id);
       assert.equal(copiedTicket.bankAssignmentId, copiedBank.id);
       assert.equal(copiedTicket.title, "Ticket");
+      assert.equal(copiedTicket.merchant, "Travel agency");
       assert.equal(copiedTicket.amountCentavos, 115_042);
       assert.deepEqual(copiedTicket.date, date);
       assert.equal(copiedTicket.timeMinutes, 480);
@@ -351,6 +353,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(otherCategory.expenses.length, 1);
       const copiedLunch = otherCategory.expenses[0];
       assert.equal(copiedLunch.title, "Lunch");
+      assert.equal(copiedLunch.merchant, null);
       assert.equal(copiedLunch.amountCentavos, 25_175);
       assert.equal(copiedLunch.bankAssignmentId, null);
       assert.equal(copiedLunch.legacyBankName, "Historical bank label");
@@ -375,6 +378,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           expenseGroupId: group.id,
           categoryId: category.id,
           title: `Expense ${index + 1}`,
+          merchant: index === 0 ? "Grab" : index === 4 ? "McDonald’s" : undefined,
           amountCentavos,
           date: index === 0 ? new Date("2026-10-25T00:00:00Z")
             : index === 2 ? new Date("2026-10-24T18:14:00Z") : date,
@@ -401,6 +405,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       }
       assert.deepEqual(first.expenses.map(({ id }) => id), expectedIds.slice(0, 25));
       assert.deepEqual(last.expenses.map(({ id }) => id), expectedIds.slice(25));
+      assert.equal(first.expenses[0].merchant, "Grab");
+      assert.equal(first.expenses[1].merchant, null);
+      assert.equal(last.expenses[0].merchant, "McDonald’s");
       assert.equal(first.expenses[1].timeMinutes, 1435);
       assert.equal(first.expenses[2].timeMinutes, 0);
       assert.equal(first.expenses[3].timeMinutes, null);
@@ -410,6 +417,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.ok(groupedFirst && groupedLast);
       assert.deepEqual(groupedFirst.expenses.map(({ id }) => id), expectedIds.slice(0, 25));
       assert.deepEqual(groupedLast.expenses.map(({ id }) => id), expectedIds.slice(25));
+      assert.equal(groupedFirst.expenses[0].merchant, "Grab");
+      assert.equal(groupedFirst.expenses[1].merchant, null);
+      assert.equal(groupedLast.expenses[0].merchant, "McDonald’s");
       assert.deepEqual(groupedFirst.expenses[0].daySummary, {
         count: 1, totalCentavos: BigInt(amountCentavos),
       });

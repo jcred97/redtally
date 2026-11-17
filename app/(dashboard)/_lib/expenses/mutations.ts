@@ -49,6 +49,7 @@ export async function createExpense(
       categoryId,
       {
         title: formData.get("title"),
+        merchant: formData.get("merchant") ?? undefined,
         amount: formData.get("amount"),
         date: formData.get("date"),
         time: formData.get("time") ?? undefined,
@@ -89,6 +90,7 @@ export async function updateExpense(
       categoryId,
       {
         title: formData.get("title"),
+        merchant: formData.get("merchant") ?? undefined,
         amount: formData.get("amount"),
         date: formData.get("date"),
         time: formData.get("time") ?? undefined,

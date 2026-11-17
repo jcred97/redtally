@@ -16,6 +16,7 @@ import ReceiptImageInput from "./ReceiptImageInput";
 export type EditableExpense = {
   id: number;
   title: string;
+  merchant: string | null;
   amountCentavos: number;
   date: string;
   timeMinutes: number | null;
@@ -45,6 +46,7 @@ export default function ExpenseFormDialog({
   const submissionId = useRef("");
   const expectedUpdatedAt = useRef("");
   const [title, setTitle] = useState("");
+  const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -80,6 +82,7 @@ export default function ExpenseFormDialog({
     if (expense) {
       expectedUpdatedAt.current = expense.updatedAt;
       setTitle(expense.title);
+      setMerchant(expense.merchant ?? "");
       setAmount(formatPesoInput(expense.amountCentavos));
       setDate(expense.date.slice(0, 10));
       setTime(expenseTimeInput(expense.timeMinutes));
@@ -89,6 +92,7 @@ export default function ExpenseFormDialog({
     } else {
       submissionId.current = crypto.randomUUID();
       setTitle("");
+      setMerchant("");
       setAmount("");
       setDate(getManilaToday());
       setTime("");
@@ -115,6 +119,9 @@ export default function ExpenseFormDialog({
     switch (field) {
       case "title":
         setTitle(value);
+        break;
+      case "merchant":
+        setMerchant(value);
         break;
       case "amount":
         setAmount(value);
@@ -144,7 +151,7 @@ export default function ExpenseFormDialog({
     return createExpense(null, formData);
   }
 
-  const inputClass = `mt-0.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-2.5 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 ${expense ? "min-h-10 py-1.5 sm:mt-1 sm:py-2" : "min-h-[34px] py-1 leading-5 sm:min-h-9 [@media(min-height:720px)]:min-h-10 [@media(min-height:720px)]:py-2"}`;
+  const inputClass = `mt-0.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-2.5 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 ${expense ? "min-h-10 py-1.5 sm:mt-1 sm:py-2" : "min-h-8 py-1 leading-5 sm:min-h-[34px] [@media(min-height:720px)]:min-h-10 [@media(min-height:720px)]:py-2"}`;
   const labelClass = `block leading-tight text-gray-400 ${expense ? "text-sm" : "text-xs [@media(min-height:720px)]:text-sm"}`;
   const paymentRowClass = expense
     ? "col-span-2 grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-2.5 max-[365px]:block sm:block"
@@ -171,7 +178,7 @@ export default function ExpenseFormDialog({
         submitAction={saveExpenseInGroup}
       >
         <div className={`grid items-start gap-2 md:gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
-          <div className={`grid ${expense ? "grid-cols-2 gap-x-2.5 gap-y-1.5 sm:gap-x-3 sm:gap-y-3" : "min-w-0 gap-y-1 [@media(min-height:720px)]:gap-y-2"}`}>
+          <div className={`grid ${expense ? "grid-cols-2 gap-x-2.5 gap-y-1.5 sm:gap-x-3 sm:gap-y-3" : "min-w-0 gap-y-0.5 sm:gap-y-1 [@media(min-height:720px)]:gap-y-2"}`}>
             <div className={expense ? "col-span-2 min-w-0" : "min-w-0"}>
               <label htmlFor={`${fieldId}-title`} className={labelClass}>Title</label>
               <input
@@ -183,6 +190,22 @@ export default function ExpenseFormDialog({
                 required
                 maxLength={100}
                 placeholder="e.g. Lunch"
+                className={inputClass}
+              />
+            </div>
+
+            <div className={expense ? "col-span-2 min-w-0" : "min-w-0"}>
+              <label htmlFor={`${fieldId}-merchant`} className={labelClass}>
+                Merchant <span className="text-xs">(optional)</span>
+              </label>
+              <input
+                id={`${fieldId}-merchant`}
+                name="merchant"
+                type="text"
+                value={merchant}
+                onChange={(event) => setMerchant(event.target.value)}
+                maxLength={100}
+                placeholder="e.g. Grab"
                 className={inputClass}
               />
             </div>
@@ -202,7 +225,7 @@ export default function ExpenseFormDialog({
                 aria-describedby={`${fieldId}-amount-help`}
                 className={inputClass}
               />
-              <p id={`${fieldId}-amount-help`} className="sr-only col-start-2 mt-1 text-xs text-gray-400 md:not-sr-only">Up to two decimal places.</p>
+              <p id={`${fieldId}-amount-help`} className={`sr-only mt-1 text-xs text-gray-400 ${expense ? "md:not-sr-only" : "md:[@media(min-height:720px)]:not-sr-only"}`}>Up to two decimal places.</p>
             </div>
             <div className="min-w-0">
               <label htmlFor={`${fieldId}-category`} className={labelClass}>Category</label>

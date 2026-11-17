@@ -9,6 +9,7 @@ const maxImageBytes = 8 * 1024 * 1024;
 const maxImagePixels = 16_000_000;
 const fields = [
   { field: "title", label: "title", format: (value: string) => value },
+  { field: "merchant", label: "merchant", format: (value: string) => value },
   { field: "amount", label: "amount", format: (value: string) => formatPesoAmount(parsePesoAmount(value)) },
   { field: "date", label: "date", format: (value: string) => formatExpenseDate(parseExpenseDate(value)) },
   {
@@ -184,28 +185,30 @@ export default function ReceiptImageInput({
   }
 
   const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
+  const hasBothNames = Boolean(suggestions?.title && suggestions?.merchant);
+  const imageButtonClass = `${buttonClass} min-h-9 ${preview ? "max-sm:min-h-8" : ""}`;
 
   return (
-    <section ref={section} aria-labelledby={headingId} className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-gray-800 p-2 sm:gap-2 sm:p-2.5">
+    <section ref={section} aria-labelledby={headingId} className="flex min-w-0 flex-col gap-1 rounded-lg border border-gray-800 p-1.5 sm:gap-2 sm:p-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <h3 id={headingId} className={preview ? "sr-only" : "text-sm font-medium text-gray-200"}>
           Receipt image{!preview && <span className="text-xs font-normal text-gray-400"> (optional)</span>}
         </h3>
         {preview && (
-          <a href={preview.url} target="_blank" rel="noreferrer" className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-md bg-gray-950 focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
-            <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className="size-9 object-contain" />
+          <a href={preview.url} target="_blank" rel="noreferrer" className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-md bg-gray-950 focus-visible:outline-2 focus-visible:outline-red-400 sm:size-9" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
+            <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className="size-full object-contain" />
           </a>
         )}
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" aria-label="Paste receipt image" className={`${buttonClass} min-h-9`} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
+          <button type="button" aria-label="Paste receipt image" className={imageButtonClass} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
             {preview ? "Paste" : "Paste receipt image"}
           </button>
-          <button type="button" className={`${buttonClass} min-h-9`} onClick={() => picker.current?.click()}>
+          <button type="button" className={imageButtonClass} onClick={() => picker.current?.click()}>
             Choose image
           </button>
           <input ref={picker} type="file" accept={imageTypes.join(",")} hidden onChange={chooseImage} />
           {preview && (
-            <button type="button" aria-label="Remove image" className="min-h-9 cursor-pointer px-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400" onClick={reset}>
+            <button type="button" aria-label="Remove image" className="min-h-8 cursor-pointer px-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 sm:min-h-9" onClick={reset}>
               Remove
             </button>
           )}
@@ -218,21 +221,23 @@ export default function ReceiptImageInput({
       )}
       {suggestions && (hasSuggestions ? (
         <>
-          <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-2">
+          <ul className="grid grid-cols-12 gap-1 sm:grid-cols-2 sm:gap-1.5">
             {fields.map(({ field, label, format }) => {
               const value = suggestions[field];
               if (!value) return null;
               const valueId = `${headingId}-${field}`;
-              const isTitle = field === "title";
+              const isName = field === "title" || field === "merchant";
+              const isFullWidthName = isName && !hasBothNames;
+              const columnSpan = isFullWidthName ? "col-span-full" : field === "title" ? "col-span-8" : "col-span-4";
               return (
-                <li key={field} className={`min-w-0 ${isTitle ? "col-span-full sm:col-span-1" : ""}`}>
-                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} grid h-full min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] content-center items-center py-1 text-left leading-tight max-sm:px-1.5 ${isTitle ? "max-sm:grid-cols-[auto_minmax(0,1fr)_auto] max-sm:gap-x-2" : ""}`} onClick={() => {
+                <li key={field} className={`min-w-0 sm:col-span-1 ${columnSpan}`}>
+                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} grid h-full min-h-9 w-full grid-cols-[minmax(0,1fr)_auto] content-center items-center py-0.5 text-left leading-tight max-sm:px-1.5 max-sm:text-[13px] sm:min-h-11 sm:py-1 ${isFullWidthName ? "max-sm:grid-cols-[auto_minmax(0,1fr)_auto] max-sm:gap-x-2" : ""}`} onClick={() => {
                     onApply(field, value);
                     setApplied(`Applied suggested ${label}.`);
                   }}>
                     <span className="col-start-1 row-start-1 text-xs capitalize text-gray-400">{label}</span>
-                    <span className={`col-start-2 row-start-1 text-xs text-gray-200 ${isTitle ? "max-sm:col-start-3" : ""}`}>Use</span>
-                    <span id={valueId} className={`col-span-2 col-start-1 row-start-2 wrap-anywhere text-white ${isTitle ? "max-sm:col-span-1 max-sm:col-start-2 max-sm:row-start-1" : ""}`}>{format(value)}</span>
+                    <span className={`col-start-2 row-start-1 text-xs text-gray-200 ${isFullWidthName ? "max-sm:col-start-3" : ""}`}>Use</span>
+                    <span id={valueId} className={`col-span-2 col-start-1 row-start-2 wrap-anywhere text-white ${isFullWidthName ? "max-sm:col-span-1 max-sm:col-start-2 max-sm:row-start-1" : ""}`}>{format(value)}</span>
                   </button>
                 </li>
               );
@@ -241,7 +246,7 @@ export default function ReceiptImageInput({
           <p role="status" className="sr-only">{applied}</p>
         </>
       ) : (
-        <p role="status" className="text-sm text-gray-300">No clear title, amount, date, or time was found. Enter the details manually or try another image.</p>
+        <p role="status" className="text-sm text-gray-300">No clear expense details were found. Enter them manually or try another image.</p>
       ))}
     </section>
   );

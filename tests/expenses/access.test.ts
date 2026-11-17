@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -78,6 +78,7 @@ test("expense writes validate money, dates, category membership, and current own
       const expense = await alice.create(aliceGroup.id, aliceCategory.id, validInput, randomUUID());
 
       assert.equal(expense.title, "Lunch");
+      assert.equal(expense.merchant, null);
       assert.equal(expense.amountCentavos, 15075);
       assert.equal(expense.date.toISOString(), "2026-10-27T00:00:00.000Z");
       assert.equal(expense.expenseGroupId, aliceGroup.id);
@@ -239,6 +240,13 @@ test("expense writes validate money, dates, category membership, and current own
       const laterRetry = await save();
       assert.equal(overlappingRetry.id, original.id);
       assert.equal(laterRetry.id, original.id);
+      const earlierPayload = [aliceCategory.id, original.title, original.amountCentavos, original.date];
+      const previousHash = createHash("sha256").update(JSON.stringify(earlierPayload)).digest("hex");
+      const submission = await client.expenseSubmission.findUniqueOrThrow({
+        where: { expenseGroupId_id: { expenseGroupId: aliceGroup.id, id: submissionId } },
+      });
+      assert.equal(submission.payloadHash, previousHash);
+      assert.equal((await alice.create(aliceGroup.id, aliceCategory.id, { ...input, merchant: " " }, submissionId)).id, original.id);
 
       const saved = await client.expense.findMany({
         where: { expenseGroupId: aliceGroup.id, title: input.title },
@@ -287,6 +295,37 @@ test("expense writes validate money, dates, category membership, and current own
       );
       assert.equal(cleared.timeMinutes, null);
       assert.deepEqual(cleared.date, expense.date);
+    });
+
+    await t.test("merchants are optional, validated, and independent of titles", async () => {
+      const submission = randomUUID();
+      const save = (merchant: unknown) => alice.create(aliceGroup.id, aliceCategory.id, { ...validInput, merchant }, submission);
+      await assert.rejects(save("A".repeat(101)), /Merchant must be 100 characters or fewer/);
+      await assert.rejects(save("Grab\0"), /Enter a valid merchant name/);
+      await assert.rejects(save(42), /Enter a valid merchant name/);
+
+      const original = await save("  Grab  ");
+      assert.equal(original.title, "Lunch");
+      assert.equal(original.merchant, "Grab");
+      assert.equal((await save("Grab")).id, original.id);
+      await assert.rejects(save("Shopee"), /already saved with different details/);
+      await assert.rejects(save(""), /already saved with different details/);
+
+      const preserved = await alice.update(
+        aliceGroup.id, original.id, aliceCategory.id, { ...validInput, title: "Airport ride" }, original.updatedAt.toISOString(),
+      );
+      assert.equal(preserved.title, "Airport ride");
+      assert.equal(preserved.merchant, "Grab");
+
+      const changed = await alice.update(
+        aliceGroup.id, original.id, aliceCategory.id, { ...validInput, merchant: "  Shopee  " }, preserved.updatedAt.toISOString(),
+      );
+      assert.equal(changed.merchant, "Shopee");
+
+      const cleared = await alice.update(
+        aliceGroup.id, original.id, aliceCategory.id, { ...validInput, merchant: "   " }, changed.updatedAt.toISOString(),
+      );
+      assert.equal(cleared.merchant, null);
     });
 
     await t.test("a failed write leaves the submission available for a corrected retry", async () => {

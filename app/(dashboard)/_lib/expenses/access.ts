@@ -10,6 +10,7 @@ const SUBMISSION_ID_PATTERN =
 
 type ExpenseInput = {
   title: unknown;
+  merchant?: unknown;
   amount: unknown;
   date: unknown;
   time?: unknown;
@@ -109,6 +110,15 @@ export async function validateBankSelection(
   }
 }
 
+function parseMerchant(value: unknown): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  if (typeof value !== "string" || value.includes("\0")) throw new TypeError("Enter a valid merchant name.");
+
+  const merchant = value.trim();
+  if (merchant.length > 100) throw new TypeError("Merchant must be 100 characters or fewer.");
+  return merchant || null;
+}
+
 export function createExpenseAccess(
   db: PrismaClient,
   requireUserId: () => Promise<string>
@@ -156,6 +166,7 @@ export function createExpenseAccess(
       }
 
       const values = parseExpenseInput(input);
+      const merchant = parseMerchant(input.merchant);
       const timeMinutes = parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
@@ -165,8 +176,13 @@ export function createExpenseAccess(
         ? [payment.paymentMethod, payment.bankAssignmentId]
         : [];
       const payloadHash = createHash("sha256")
-        // Date-only submissions must continue to match drafts saved before time support.
-        .update(JSON.stringify([...payload, ...paymentPayload, ...(timeMinutes === null ? [] : [{ timeMinutes }])]))
+        // Omitted optional fields preserve hashes for previously saved drafts.
+        .update(JSON.stringify([
+          ...payload,
+          ...paymentPayload,
+          ...(timeMinutes === null ? [] : [{ timeMinutes }]),
+          ...(merchant ? [{ merchant }] : []),
+        ]))
         .digest("hex");
 
       try {
@@ -185,6 +201,7 @@ export function createExpenseAccess(
           return tx.expense.create({
             data: {
               ...values,
+              merchant,
               timeMinutes,
               paymentMethod: payment?.paymentMethod,
               ...(payment?.bankAssignmentId == null ? {} : {
@@ -251,6 +268,7 @@ export function createExpenseAccess(
       }
 
       const values = parseExpenseInput(input);
+      const merchant = parseMerchant(input.merchant);
       const timeMinutes = input.time === undefined ? undefined : parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
       const updatedAt = new Date(
@@ -296,6 +314,7 @@ export function createExpenseAccess(
             // The composite foreign key keeps the replacement category in this group.
             data: {
               ...values,
+              merchant,
               timeMinutes,
               ...paymentChanges,
               categoryId,

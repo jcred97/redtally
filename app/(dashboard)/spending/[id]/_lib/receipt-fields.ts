@@ -1,7 +1,7 @@
 import { parseExpenseDay, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoInput, parsePesoAmount } from "@/app/lib/expenses/money";
 
-export type ReceiptSuggestions = { title?: string; amount?: string; date?: string; time?: string };
+export type ReceiptSuggestions = { title?: string; merchant?: string; amount?: string; date?: string; time?: string };
 
 const titleLabel = /^(?:(?:expense|transaction|payment|purchase) (?:title|description)(?=$|[\s:=])|title(?=$|\s*[:=])|description(?=\s*[:=]))/i;
 const merchantLabel = /^(?:merchant(?: name)?|payee(?: name)?|vendor(?: name)?|store(?: name)?|biller(?: name)?|paid to)(?=$|[\s:=])/i;
@@ -32,21 +32,21 @@ function getLabeledValues(lines: string[], label: RegExp) {
   });
 }
 
-function readTitle(lines: string[]) {
-  const validTitle = (value: string) => value.length <= 100 && /\p{L}{2}/u.test(value) &&
+function isExpenseText(value: string): boolean {
+  return value.length <= 100 && /\p{L}.*\p{L}/u.test(value) &&
     !titleLabel.test(value) && !dateLabel.test(value) &&
     !timeLabel.test(value) && !timeZoneLabel.test(value) && !totalLabel.test(value) && !currencyLabel.test(value) &&
-    !/^(?:gcash|maya|merchant|vendor|payee|biller|store|receipt|invoice|transaction|info|details|n\/?a|(?:payment|transaction) successful)$/i.test(value) &&
-    !/^(?:merchant|vendor|payee|biller|store|paid to|receipt|invoice|transaction|date|total|ref(?:erence)?)(?:\s*[:=]|\s+(?:no\.?|number|date|\d))/i.test(value);
-  const explicitTitle = singleValue(getLabeledValues(lines, titleLabel).filter(validTitle));
-  if (explicitTitle) return explicitTitle;
+    !/^(?:gcash|maya|(?:merchant|vendor|payee|biller|store)(?: name)?|paid to|receipt|invoice|transaction|info|details|n\/?a|(?:payment|transaction) successful)$/i.test(value) &&
+    !/^(?:merchant|vendor|payee|biller|store|paid to|receipt|invoice|transaction|date|total|ref(?:erence)?)(?:\s*[:=]|\s+(?:name\b|no\.?|number|date|\d))/i.test(value);
+}
 
+function readMerchant(lines: string[]) {
   const labeled = getLabeledValues(lines, merchantLabel);
-  if (labeled.length) return singleValue(labeled.filter(validTitle));
+  if (labeled.length) return singleValue(labeled.filter(isExpenseText));
 
   // A printed receipt often has an unlabeled business name near the top.
   const heading = lines.slice(0, 4).find((line) => !/^(?:(?:official|sales|cash|vat|tax)\s+)*(?:receipt|invoice)\b/i.test(line));
-  if (heading && validTitle(heading) && /\b(?:cafe|café|restaurant|mart|store|market|supermarket|pharmacy|bakery|shop|diner|grill|inc\.?|corp\.?)\b/i.test(heading)) {
+  if (heading && isExpenseText(heading) && /\b(?:cafe|café|restaurant|mart|store|market|supermarket|pharmacy|bakery|shop|diner|grill|inc\.?|corp\.?)\b/i.test(heading)) {
     return heading;
   }
 }
@@ -151,7 +151,8 @@ export function suggestReceiptFields(text: string): ReceiptSuggestions {
   const lines = text.normalize("NFKC").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
   if (lines.some((line) => nonExpenseStatus.test(line))) return {};
 
-  const title = readTitle(lines);
+  const title = singleValue(getLabeledValues(lines, titleLabel).filter(isExpenseText));
+  const merchant = readMerchant(lines);
   const amount = hasForeignCurrency(lines) ? undefined : singleValue(validValues(getLabeledValues(lines, totalLabel), readAmount));
   const labeledDates = getLabeledValues(lines, dateLabel);
   const timestamps = (labeledDates.length ? labeledDates : lines).map(readTimestamp);
@@ -160,6 +161,7 @@ export function suggestReceiptFields(text: string): ReceiptSuggestions {
 
   return {
     ...(title ? { title } : {}),
+    ...(merchant ? { merchant } : {}),
     ...(amount ? { amount } : {}),
     ...(date ? { date } : {}),
     ...(time ? { time } : {}),

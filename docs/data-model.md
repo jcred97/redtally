@@ -20,7 +20,7 @@ User
 | --- | --- | --- |
 | `ExpenseGroup` | Container for a set of expenses, categories, budgets, and bank choices | Maps to `Spending`; nullable user owner preserves unclaimed legacy groups; referenced groups cannot be deleted |
 | `Category` | Classifies expenses within one group | Existing IDs, names, icons, colors, and parent IDs are preserved |
-| `Expense` | Positive PHP amount, date, title, optional Manila time, notes, and payment details | Integer centavos; nullable `timeMinutes` between 0 and 1439; category and optional bank assignment must belong to its group |
+| `Expense` | Title, positive PHP amount, date, and optional merchant, Manila time, notes, and payment details | Integer centavos; nullable `merchant` up to 100 characters; nullable `timeMinutes` between 0 and 1439; category and optional bank assignment must belong to its group |
 | `Budget` | Optional monthly target for a group | Positive integer centavos; month stored as a PostgreSQL DATE on the first day; unique group/month |
 | `Bank` | Shared institution catalog | Unique normalized key; active flag; assigned banks cannot be deleted |
 | `BankAssignment` | Enables a bank for a group and configures supported payment methods | Unique group/bank; four capabilities default to enabled; referenced assignments cannot be deleted |

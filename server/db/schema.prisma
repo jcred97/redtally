@@ -70,6 +70,7 @@ model Category {
 model Expense {
   id               Int             @id @default(autoincrement())
   title            String
+  merchant         String?         @db.VarChar(100)
   amountCentavos   Int
   date             DateTime
   timeMinutes      Int?            @db.SmallInt
