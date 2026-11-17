@@ -6,6 +6,7 @@ import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(das
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
 import {
   parseExpenseHistoryBankFilter,
+  parseExpenseHistoryMerchantFilter,
   parseExpenseHistoryPaymentMethod,
 } from "@/app/(dashboard)/_lib/expense-groups/access";
 import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
@@ -22,6 +23,7 @@ import {
   getExpenseGroupById,
   getExpenseGroupOptions,
   getExpenseHistoryBankOptionsByExpenseGroupId,
+  getExpenseHistoryMerchantOptionsByExpenseGroupId,
   getExpensePageByExpenseGroupId,
 } from "@/app/(dashboard)/_lib/expense-groups/queries";
 
@@ -42,10 +44,11 @@ export default async function ExpenseGroupPage({
     category?: string | string[];
     paymentMethod?: string | string[];
     bank?: string | string[];
+    merchant?: string | string[];
     view?: string | string[];
   }>;
 }) {
-  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, day: rawDay, allMonths, category, paymentMethod: rawMethod, bank: rawBank, view }] =
+  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, day: rawDay, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view }] =
     await Promise.all([params, searchParams]);
   const id = Number(rawId);
   const showCategories = tab === "categories";
@@ -69,11 +72,13 @@ export default async function ExpenseGroupPage({
   const paymentMethod = parseExpenseHistoryPaymentMethod(rawMethod);
   const bank = parseExpenseHistoryBankFilter(rawBank);
   const bankFilterValue = bank && typeof rawBank === "string" ? rawBank : undefined;
-  const filters = { day, month, categoryId, paymentMethod, bank };
+  const merchant = parseExpenseHistoryMerchantFilter(rawMerchant);
+  const filters = { day, month, categoryId, paymentMethod, bank, merchant };
   const filterParams = new URLSearchParams();
   if (categoryId !== undefined) filterParams.set("category", String(categoryId));
   if (paymentMethod !== undefined) filterParams.set("paymentMethod", paymentMethod);
   if (bankFilterValue !== undefined) filterParams.set("bank", bankFilterValue);
+  if (merchant !== undefined) filterParams.set("merchant", merchant);
   const hasOtherFilters = filterParams.size > 0;
   const hasFilters = month !== undefined || hasOtherFilters;
   const monthScopeParams = new URLSearchParams(filterParams);
@@ -93,13 +98,14 @@ export default async function ExpenseGroupPage({
   }
   const filterQuery = filterParams.toString();
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, recurringExpenses] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, historyMerchantOptions, recurringExpenses] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
+    showExpenses ? getExpenseHistoryMerchantOptionsByExpenseGroupId(id) : [],
     showRecurring ? getRecurringExpenses(id) : null,
   ]);
 
@@ -178,11 +184,13 @@ export default async function ExpenseGroupPage({
               groupPath={groupPath}
               categories={categoryOptions}
               banks={historyBankOptions}
+              merchants={historyMerchantOptions}
               month={month}
               day={day}
               categoryId={categoryId}
               paymentMethod={paymentMethod}
               bank={bankFilterValue}
+              merchant={merchant}
               grouped={grouped}
               monthScopeHref={`${groupPath}?${monthScopeParams}`}
               clearFiltersHref={groupPath + expenseTab}

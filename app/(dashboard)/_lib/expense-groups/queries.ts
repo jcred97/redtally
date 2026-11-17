@@ -32,3 +32,7 @@ export type ExpenseHistoryEntry = NonNullable<Awaited<ReturnType<typeof getExpen
 export async function getExpenseHistoryBankOptionsByExpenseGroupId(id: number) {
   return access.listExpenseHistoryBankOptions(id);
 }
+
+export async function getExpenseHistoryMerchantOptionsByExpenseGroupId(id: number) {
+  return access.listExpenseHistoryMerchantOptions(id);
+}

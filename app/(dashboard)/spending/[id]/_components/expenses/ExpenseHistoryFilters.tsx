@@ -9,11 +9,13 @@ type ExpenseHistoryFiltersProps = {
   groupPath: string;
   categories: { id: number; name: string }[];
   banks: { value: string; label: string }[];
+  merchants: { value: string; label: string }[];
   month?: string;
   day?: string;
   categoryId?: number;
   paymentMethod?: PaymentMethod;
   bank?: string;
+  merchant?: string;
   monthScopeHref: string;
   clearFiltersHref: string;
   canClearFilters: boolean;
@@ -28,11 +30,13 @@ export default function ExpenseHistoryFilters({
   groupPath,
   categories,
   banks,
+  merchants,
   month,
   day,
   categoryId,
   paymentMethod,
   bank,
+  merchant,
   monthScopeHref,
   clearFiltersHref,
   canClearFilters,
@@ -41,13 +45,14 @@ export default function ExpenseHistoryFilters({
   const categoryUnavailable =
     categoryId !== undefined && !categories.some((category) => category.id === categoryId);
   const bankUnavailable = bank !== undefined && !banks.some(({ value }) => value === bank);
+  const merchantUnavailable = merchant !== undefined && merchant !== "none" && !merchants.some(({ value }) => value === merchant);
 
   return (
     <Form
       action={groupPath}
       aria-label="Expense history filters"
       prefetch={false}
-      className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)_minmax(0,1fr)]"
+      className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3"
     >
       {month === undefined && <input type="hidden" name="allMonths" value="1" />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
@@ -84,6 +89,17 @@ export default function ExpenseHistoryFilters({
           <option value="">All banks</option>
           {bankUnavailable && <option value={bank}>Unavailable bank</option>}
           {banks.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="min-w-0 text-sm text-gray-300">
+        <label htmlFor="expense-filter-merchant">Merchant</label>
+        <select id="expense-filter-merchant" name="merchant" defaultValue={merchant ?? ""} className={selectClass}>
+          <option value="">All merchants</option>
+          <option value="none">No merchant</option>
+          {merchantUnavailable && <option value={merchant}>Unavailable merchant</option>}
+          {merchants.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>

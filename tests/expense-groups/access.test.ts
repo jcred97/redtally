@@ -11,6 +11,7 @@ import { createBankAccess } from "../../app/(dashboard)/_lib/banks/access";
 import {
   createExpenseGroupAccess,
   parseExpenseHistoryBankFilter,
+  parseExpenseHistoryMerchantFilter,
   parseExpenseHistoryPaymentMethod,
 } from "../../app/(dashboard)/_lib/expense-groups/access";
 
@@ -537,6 +538,43 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       await client.expense.deleteMany({ where: { expenseGroupId: group.id } });
       await client.category.deleteMany({ where: { expenseGroupId: group.id } });
       await alice.delete(group.id);
+    });
+
+    await t.test("merchant options and filtered history are private and use the same matching rows and totals", async () => {
+      const group = await alice.create("Merchant filter group");
+      const category = await client.category.create({ data: { expenseGroupId: group.id, name: "Transport" } });
+      const date = new Date("2026-10-24T00:00:00Z");
+      await client.expense.createMany({
+        data: [
+          ...Array.from({ length: 26 }, (_, index) => ({ merchant: index === 0 ? "Grab" : "grab", amountCentavos: 100 })),
+          { merchant: "GrabFood", amountCentavos: 200 },
+          { merchant: null, amountCentavos: 300 },
+        ].map((expense, index) => ({ ...expense, expenseGroupId: group.id, categoryId: category.id, date, title: `Receipt ${index}` })),
+      });
+
+      const options = await alice.listExpenseHistoryMerchantOptions(group.id);
+      const grab = createHash("sha256").update("grab").digest("hex");
+      assert.equal(options.length, 2);
+      assert.equal(options[0].value, grab);
+      assert.equal(options[0].label.toLowerCase(), "grab");
+      assert.equal(options[1].label, "GrabFood");
+      assert.deepEqual(await bob.listExpenseHistoryMerchantOptions(group.id), []);
+      assert.equal(await bob.getExpensePageById(group.id, 1, { merchant: grab }), null);
+      assert.equal(parseExpenseHistoryMerchantFilter("Grab"), undefined);
+      assert.equal(parseExpenseHistoryMerchantFilter([grab]), undefined);
+
+      const filters = { merchant: grab, day: "2026-10-24", categoryId: category.id };
+      const first = await alice.getExpensePageById(group.id, 1, filters);
+      const second = await alice.getExpensePageById(group.id, 2, filters, true);
+      assert.equal(first?.expenses.length, 25);
+      assert.equal(first?.totalExpenses, 26);
+      assert.equal(first?.totalCentavos, BigInt(2600));
+      assert.equal(second?.expenses.length, 1);
+      assert.deepEqual(second?.expenses[0].daySummary, { count: 26, totalCentavos: BigInt(2600) });
+
+      const missing = await alice.getExpensePageById(group.id, 1, { merchant: "none" });
+      assert.equal(missing?.totalCentavos, BigInt(300));
+      assert.deepEqual(missing?.expenses.map(({ merchant }) => merchant), [null]);
     });
 
     await t.test("bank and payment method filters match the totals and rows across pages", async () => {

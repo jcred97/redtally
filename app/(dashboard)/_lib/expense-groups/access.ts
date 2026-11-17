@@ -38,9 +38,15 @@ export type ExpenseHistoryFilters = {
   categoryId?: number;
   paymentMethod?: PaymentMethod;
   bank?: { assignmentId: number } | { legacyKey: string };
+  merchant?: string;
 };
 
 type ExpenseHistoryBankOption = { value: string; label: string };
+type ExpenseHistoryMerchantOption = { value: string; label: string };
+
+const merchantName = Prisma.sql`NULLIF(btrim(merchant), '')`;
+// Match case variants and keep saved names out of filter URLs.
+const merchantKey = Prisma.sql`encode(sha256(convert_to(lower(${merchantName}), 'UTF8')), 'hex')`;
 
 export class ExpenseGroupAccessError extends Error {}
 
@@ -68,6 +74,12 @@ export function parseExpenseHistoryBankFilter(value: unknown): ExpenseHistoryFil
 export function parseExpenseHistoryPaymentMethod(value: unknown): PaymentMethod | undefined {
   return typeof value === "string" && Object.hasOwn(PaymentMethod, value)
     ? PaymentMethod[value as keyof typeof PaymentMethod]
+    : undefined;
+}
+
+export function parseExpenseHistoryMerchantFilter(value: unknown): string | undefined {
+  return typeof value === "string" && (value === "none" || /^[a-f0-9]{64}$/.test(value))
+    ? value
     : undefined;
 }
 
@@ -195,10 +207,25 @@ export function createExpenseGroupAccess(
       `;
     },
 
+    async listExpenseHistoryMerchantOptions(id: number) {
+      const userId = await requireUserId();
+      if (!validId(id)) return [];
+
+      return db.$queryRaw<ExpenseHistoryMerchantOption[]>`
+        SELECT ${merchantKey} AS value, MIN(${merchantName}) AS label
+        FROM "Expense" expense
+        JOIN "Spending" expense_group ON expense_group.id = expense."expenseGroupId"
+        WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
+          AND ${merchantName} IS NOT NULL
+        GROUP BY 1
+        ORDER BY lower(MIN(${merchantName})), label, value
+      `;
+    },
+
     async getExpensePageById(
       id: number,
       requestedPage: number,
-      { day, month, categoryId, paymentMethod, bank }: ExpenseHistoryFilters = {},
+      { day, month, categoryId, paymentMethod, bank, merchant }: ExpenseHistoryFilters = {},
       includeDayTotals = false,
     ) {
       const userId = await requireUserId();
@@ -230,7 +257,13 @@ export function createExpenseGroupAccess(
           AND bank ~ '[^[:space:]]'
           AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
       }
-      const expenseFilters = Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter}`;
+      const selectedMerchant = parseExpenseHistoryMerchantFilter(merchant);
+      const merchantFilter = selectedMerchant === "none"
+        ? Prisma.sql`AND ${merchantName} IS NULL`
+        : selectedMerchant
+          ? Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`
+          : Prisma.empty;
+      const expenseFilters = Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${merchantFilter}`;
       // Count every matching expense on a day, including those outside the current page.
       const dayTotals = includeDayTotals
         ? Prisma.sql`COUNT(*) OVER (PARTITION BY date::date) AS "dayExpenseCount",
