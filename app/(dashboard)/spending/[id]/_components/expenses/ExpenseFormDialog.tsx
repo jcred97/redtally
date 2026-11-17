@@ -253,6 +253,13 @@ export default function ExpenseFormDialog({
                 type="date"
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
+                onClick={(event) => {
+                  try {
+                    event.currentTarget.showPicker?.();
+                  } catch {
+                    // Keep native date entry available when the browser restricts opening its picker.
+                  }
+                }}
                 required
                 className={`${inputClass} ${styles.dateTime}`}
               />
@@ -267,6 +274,13 @@ export default function ExpenseFormDialog({
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
+                onClick={(event) => {
+                  try {
+                    event.currentTarget.showPicker?.();
+                  } catch {
+                    // Keep native time entry available when the browser restricts opening its picker.
+                  }
+                }}
                 className={`${inputClass} ${styles.dateTime}`}
               />
             </div>
