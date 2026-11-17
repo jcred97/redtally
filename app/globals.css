@@ -39,6 +39,34 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+@utility button-secondary {
+  border: 1px solid transparent;
+  background-color: color-mix(in srgb, var(--color-red-500) 14%, var(--color-gray-900));
+  color: var(--color-red-300);
+  cursor: pointer;
+  transition-property: background-color, color, border-color;
+  transition-duration: 150ms;
+
+  &:enabled:hover {
+    background-color: color-mix(in srgb, var(--color-red-500) 24%, var(--color-gray-900));
+    color: var(--color-red-50);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-red-400);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  @media (forced-colors: active) {
+    border-color: ButtonText;
+  }
+}
+
 ::view-transition-old(.auth-page-fade),
 ::view-transition-old(.page-fade) {
   animation: page-fade-out 200ms ease-out both;

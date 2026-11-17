@@ -12,7 +12,7 @@ const monthFormatter = new Intl.DateTimeFormat("en-PH", {
   timeZone: "UTC",
 });
 
-const editButtonClass = "inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-gray-700 px-3 text-sm font-medium text-white hover:border-red-400 focus-visible:outline-2 focus-visible:outline-red-400";
+const editButtonClass = "button-secondary inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium";
 
 export default function MonthlyBudgetCard({
   expenseGroupId,

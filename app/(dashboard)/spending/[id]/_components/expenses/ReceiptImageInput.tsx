@@ -22,7 +22,7 @@ const fields = [
   },
 ] as const;
 
-const buttonClass = "shrink-0 cursor-pointer rounded-lg border border-gray-700 px-2.5 text-sm text-gray-200 transition-colors hover:border-gray-500 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-60";
+const buttonClass = "button-secondary shrink-0 rounded-lg px-2.5 text-sm font-medium";
 
 type Preview = { url: string; width: number; height: number };
 

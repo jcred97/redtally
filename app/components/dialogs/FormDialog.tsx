@@ -193,7 +193,7 @@ export default function FormDialog({
 
   if (triggerVariant === "secondary") {
     triggerClass =
-      "cursor-pointer rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50";
+      "button-secondary rounded-lg px-3 py-2 text-sm font-medium";
   }
 
   if (triggerVariant === "danger") {

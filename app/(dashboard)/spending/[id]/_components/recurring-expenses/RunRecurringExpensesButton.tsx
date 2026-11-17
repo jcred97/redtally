@@ -11,7 +11,7 @@ export default function RunRecurringExpensesButton({ expenseGroupId }: { expense
       <button
         type="submit"
         disabled={pending}
-        className="cursor-pointer rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-500 hover:text-white disabled:cursor-wait disabled:opacity-50"
+        className="button-secondary rounded-lg px-3 py-2 text-sm font-medium disabled:cursor-wait"
       >
         {pending ? "Running…" : "Run due expenses"}
       </button>

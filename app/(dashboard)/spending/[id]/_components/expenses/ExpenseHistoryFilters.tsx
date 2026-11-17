@@ -122,7 +122,7 @@ export default function ExpenseHistoryFilters({
         </div>
         <button
           type="submit"
-          className="ml-auto h-10 cursor-pointer whitespace-nowrap rounded-lg border border-gray-700 px-4 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-red-400"
+          className="button-secondary ml-auto h-10 whitespace-nowrap rounded-lg px-4 text-sm font-medium"
         >
           Apply filters
         </button>
