@@ -203,7 +203,7 @@ export default function FormDialog({
 
   if (triggerVariant === "menu") {
     triggerClass =
-      "flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-900 hover:bg-gray-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-600";
+      "flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-200 hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400";
   }
 
   return (

@@ -9,7 +9,7 @@ export default function NewExpenseGroupButton({ inSwitcher = false }: { inSwitch
       triggerVariant={inSwitcher ? "menu" : "primary"}
       triggerLabel={inSwitcher ? (
         <>
-          <span aria-hidden="true" className="text-lg leading-none text-red-600">+</span>
+          <span aria-hidden="true" className="text-lg leading-none text-red-400">+</span>
           Create new expense group
         </>
       ) : (

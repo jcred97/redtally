@@ -1,24 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #151217;
-  --foreground: #fbf0eb;
+  --background: #191919;
+  --foreground: #f5f5f5;
   color-scheme: dark;
 }
 
 @theme {
-  /* Carry the coin's muted red into accents and warm the neutral surfaces. */
-  --color-gray-50: #fcf3f1;
-  --color-gray-100: #f1e2e1;
-  --color-gray-200: #e5d0d1;
-  --color-gray-300: #dbc3c7;
-  --color-gray-400: #c7a9af;
-  --color-gray-500: #ba999e;
-  --color-gray-600: #684750;
-  --color-gray-700: #a07580;
-  --color-gray-800: #482d35;
-  --color-gray-900: #302026;
-  --color-gray-950: #1c1216;
+  /* Neutral charcoal surfaces keep the brand red focused on actions and accents. */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d4d4d4;
+  --color-gray-400: #a3a3a3;
+  --color-gray-500: #909090;
+  --color-gray-600: #808080;
+  --color-gray-700: #747474;
+  --color-gray-800: #333333;
+  --color-gray-900: #212121;
+  --color-gray-950: #191919;
 
   --color-red-50: #efd6d8;
   --color-red-300: #efb7b8;

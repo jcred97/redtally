@@ -91,7 +91,7 @@ export default function ExpenseGroupSwitcher({
       <div
         id={panelId}
         hidden={!open}
-        className="absolute top-full left-0 z-10 mt-2 w-64 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-gray-900 shadow-xl"
+        className="absolute top-full left-0 z-10 mt-2 w-64 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-gray-800 bg-gray-900 text-gray-200 shadow-xl"
       >
         <nav aria-label="Switch expense group">
           <Link
@@ -101,14 +101,14 @@ export default function ExpenseGroupSwitcher({
               if (onGroupList) event.preventDefault();
               closeAndFocusTrigger();
             }}
-            className={`flex items-start gap-2 px-4 py-3 text-sm hover:bg-gray-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-600 ${onGroupList ? "bg-red-50 font-semibold" : ""}`}
+            className={`flex items-start gap-2 px-4 py-3 text-sm hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${onGroupList ? "bg-red-500/15 font-semibold" : ""}`}
           >
-            <span aria-hidden="true" className="w-4 shrink-0 text-red-600">
+            <span aria-hidden="true" className="w-4 shrink-0 text-red-400">
               {onGroupList && "✓"}
             </span>
             <span>
               All expense groups
-              <span className="mt-0.5 block text-xs font-normal text-gray-600">
+              <span className="mt-0.5 block text-xs font-normal text-gray-400">
                 {groups.length} {groups.length === 1 ? "group" : "groups"}
               </span>
             </span>
@@ -123,9 +123,9 @@ export default function ExpenseGroupSwitcher({
                     prefetch={false}
                     aria-current={selected ? "page" : undefined}
                     onNavigate={closeAndFocusTrigger}
-                    className={`flex items-start gap-2 px-4 py-2.5 text-sm hover:bg-gray-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-600 ${selected ? "bg-red-50 font-semibold" : ""}`}
+                    className={`flex items-start gap-2 px-4 py-2.5 text-sm hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${selected ? "bg-red-500/15 font-semibold" : ""}`}
                   >
-                    <span aria-hidden="true" className="w-4 shrink-0 text-red-600">
+                    <span aria-hidden="true" className="w-4 shrink-0 text-red-400">
                       {selected && "✓"}
                     </span>
                     <span className="min-w-0 wrap-anywhere">{group.name}</span>
@@ -135,7 +135,7 @@ export default function ExpenseGroupSwitcher({
             })}
           </ul>
         </nav>
-        <div className="border-t border-gray-200 py-1">
+        <div className="border-t border-gray-800 py-1">
           <NewExpenseGroupButton inSwitcher />
         </div>
       </div>
