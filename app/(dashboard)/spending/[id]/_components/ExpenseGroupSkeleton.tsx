@@ -2,7 +2,7 @@ import Skeleton from "@/app/components/feedback/Skeleton";
 
 export default function ExpenseGroupSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-6 text-white">
+    <div className="mx-auto w-full max-w-6xl flex-1 px-4 text-white sm:px-6">
       <p role="status" className="sr-only">
         Loading expense group...
       </p>
@@ -14,6 +14,7 @@ export default function ExpenseGroupSkeleton() {
         </div>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-1 border-b border-gray-800 sm:mt-6 sm:gap-4">
           <div className="flex flex-wrap text-sm font-medium text-gray-400">
+            <span className="px-2.5 py-3 sm:px-4">Dashboard</span>
             <span className="px-2.5 py-3 sm:px-4">Expenses</span>
             <span className="px-2.5 py-3 sm:px-4">Categories</span>
             <span className="px-2.5 py-3 sm:px-4">Banks</span>

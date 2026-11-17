@@ -1,5 +1,6 @@
 import Form from "next/form";
 import Link from "next/link";
+import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
@@ -12,6 +13,7 @@ type ExpenseHistoryFiltersProps = {
   merchants: { value: string; label: string }[];
   month?: string;
   day?: string;
+  through?: string;
   categoryId?: number;
   paymentMethod?: PaymentMethod;
   bank?: string;
@@ -33,6 +35,7 @@ export default function ExpenseHistoryFilters({
   merchants,
   month,
   day,
+  through,
   categoryId,
   paymentMethod,
   bank,
@@ -55,6 +58,7 @@ export default function ExpenseHistoryFilters({
       className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3"
     >
       {month === undefined && <input type="hidden" name="allMonths" value="1" />}
+      {through && <input type="hidden" name="through" value={through} />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
       <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} />
       <label className="min-w-0 text-sm text-gray-300">
@@ -106,8 +110,9 @@ export default function ExpenseHistoryFilters({
       </div>
       <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {through && <span className="text-sm text-gray-400">Through {formatExpenseDate(through)}</span>}
           <Link href={monthScopeHref} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
-            {day ? "Full month" : month === undefined ? "This month" : "All months"}
+            {day || through ? "Full month" : month === undefined ? "This month" : "All months"}
           </Link>
           {canClearFilters && (
             <Link href={clearFiltersHref} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">

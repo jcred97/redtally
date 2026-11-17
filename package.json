@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test tests/expenses/money.test.ts tests/expenses/date.test.ts tests/expenses/receipt-fields.test.ts tests/db/migrations/money.test.ts tests/db/migrations/core-model.test.ts tests/auth/integration.test.ts tests/expense-groups/access.test.ts tests/categories/access.test.ts tests/expenses/access.test.ts tests/db/migrations/auth.test.ts tests/recurring-expenses/recurrence.test.ts tests/recurring-expenses/worker.test.ts tests/recurring-expenses/access.test.ts tests/expense-imports/*.test.ts"
+    "test": "node --import tsx --test tests/expenses/money.test.ts tests/expenses/date.test.ts tests/expenses/receipt-fields.test.ts tests/db/migrations/money.test.ts tests/db/migrations/core-model.test.ts tests/auth/integration.test.ts tests/expense-groups/access.test.ts tests/categories/access.test.ts tests/expenses/access.test.ts tests/db/migrations/auth.test.ts tests/recurring-expenses/recurrence.test.ts tests/recurring-expenses/worker.test.ts tests/recurring-expenses/access.test.ts tests/expense-imports/*.test.ts tests/dashboard/access.test.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "1.7.12",

@@ -35,6 +35,7 @@ type ExpenseGroupSummary = {
 export type ExpenseHistoryFilters = {
   day?: string;
   month?: string;
+  through?: string;
   categoryId?: number;
   paymentMethod?: PaymentMethod;
   bank?: { assignmentId: number } | { legacyKey: string };
@@ -225,7 +226,7 @@ export function createExpenseGroupAccess(
     async getExpensePageById(
       id: number,
       requestedPage: number,
-      { day, month, categoryId, paymentMethod, bank, merchant }: ExpenseHistoryFilters = {},
+      { day, month, through, categoryId, paymentMethod, bank, merchant }: ExpenseHistoryFilters = {},
       includeDayTotals = false,
     ) {
       const userId = await requireUserId();
@@ -235,13 +236,17 @@ export function createExpenseGroupAccess(
       const selectedDay = parseExpenseDay(day);
       const selectedMonth = parseExpenseMonth(month);
       const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
+      const selectedThrough = parseExpenseDay(through);
+      const monthThrough = selectedThrough?.slice(0, 7) === selectedMonth ? selectedThrough : undefined;
       // The date column stores UTC calendar dates. Use the same bounds for totals and rows.
       const dateFilter = selectedDay
         ? Prisma.sql`AND date >= ${selectedDay}::timestamp
                      AND date < ${selectedDay}::timestamp + INTERVAL '1 day'`
         : monthStart
           ? Prisma.sql`AND date >= ${monthStart}::timestamp
-                       AND date < ${monthStart}::timestamp + INTERVAL '1 month'`
+                       AND date < ${monthThrough
+                         ? Prisma.sql`${monthThrough}::timestamp + INTERVAL '1 day'`
+                         : Prisma.sql`${monthStart}::timestamp + INTERVAL '1 month'`}`
           : Prisma.empty;
       const categoryFilter = categoryId !== undefined && validId(categoryId)
         ? Prisma.sql`AND "categoryId" = ${categoryId}`

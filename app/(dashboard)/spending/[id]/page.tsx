@@ -13,6 +13,10 @@ import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "./_components/categories/ExpenseCategories";
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
 import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
+import DashboardMonthNavigation from "./_components/dashboard/DashboardMonthNavigation";
+import ExpenseDashboard from "./_components/dashboard/ExpenseDashboard";
+import MonthlyBudgetCard from "./_components/dashboard/MonthlyBudgetCard";
+import { getDashboard } from "./_lib/dashboard/queries";
 import ExpenseHistory from "./_components/expenses/ExpenseHistory";
 import ExpenseHistoryFilters from "./_components/expenses/ExpenseHistoryFilters";
 import ImportExpensesButton from "./_components/expenses/ImportExpensesButton";
@@ -40,6 +44,7 @@ export default async function ExpenseGroupPage({
     page?: string | string[];
     month?: string | string[];
     day?: string | string[];
+    through?: string | string[];
     allMonths?: string | string[];
     category?: string | string[];
     paymentMethod?: string | string[];
@@ -48,13 +53,14 @@ export default async function ExpenseGroupPage({
     view?: string | string[];
   }>;
 }) {
-  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, day: rawDay, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view }] =
+  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view }] =
     await Promise.all([params, searchParams]);
   const id = Number(rawId);
   const showCategories = tab === "categories";
   const showBanks = tab === "banks";
   const showRecurring = tab === "recurring";
-  const showExpenses = !showCategories && !showBanks && !showRecurring;
+  const showDashboard = tab === "dashboard";
+  const showExpenses = !showCategories && !showBanks && !showRecurring && !showDashboard;
   const grouped = view === "grouped";
   const requestedPage = typeof rawPage === "string" && /^[1-9]\d*$/.test(rawPage)
     ? Number(rawPage)
@@ -62,7 +68,11 @@ export default async function ExpenseGroupPage({
   const today = getManilaToday();
   const currentMonth = today.slice(0, 7);
   const day = parseExpenseDay(rawDay);
-  const month = day?.slice(0, 7) ?? parseExpenseMonth(rawMonth) ?? (allMonths === "1" ? undefined : currentMonth);
+  const chosenMonth = parseExpenseMonth(rawMonth);
+  const dashboardMonth = chosenMonth ?? currentMonth;
+  const month = day?.slice(0, 7) ?? chosenMonth ?? (allMonths === "1" ? undefined : currentMonth);
+  const requestedThrough = parseExpenseDay(rawThrough);
+  const through = !day && requestedThrough?.slice(0, 7) === month ? requestedThrough : undefined;
   const requestedCategory = typeof category === "string" && /^[1-9]\d{0,9}$/.test(category)
     ? Number(category)
     : undefined;
@@ -73,7 +83,7 @@ export default async function ExpenseGroupPage({
   const bank = parseExpenseHistoryBankFilter(rawBank);
   const bankFilterValue = bank && typeof rawBank === "string" ? rawBank : undefined;
   const merchant = parseExpenseHistoryMerchantFilter(rawMerchant);
-  const filters = { day, month, categoryId, paymentMethod, bank, merchant };
+  const filters = { day, month, through, categoryId, paymentMethod, bank, merchant };
   const filterParams = new URLSearchParams();
   if (categoryId !== undefined) filterParams.set("category", String(categoryId));
   if (paymentMethod !== undefined) filterParams.set("paymentMethod", paymentMethod);
@@ -90,7 +100,12 @@ export default async function ExpenseGroupPage({
     monthScopeParams.set("month", currentMonth);
   } else {
     filterParams.set("month", month);
-    monthScopeParams.set("allMonths", "1");
+    if (through) {
+      filterParams.set("through", through);
+      monthScopeParams.set("month", month);
+    } else {
+      monthScopeParams.set("allMonths", "1");
+    }
   }
   if (grouped) {
     filterParams.set("view", "grouped");
@@ -98,28 +113,33 @@ export default async function ExpenseGroupPage({
   }
   const filterQuery = filterParams.toString();
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, historyMerchantOptions, recurringExpenses] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, historyMerchantOptions, recurringExpenses, dashboard] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
-    showExpenses || showRecurring ? getExpenseBankOptions(id) : [],
+    showExpenses || showRecurring || showDashboard ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
     showExpenses ? getExpenseHistoryMerchantOptionsByExpenseGroupId(id) : [],
     showRecurring ? getRecurringExpenses(id) : null,
+    showDashboard ? getDashboard(id, dashboardMonth, today) : null,
   ]);
 
-  if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog)) {
+  if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
     notFound();
   }
 
   const groupPath = `/spending/${expenseGroup.id}`;
   const expenseTab = grouped ? "?view=grouped" : "";
+  const expensesHref = showDashboard && chosenMonth
+    ? `${groupPath}?month=${chosenMonth}`
+    : groupPath + expenseTab;
   const viewSuffix = grouped ? "&view=grouped" : "";
   const categoriesTab = `?tab=categories${viewSuffix}`;
   const banksTab = `?tab=banks${viewSuffix}`;
   const recurringTab = `?tab=recurring${viewSuffix}`;
-  const tabSuffix = showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : expenseTab;
+  const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
+  const tabSuffix = showDashboard ? dashboardTab : showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : expenseTab;
   const currentGroup = { id: expenseGroup.id, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
 
@@ -132,7 +152,7 @@ export default async function ExpenseGroupPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-6 text-white">
+    <div className="mx-auto w-full max-w-6xl flex-1 px-4 text-white sm:px-6">
       <header className="pt-6">
         <div className="flex items-center justify-between gap-4">
           <ExpenseGroupSwitcher
@@ -146,7 +166,8 @@ export default async function ExpenseGroupPage({
         <div className="mt-4 flex flex-wrap items-end justify-between gap-1 border-b border-gray-800 sm:mt-6 sm:gap-4">
           <nav aria-label="Expense group views" className="flex flex-wrap">
             {[
-              { label: "Expenses", href: groupPath + expenseTab, current: showExpenses },
+              { label: "Dashboard", href: groupPath + dashboardTab, current: showDashboard },
+              { label: "Expenses", href: expensesHref, current: showExpenses },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Banks", href: groupPath + banksTab, current: showBanks },
               { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
@@ -177,7 +198,34 @@ export default async function ExpenseGroupPage({
       </header>
 
       <main className="py-6 sm:py-8">
-        {expensePage ? (
+        {dashboard ? (
+          <>
+            <header className="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-3 sm:gap-x-6">
+              <DashboardMonthNavigation groupPath={groupPath} month={dashboard.month} currentMonth={currentMonth} />
+              <div className="[&_button]:min-h-11">
+                {categoryOptions.length > 0 ? (
+                  <NewExpenseButton key={expenseGroup.id} expenseGroupId={expenseGroup.id} categories={categoryOptions} bankOptions={bankOptions} />
+                ) : (
+                  <NewCategoryButton key={expenseGroup.id} expenseGroupId={expenseGroup.id} />
+                )}
+              </div>
+            </header>
+            <ExpenseDashboard
+              dashboard={dashboard}
+              groupPath={groupPath}
+              budget={
+                <MonthlyBudgetCard
+                  key={`${expenseGroup.id}:${dashboard.month}`}
+                  expenseGroupId={expenseGroup.id}
+                  month={dashboard.month}
+                  totalCentavos={dashboard.totalCentavos}
+                  expenseCount={dashboard.expenseCount}
+                  budgetCentavos={dashboard.budgetCentavos}
+                />
+              }
+            />
+          </>
+        ) : expensePage ? (
           <>
             <ExpenseHistoryFilters
               key={`${expenseGroup.id}:${filterQuery}:${expensePage.page}`}
@@ -187,6 +235,7 @@ export default async function ExpenseGroupPage({
               merchants={historyMerchantOptions}
               month={month}
               day={day}
+              through={through}
               categoryId={categoryId}
               paymentMethod={paymentMethod}
               bank={bankFilterValue}
@@ -194,7 +243,7 @@ export default async function ExpenseGroupPage({
               grouped={grouped}
               monthScopeHref={`${groupPath}?${monthScopeParams}`}
               clearFiltersHref={groupPath + expenseTab}
-              canClearFilters={day !== undefined || month !== currentMonth || hasOtherFilters}
+              canClearFilters={day !== undefined || through !== undefined || month !== currentMonth || hasOtherFilters}
             />
             <section aria-labelledby="expense-history-title">
               <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -261,7 +310,7 @@ export default async function ExpenseGroupPage({
                   categories={categoryOptions}
                   bankOptions={bankOptions}
                   expenses={expensePage.expenses}
-                  groupedSummary={grouped ? { day, month, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
+                  groupedSummary={grouped ? { day, month, through, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
                   page={expensePage.page}
                   totalPages={expensePage.totalPages}
                   filterQuery={filterQuery}

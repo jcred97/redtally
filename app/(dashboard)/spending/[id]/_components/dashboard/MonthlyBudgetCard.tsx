@@ -1,0 +1,122 @@
+"use client";
+
+import { useId } from "react";
+import FormDialog from "@/app/components/dialogs/FormDialog";
+import { removeMonthlyBudget, saveMonthlyBudget } from "../../_lib/dashboard/mutations";
+import { parseExpenseDate } from "@/app/lib/expenses/date";
+import { formatPesoAmount, formatPesoInput } from "@/app/lib/expenses/money";
+
+const monthFormatter = new Intl.DateTimeFormat("en-PH", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const editButtonClass = "inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-gray-700 px-3 text-sm font-medium text-white hover:border-red-400 focus-visible:outline-2 focus-visible:outline-red-400";
+
+export default function MonthlyBudgetCard({
+  expenseGroupId,
+  month,
+  totalCentavos,
+  expenseCount,
+  budgetCentavos,
+}: {
+  expenseGroupId: number;
+  month: string;
+  totalCentavos: number;
+  expenseCount: number;
+  budgetCentavos: number | null;
+}) {
+  const id = useId();
+  const headingId = `${id}-heading`;
+  const monthLabel = monthFormatter.format(parseExpenseDate(`${month}-01`));
+  const spent = formatPesoAmount(totalCentavos);
+  const remaining = budgetCentavos === null ? 0 : budgetCentavos - totalCentavos;
+  const overBudget = remaining < 0;
+  const budgetAction = budgetCentavos === null ? "Set budget" : "Edit budget";
+
+  return (
+    <section aria-labelledby={headingId} className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <h2 id={headingId} tabIndex={-1} className="self-center text-base font-semibold text-white sm:text-lg">Monthly budget</h2>
+        <div className="flex flex-wrap gap-2">
+          <FormDialog
+            triggerLabel={budgetAction}
+            triggerClassName={editButtonClass}
+            title={`${budgetAction} for ${monthLabel}`}
+            submitLabel="Save budget"
+            pendingLabel="Saving…"
+            failureMessage="Unable to save the budget. Try again."
+            onOpenAction={() => {}}
+            submitAction={(formData) => saveMonthlyBudget(expenseGroupId, month, formData)}
+          >
+            <label className="block text-sm font-medium text-gray-300">
+              Monthly target (₱)
+              <input
+                name="amount"
+                inputMode="decimal"
+                defaultValue={budgetCentavos === null ? "" : formatPesoInput(budgetCentavos)}
+                placeholder="0.00"
+                maxLength={11}
+                required
+                autoFocus
+                className="mt-1.5 block min-h-11 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 text-base text-white focus-visible:outline-2 focus-visible:outline-red-400"
+              />
+            </label>
+          </FormDialog>
+          {budgetCentavos !== null && (
+            <FormDialog
+              triggerLabel="Remove"
+              triggerAriaLabel="Remove budget"
+              triggerClassName="inline-flex min-h-11 cursor-pointer items-center rounded-lg px-2 text-sm text-gray-300 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-red-400"
+              title={`Remove budget for ${monthLabel}?`}
+              description="This removes the monthly target. Your expenses will still appear in history."
+              submitLabel="Remove budget"
+              pendingLabel="Removing…"
+              failureMessage="Unable to remove the budget. Try again."
+              onOpenAction={() => {}}
+              submitAction={() => removeMonthlyBudget(expenseGroupId, month)}
+              returnFocusId={headingId}
+              destructive
+            >
+              {null}
+            </FormDialog>
+          )}
+        </div>
+      </header>
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+        <div className="col-span-2 min-w-0 sm:col-span-1">
+          <dt className="text-sm text-gray-400">Total spent</dt>
+          <dd className="mt-1 wrap-anywhere text-2xl font-semibold tracking-tight text-white tabular-nums sm:text-3xl">{spent}</dd>
+          <dd className="mt-1 text-xs text-gray-400">{expenseCount} {expenseCount === 1 ? "expense" : "expenses"}</dd>
+        </div>
+        {budgetCentavos !== null && (
+          <>
+            <div className="min-w-0">
+              <dt className="text-sm text-gray-400">Budget target</dt>
+              <dd className="mt-1 wrap-anywhere text-lg font-semibold tabular-nums sm:text-2xl">{formatPesoAmount(budgetCentavos)}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-sm text-gray-400">{overBudget ? "Over budget" : "Remaining"}</dt>
+              <dd className={`mt-1 wrap-anywhere text-lg font-semibold tabular-nums sm:text-2xl ${overBudget ? "text-red-300" : "text-emerald-300"}`}>
+                {formatPesoAmount(Math.abs(remaining))}
+              </dd>
+            </div>
+          </>
+        )}
+      </dl>
+
+      {budgetCentavos === null ? (
+        <p className="mt-3 text-sm text-gray-400">No budget set for {monthLabel}.</p>
+      ) : (
+        <div aria-hidden="true" className="mt-5 h-2 overflow-hidden rounded-full bg-gray-800">
+          <div
+            className={`h-full rounded-full ${overBudget ? "bg-red-400" : "bg-emerald-400"}`}
+            style={{ width: `${Math.min(totalCentavos / budgetCentavos, 1) * 100}%` }}
+          />
+        </div>
+      )}
+    </section>
+  );
+}

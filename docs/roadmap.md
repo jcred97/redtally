@@ -10,7 +10,7 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 
 ### 1. Make real data dependable
 
-- [x] Adapt the core ExpenseGroup, Category, Expense, Budget, Bank, and BankAssignment schema while preserving legacy records. Use PaymentMethod and legacyBankName in application code with mappings to existing database identifiers. See [data model](data-model.md). Budget management and exchange rates remain planned.
+- [x] Adapt the core ExpenseGroup, Category, Expense, Budget, Bank, and BankAssignment schema while preserving legacy records. Use PaymentMethod and legacyBankName in application code with mappings to existing database identifiers. See [data model](data-model.md). Exchange rates remain planned.
 
 - [x] Implement integer-centavo storage, exact parsing/formatting/totals, and a transactional migration with conversion and rollback tests. Apply the migration together with the matching application release; the shared database rollout is a separate deployment step.
 - [x] Define expense dates as calendar days: default to today in `Asia/Manila`, store the selected day at UTC midnight in the existing timestamp column, and display its UTC calendar day. Existing timestamps are preserved.
@@ -37,6 +37,7 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 - [ ] Support long names, empty states, keyboard use, and accessible dialogs and labels.
 - [x] Filter expense history by month or exact day, category, payment method, and bank. Keep selections across pages and update the expense count and total after changes.
 - [x] Calculate totals in PostgreSQL and paginate expense history.
+- [x] Review monthly spending in a Dashboard tab with an editable budget, daily spending comparison, and category totals linked to filtered history.
 - [ ] Add indexes based on actual filters and access patterns.
 - [x] Browse the Philippine bank catalog and configure enabled banks and payment methods in each expense group.
 - [x] Offer enabled banks for the selected payment method in the expense form.

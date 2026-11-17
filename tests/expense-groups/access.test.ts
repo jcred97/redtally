@@ -512,6 +512,20 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       const invalidDay = await alice.getExpensePageById(group.id, 1, { ...filters, day: "2026-10-32" });
       assert.equal(invalidDay?.totalExpenses, 26);
 
+      const throughFirstDay = await alice.getExpensePageById(group.id, 1, { ...filters, through: "2026-10-01" }, true);
+      assert.equal(throughFirstDay?.totalExpenses, 1);
+      assert.equal(throughFirstDay?.totalCentavos, BigInt(10));
+      assert.equal(throughFirstDay?.expenses[0].id, expectedIds.at(-1));
+      assert.equal(throughFirstDay?.expenses[0].daySummary?.totalCentavos, BigInt(10));
+
+      const throughOtherMonth = await alice.getExpensePageById(group.id, 1, { ...filters, through: "2026-09-30" });
+      assert.equal(throughOtherMonth?.totalExpenses, 26);
+
+      const exactDayTakesPriority = await alice.getExpensePageById(
+        group.id, 1, { ...filters, day: "2026-10-31", through: "2026-10-01" },
+      );
+      assert.equal(exactDayTakesPriority?.totalExpenses, 25);
+
       const monthOnly = await alice.getExpensePageById(group.id, 1, { month: filters.month });
       const categoryOnly = await alice.getExpensePageById(group.id, 1, { categoryId: filters.categoryId });
       assert.equal(monthOnly?.totalCentavos, BigInt(285));

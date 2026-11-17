@@ -22,6 +22,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 Implemented source includes:
 
 - Expense-group creation, home cards, and detail/history pages. Existing `/spending/[id]` URLs remain valid.
+- The **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
@@ -39,7 +40,7 @@ The Banks tab includes a Philippine starter catalog. Expense group owners can en
 
 The Recurring tab lets owners schedule daily, weekly, monthly, and yearly expenses, optionally ending on a specific date. Use **Run due expenses** to post this group's due entries immediately. Scheduled entries use their original Manila calendar date and appear in regular history. Short months use their last day and retain the original day for subsequent months. A past start date queues catch-up. Paused or blocked schedules can resume with missed dates skipped or included. Deleting a schedule preserves the expenses it already posted.
 
-The app is an early prototype. Email verification, password recovery, Google sign-in, exchange rates, and offline synchronization are not implemented. The standalone categories page is a placeholder. Budget management is planned. Expense and budget amounts use exact integer centavos; see the migration notes below before deploying this version to an existing database.
+The app is an early prototype. Email verification, password recovery, Google sign-in, exchange rates, and offline synchronization are not implemented. The standalone categories page is a placeholder. Expense and budget amounts use exact integer centavos; see the migration notes below before deploying this version to an existing database.
 
 Full-screen loading feedback is reserved for sign-in, sign-up, and sign-out. After successful authentication and navigation, the home header stays visible while expense-group cards load into a skeleton. Expense-group navigation shows a page-shaped skeleton inside the signed-in layout while its data loads. Skeletons crossfade into content, respect reduced motion, and never display made-up amounts or names. There is no global loading placeholder. Saves and edits keep their pending/error feedback inside the form dialog.
 
@@ -130,7 +131,7 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
 | `app/(dashboard)/_home/expense-groups/` | Home expense-group section and its private `_components/` |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
-| `app/(dashboard)/spending/[id]/` | Expense-group detail and history route with category and expense component folders |
+| `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |
@@ -144,6 +145,7 @@ Authenticated pages render per request because their session check uses request 
 | `tests/auth/` | Authentication and session tests |
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
+| `tests/dashboard/` | Monthly spending, comparison periods, and budget ownership tests |
 | `tests/db/migrations/` | Tests for PostgreSQL migrations and data preservation |
 | `public/branding/` | Active RedTally header logo and handwritten R coin favicon |
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |
