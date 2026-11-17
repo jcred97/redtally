@@ -8,6 +8,7 @@ import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/
 import { recurrenceFrequencies, recurrenceFrequencyLabels } from "@/app/lib/expenses/recurrence";
 import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-expenses/access";
 import { changeRecurringExpense } from "@/app/(dashboard)/_lib/recurring-expenses/mutations";
+import styles from "./RecurringExpenseDialog.module.css";
 
 export type RecurringExpenseOptions = {
   expenseGroupId: number;
@@ -16,7 +17,9 @@ export type RecurringExpenseOptions = {
   today: string;
 };
 
-const inputClass = "mt-1.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-white outline-none focus:border-red-400";
+const inputClass = "mt-1.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60";
+const selectClass = `${inputClass} ${styles.select}`;
+const dateClass = `${inputClass} ${styles.date}`;
 
 export default function RecurringExpenseDialog({
   expenseGroupId, categories, banks, today, rule,
@@ -63,14 +66,14 @@ export default function RecurringExpenseDialog({
       </label>
       <label className="block text-sm text-gray-300">
         Category
-        <select name="categoryId" required defaultValue={rule?.categoryId ?? ""} className={inputClass}>
+        <select name="categoryId" required defaultValue={rule?.categoryId ?? ""} className={selectClass}>
           <option value="">Select a category</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
         </select>
       </label>
       <label className="block text-sm text-gray-300">
         Frequency
-        <select name="frequency" defaultValue={rule?.frequency ?? "MONTHLY"} className={inputClass}>
+        <select name="frequency" defaultValue={rule?.frequency ?? "MONTHLY"} className={selectClass}>
           {recurrenceFrequencies.map((frequency) => (
             <option key={frequency} value={frequency}>{recurrenceFrequencyLabels[frequency]}</option>
           ))}
@@ -80,17 +83,32 @@ export default function RecurringExpenseDialog({
         <label className="block min-w-0 text-sm text-gray-300">
           Start date
           <input type="date" name="startDate" required defaultValue={rule?.startDate.toISOString().slice(0, 10) ?? today}
-            className={inputClass} />
+            className={dateClass}
+            onClick={(event) => {
+              try {
+                event.currentTarget.showPicker?.();
+              } catch {
+                // Keep native date entry available when the browser restricts opening its picker.
+              }
+            }} />
         </label>
         <label className="block min-w-0 text-sm text-gray-300">
           End date (optional)
-          <input type="date" name="endDate" defaultValue={rule?.endDate?.toISOString().slice(0, 10)} className={inputClass} />
+          <input type="date" name="endDate" defaultValue={rule?.endDate?.toISOString().slice(0, 10)}
+            className={dateClass}
+            onClick={(event) => {
+              try {
+                event.currentTarget.showPicker?.();
+              } catch {
+                // Keep native date entry available when the browser restricts opening its picker.
+              }
+            }} />
         </label>
       </div>
       <label className="block text-sm text-gray-300">
         Payment method
         <select name="paymentMethod" value={method} onChange={(event) => changeMethod(event.target.value as PaymentMethod | "")}
-          className={inputClass}>
+          className={selectClass}>
           <option value="">No payment method</option>
           {Object.entries(paymentMethodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
@@ -98,7 +116,7 @@ export default function RecurringExpenseDialog({
       {(eligibleBanks.length > 0 || unavailableBank) && (
         <label className="block text-sm text-gray-300">
           Bank (optional)
-          <select name="bankAssignmentId" value={bankId} onChange={(event) => setBankId(event.target.value)} className={inputClass}>
+          <select name="bankAssignmentId" value={bankId} onChange={(event) => setBankId(event.target.value)} className={selectClass}>
             <option value="">No bank</option>
             {unavailableBank && <option value={bankId}>{rule?.bankAssignment?.bank.name} (unavailable)</option>}
             {eligibleBanks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
