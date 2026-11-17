@@ -236,11 +236,11 @@ export default function FormDialog({
             }}
             onClose={handleClose}
             onClick={handleBackdropClick}
-            className={`m-auto rounded-xl border border-gray-800 bg-gray-900 text-white backdrop:bg-black/60 ${dialogSize === "wide" ? "max-w-3xl" : "max-w-md"} ${compact ? "max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] flex-col overflow-hidden p-3 open:flex sm:p-5" : "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto p-6"}`}
+            className={`m-auto rounded-xl border border-gray-800 bg-gray-900 text-white backdrop:bg-black/60 ${dialogSize === "wide" ? "max-w-3xl" : "max-w-md"} ${compact ? "max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] flex-col overflow-hidden p-2 open:flex sm:p-5" : "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto p-6"}`}
           >
             <h2
               id={`${dialogId}-title`}
-              className={`shrink-0 text-lg font-semibold text-white ${description ? "mb-1" : "mb-3"}`}
+              className={`shrink-0 text-lg font-semibold text-white ${description ? "mb-1" : compact ? "mb-2 sm:mb-3" : "mb-3"}`}
             >
               {title}
             </h2>
@@ -256,7 +256,7 @@ export default function FormDialog({
               aria-busy={pending}
               aria-describedby={error ? `${dialogId}-error` : undefined}
             >
-              <div className={compact ? "mb-3 min-h-0 overflow-y-auto" : "mb-4"}>
+              <div className={compact ? "mb-2 min-h-0 overflow-y-auto sm:mb-3" : "mb-4"}>
                 <fieldset disabled={pending} className={compact ? "min-w-0 space-y-4" : "space-y-4"}>
                   {children}
                 </fieldset>

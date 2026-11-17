@@ -218,22 +218,21 @@ export default function ReceiptImageInput({
       )}
       {suggestions && (hasSuggestions ? (
         <>
-          <ul className="grid grid-cols-2 gap-1.5">
+          <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-2">
             {fields.map(({ field, label, format }) => {
               const value = suggestions[field];
               if (!value) return null;
               const valueId = `${headingId}-${field}`;
+              const isTitle = field === "title";
               return (
-                <li key={field} className="min-w-0">
-                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} flex h-full min-h-11 w-full flex-col justify-center py-1 text-left leading-tight`} onClick={() => {
+                <li key={field} className={`min-w-0 ${isTitle ? "col-span-full sm:col-span-1" : ""}`}>
+                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} grid h-full min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] content-center items-center py-1 text-left leading-tight max-sm:px-1.5 ${isTitle ? "max-sm:grid-cols-[auto_minmax(0,1fr)_auto] max-sm:gap-x-2" : ""}`} onClick={() => {
                     onApply(field, value);
                     setApplied(`Applied suggested ${label}.`);
                   }}>
-                    <span className="flex w-full justify-between gap-2 text-xs">
-                      <span className="capitalize text-gray-400">{label}</span>
-                      <span className="text-gray-200">Use</span>
-                    </span>
-                    <span id={valueId} className="wrap-anywhere text-white">{format(value)}</span>
+                    <span className="col-start-1 row-start-1 text-xs capitalize text-gray-400">{label}</span>
+                    <span className={`col-start-2 row-start-1 text-xs text-gray-200 ${isTitle ? "max-sm:col-start-3" : ""}`}>Use</span>
+                    <span id={valueId} className={`col-span-2 col-start-1 row-start-2 wrap-anywhere text-white ${isTitle ? "max-sm:col-span-1 max-sm:col-start-2 max-sm:row-start-1" : ""}`}>{format(value)}</span>
                   </button>
                 </li>
               );
