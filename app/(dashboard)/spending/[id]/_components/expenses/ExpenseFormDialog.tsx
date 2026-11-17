@@ -12,6 +12,7 @@ import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
 import ReceiptImageInput from "./ReceiptImageInput";
+import styles from "./ExpenseFormDialog.module.css";
 
 export type EditableExpense = {
   id: number;
@@ -235,7 +236,7 @@ export default function ExpenseFormDialog({
                 value={categoryId}
                 onChange={(event) => setCategoryId(event.target.value)}
                 required
-                className={`${inputClass} enabled:cursor-pointer`}
+                className={`${inputClass} ${styles.select} ${styles.selectArrow} enabled:cursor-pointer`}
               >
                 <option value="">Select a category</option>
                 {categories.map((category) => (
@@ -253,7 +254,7 @@ export default function ExpenseFormDialog({
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
                 required
-                className={inputClass}
+                className={`${inputClass} ${styles.dateTime}`}
               />
             </div>
             <div className="min-w-0">
@@ -266,27 +267,24 @@ export default function ExpenseFormDialog({
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
-                className={inputClass}
+                className={`${inputClass} ${styles.dateTime}`}
               />
             </div>
 
             <div className={paymentRowClass}>
               <label htmlFor={`${fieldId}-payment-method`} className={labelClass}>Payment method</label>
-              <div className="relative min-w-0">
-                <select
-                  id={`${fieldId}-payment-method`}
-                  name="paymentMethod"
-                  value={paymentMethod}
-                  onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
-                  className={`${inputClass} appearance-none pr-7 enabled:cursor-pointer sm:pr-7`}
-                >
-                  <option value="">No payment method</option>
-                  {Object.entries(paymentMethodLabels).map(([method, label]) => (
-                    <option key={method} value={method}>{label}</option>
-                  ))}
-                </select>
-                <span aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 size-1.5 -translate-y-1/2 rotate-45 border-r-2 border-b-2 border-current" />
-              </div>
+              <select
+                id={`${fieldId}-payment-method`}
+                name="paymentMethod"
+                value={paymentMethod}
+                onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
+                className={`${inputClass} ${styles.select} ${styles.selectArrow} enabled:cursor-pointer`}
+              >
+                <option value="">No payment method</option>
+                {Object.entries(paymentMethodLabels).map(([method, label]) => (
+                  <option key={method} value={method}>{label}</option>
+                ))}
+              </select>
             </div>
             <div className={paymentRowClass}>
               <div className={expense ? undefined : "flex flex-wrap items-baseline justify-between gap-x-2"}>
@@ -295,10 +293,9 @@ export default function ExpenseFormDialog({
                 </label>
                 {!expense && bankHelp && <p id={`${fieldId}-bank-help`} className="text-xs leading-tight text-gray-400">{bankHelp}</p>}
               </div>
-              <div className={`${inputClass} relative flex cursor-pointer items-center gap-2 focus-within:border-red-400 has-disabled:cursor-not-allowed has-disabled:opacity-60`}>
-                {/* The native picker handles interaction while the visible value can wrap. */}
-                <span aria-hidden="true" className="min-w-0 flex-1 wrap-anywhere leading-tight">{bankLabel}</span>
-                <span aria-hidden="true" className="mb-0.5 mr-0.5 size-1.5 shrink-0 rotate-45 border-r-2 border-b-2 border-current" />
+              <div className={`${inputClass} ${styles.selectArrow} relative flex cursor-pointer items-center pr-10 focus-within:border-red-400 has-disabled:cursor-not-allowed has-disabled:opacity-60 sm:pr-10`}>
+                {/* The visible label wraps, while the native select supplies the actual picker and its colors. */}
+                <span aria-hidden="true" className="min-w-0 wrap-anywhere leading-tight forced-colors:invisible">{bankLabel}</span>
                 <select
                   id={`${fieldId}-bank`}
                   name="bankAssignmentId"
@@ -306,7 +303,7 @@ export default function ExpenseFormDialog({
                   onChange={(event) => setBankAssignmentId(event.target.value)}
                   disabled={!canSelectBank}
                   aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
-                  className="absolute inset-0 size-full min-w-0 opacity-0 enabled:cursor-pointer disabled:cursor-not-allowed"
+                  className="absolute inset-0 size-full min-w-0 rounded-lg bg-gray-800 text-white opacity-0 [color-scheme:dark] enabled:cursor-pointer disabled:cursor-not-allowed [&>option]:bg-gray-800 [&>option]:text-white [&>option:disabled]:text-gray-400 forced-colors:opacity-100"
                 >
                   <option value="">No bank</option>
                   {showUnavailableBank && <option value={bankAssignmentId} disabled>{bankLabel}</option>}
