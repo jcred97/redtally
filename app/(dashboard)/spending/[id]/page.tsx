@@ -168,9 +168,9 @@ export default async function ExpenseGroupPage({
             {[
               { label: "Dashboard", href: groupPath + dashboardTab, current: showDashboard },
               { label: "Expenses", href: expensesHref, current: showExpenses },
+              { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Banks", href: groupPath + banksTab, current: showBanks },
-              { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
             ].map(({ label, href, current }) => (
               <Link
                 key={label}
