@@ -4,7 +4,7 @@ import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
-import styles from "./ExpenseHistoryFilters.module.css";
+import Select from "@/app/components/forms/Select";
 
 type ExpenseHistoryFiltersProps = {
   groupPath: string;
@@ -25,8 +25,6 @@ type ExpenseHistoryFiltersProps = {
 };
 
 const fieldClass = "mt-1 block h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
-
-const selectClass = `${fieldClass} ${styles.select}`;
 
 export default function ExpenseHistoryFilters({
   groupPath,
@@ -63,7 +61,7 @@ export default function ExpenseHistoryFilters({
       <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} />
       <label className="min-w-0 text-sm text-gray-300">
         Category
-        <select name="category" defaultValue={categoryId ?? ""} className={selectClass}>
+        <Select name="category" defaultValue={categoryId ?? ""} className={fieldClass}>
           <option value="">All categories</option>
           {categoryUnavailable && <option value={categoryId}>Unavailable category</option>}
           {categories.map((category) => (
@@ -71,42 +69,42 @@ export default function ExpenseHistoryFilters({
               {category.name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-payment-method">Payment method</label>
-        <select
+        <Select
           id="expense-filter-payment-method"
           name="paymentMethod"
           defaultValue={paymentMethod ?? ""}
-          className={selectClass}
+          className={fieldClass}
         >
           <option value="">All payment methods</option>
           {Object.entries(paymentMethodLabels).map(([method, label]) => (
             <option key={method} value={method}>{label}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-bank">Bank</label>
-        <select id="expense-filter-bank" name="bank" defaultValue={bank ?? ""} className={selectClass}>
+        <Select id="expense-filter-bank" name="bank" defaultValue={bank ?? ""} className={fieldClass}>
           <option value="">All banks</option>
           {bankUnavailable && <option value={bank}>Unavailable bank</option>}
           {banks.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-merchant">Merchant</label>
-        <select id="expense-filter-merchant" name="merchant" defaultValue={merchant ?? ""} className={selectClass}>
+        <Select id="expense-filter-merchant" name="merchant" defaultValue={merchant ?? ""} className={fieldClass}>
           <option value="">All merchants</option>
           <option value="none">No merchant</option>
           {merchantUnavailable && <option value={merchant}>Unavailable merchant</option>}
           {merchants.map(({ value, label }) => (
             <option key={value} value={value}>{label}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

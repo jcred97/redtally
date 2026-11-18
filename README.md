@@ -138,7 +138,8 @@ Authenticated pages render per request because their session check uses request 
 | `app/api/cron/recurring-expenses/` | Protected scheduled worker entry point |
 | `app/lib/auth/` | Better Auth configuration, browser and server clients, and session checks |
 | `app/lib/expenses/` | Expense dates and exact centavo parsing, formatting, and totals |
-| `app/components/` | Shared auth, dialog, and feedback components |
+| `app/components/` | Shared auth, dialog, feedback, and native form-field components |
+| `app/components/forms/` | Reusable Select and DateInput controls with shared icons and picker behavior |
 | `server/db/client.ts` | Shared runtime database client |
 | `server/db/schema.prisma` | Data model |
 | `server/db/migrations/` | Database migration history |

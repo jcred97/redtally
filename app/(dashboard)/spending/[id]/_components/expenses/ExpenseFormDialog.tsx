@@ -2,6 +2,8 @@
 
 import { useId, useRef, useState } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import DateInput from "@/app/components/forms/DateInput";
+import Select from "@/app/components/forms/Select";
 import {
   createExpense,
   updateExpense,
@@ -12,7 +14,6 @@ import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
 import ReceiptImageInput from "./ReceiptImageInput";
-import styles from "./ExpenseFormDialog.module.css";
 
 export type EditableExpense = {
   id: number;
@@ -230,75 +231,61 @@ export default function ExpenseFormDialog({
             </div>
             <div className="min-w-0">
               <label htmlFor={`${fieldId}-category`} className={labelClass}>Category</label>
-              <select
+              <Select
                 id={`${fieldId}-category`}
                 name="categoryId"
                 value={categoryId}
                 onChange={(event) => setCategoryId(event.target.value)}
                 required
-                className={`${inputClass} ${styles.select} ${styles.selectArrow} enabled:cursor-pointer`}
+                className={inputClass}
               >
                 <option value="">Select a category</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="min-w-0">
               <label htmlFor={`${fieldId}-date`} className={labelClass}>Date</label>
-              <input
+              <DateInput
                 id={`${fieldId}-date`}
                 name="date"
                 type="date"
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
-                onClick={(event) => {
-                  try {
-                    event.currentTarget.showPicker?.();
-                  } catch {
-                    // Keep native date entry available when the browser restricts opening its picker.
-                  }
-                }}
                 required
-                className={`${inputClass} ${styles.dateTime}`}
+                className={inputClass}
               />
             </div>
             <div className="min-w-0">
               <label htmlFor={`${fieldId}-time`} className={labelClass}>
                 Time <span className="text-xs">(Manila, optional)</span>
               </label>
-              <input
+              <DateInput
                 id={`${fieldId}-time`}
                 name="time"
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
-                onClick={(event) => {
-                  try {
-                    event.currentTarget.showPicker?.();
-                  } catch {
-                    // Keep native time entry available when the browser restricts opening its picker.
-                  }
-                }}
-                className={`${inputClass} ${styles.dateTime}`}
+                className={inputClass}
               />
             </div>
 
             <div className={paymentRowClass}>
               <label htmlFor={`${fieldId}-payment-method`} className={labelClass}>Payment method</label>
-              <select
+              <Select
                 id={`${fieldId}-payment-method`}
                 name="paymentMethod"
                 value={paymentMethod}
                 onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
-                className={`${inputClass} ${styles.select} ${styles.selectArrow} enabled:cursor-pointer`}
+                className={inputClass}
               >
                 <option value="">No payment method</option>
                 {Object.entries(paymentMethodLabels).map(([method, label]) => (
                   <option key={method} value={method}>{label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className={paymentRowClass}>
               <div className={expense ? undefined : "flex flex-wrap items-baseline justify-between gap-x-2"}>
@@ -307,25 +294,22 @@ export default function ExpenseFormDialog({
                 </label>
                 {!expense && bankHelp && <p id={`${fieldId}-bank-help`} className="text-xs leading-tight text-gray-400">{bankHelp}</p>}
               </div>
-              <div className={`${inputClass} ${styles.selectArrow} relative flex cursor-pointer items-center pr-10 focus-within:border-red-400 has-disabled:cursor-not-allowed has-disabled:opacity-60 sm:pr-10`}>
-                {/* The visible label wraps, while the native select supplies the actual picker and its colors. */}
-                <span aria-hidden="true" className="min-w-0 wrap-anywhere leading-tight forced-colors:invisible">{bankLabel}</span>
-                <select
-                  id={`${fieldId}-bank`}
-                  name="bankAssignmentId"
-                  value={bankAssignmentId}
-                  onChange={(event) => setBankAssignmentId(event.target.value)}
-                  disabled={!canSelectBank}
-                  aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
-                  className="absolute inset-0 size-full min-w-0 rounded-lg bg-gray-800 text-white opacity-0 [color-scheme:dark] enabled:cursor-pointer disabled:cursor-not-allowed [&>option]:bg-gray-800 [&>option]:text-white [&>option:disabled]:text-gray-400 forced-colors:opacity-100"
-                >
-                  <option value="">No bank</option>
-                  {showUnavailableBank && <option value={bankAssignmentId} disabled>{bankLabel}</option>}
-                  {eligibleBanks.map((bank) => (
-                    <option key={bank.id} value={bank.id}>{bank.name}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id={`${fieldId}-bank`}
+                name="bankAssignmentId"
+                value={bankAssignmentId}
+                onChange={(event) => setBankAssignmentId(event.target.value)}
+                disabled={!canSelectBank}
+                aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
+                className={inputClass}
+                displayValue={bankLabel}
+              >
+                <option value="">No bank</option>
+                {showUnavailableBank && <option value={bankAssignmentId} disabled>{bankLabel}</option>}
+                {eligibleBanks.map((bank) => (
+                  <option key={bank.id} value={bank.id}>{bank.name}</option>
+                ))}
+              </Select>
               {expense && bankHelp && <p id={`${fieldId}-bank-help`} className="col-start-2 mt-1 text-xs text-gray-400">{bankHelp}</p>}
             </div>
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
