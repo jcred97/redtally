@@ -47,7 +47,7 @@ body {
   transition-property: background-color, color, border-color;
   transition-duration: 150ms;
 
-  &:enabled:hover {
+  &:not(:disabled):hover {
     background-color: color-mix(in srgb, var(--color-red-500) 24%, var(--color-gray-900));
     color: var(--color-red-50);
   }
