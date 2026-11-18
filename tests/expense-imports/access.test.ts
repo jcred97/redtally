@@ -1,38 +1,15 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 import { createExpenseImportAccess } from "../../app/(dashboard)/_lib/expense-imports/access";
 import { MAX_IMPORT_ROWS } from "../../app/lib/expenses/import";
 
 test("expense imports check ownership, report matches, and save atomically", async (t) => {
-  const database = await PGlite.create();
-  const server = new PGLiteSocketServer({ db: database, host: "127.0.0.1", port: 0 });
-  let prisma: PrismaClient | undefined;
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
 
   try {
-    const directory = path.join(process.cwd(), "server/db/migrations");
-    const migrations = (await readdir(directory, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
-    for (const migration of migrations) {
-      await database.exec(await readFile(path.join(directory, migration, "migration.sql"), "utf8"));
-    }
-
-    await server.start();
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({
-        connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`,
-        max: 1,
-      }),
-    });
-    const client = prisma;
 
     await client.user.createMany({ data: [
       { id: "alice", name: "Alice", email: "alice@example.test" },
@@ -124,8 +101,6 @@ test("expense imports check ownership, report matches, and save atomically", asy
       assert.equal(await client.expense.count({ where: { categoryId: category.id } }), MAX_IMPORT_ROWS + 1);
     });
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await database.close();
+    await fixture.close();
   }
 });

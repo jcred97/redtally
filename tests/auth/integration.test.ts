@@ -1,41 +1,14 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 import { createAuth } from "../../app/lib/auth/config";
 
 test("Better Auth handles credentials, revocable sessions, origin checks, and shared rate limits", async (t) => {
   // All HTTP handlers and Prisma queries use an isolated PostgreSQL instance.
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, host: "127.0.0.1", port: 0 });
-  let prisma: PrismaClient | undefined;
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
 
   try {
-    const directory = path.join(process.cwd(), "server/db/migrations");
-
-    for (const name of (await readdir(directory, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort()) {
-      await db.exec(
-        await readFile(path.join(directory, name, "migration.sql"), "utf8"),
-      );
-    }
-
-    await server.start();
-
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({
-        connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`,
-        max: 1,
-      }),
-    });
-
-    const client = prisma;
     const config = {
       secret: "test-only-secret-with-more-than-thirty-two-characters",
       baseURL: "http://localhost:3000",
@@ -261,8 +234,6 @@ test("Better Auth handles credentials, revocable sessions, origin checks, and sh
       assert.ok(await client.rateLimit.count() > 0);
     });
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });

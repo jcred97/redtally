@@ -37,6 +37,6 @@ export async function getExpenseHistoryBankOptionsByExpenseGroupId(id: number) {
   return access.listExpenseHistoryBankOptions(id);
 }
 
-export async function getExpenseHistoryMerchantOptionsByExpenseGroupId(id: number) {
-  return access.listExpenseHistoryMerchantOptions(id);
+export async function getExpenseHistoryMerchantOptionsByExpenseGroupId(id: number, search = "", selected?: string) {
+  return access.listExpenseHistoryMerchantOptions(id, search, selected);
 }

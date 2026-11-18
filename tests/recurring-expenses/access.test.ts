@@ -1,31 +1,16 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 import { createCategoryAccess } from "../../app/(dashboard)/_lib/categories/access";
 import { createRecurringExpenseAccess } from "../../app/(dashboard)/_lib/recurring-expenses/access";
 import { runRecurringExpenses } from "../../app/(dashboard)/_lib/recurring-expenses/worker";
 import { parseExpenseDate } from "../../app/lib/expenses/date";
 
 test("recurring expense commands enforce ownership and preserve the intended schedule", async () => {
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, host: "127.0.0.1", port: 0 });
-  let client: PrismaClient | undefined;
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
 
   try {
-    const directory = path.join(process.cwd(), "server/db/migrations");
-    const entries = await readdir(directory, { withFileTypes: true });
-    for (const name of entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()) {
-      await db.exec(await readFile(path.join(directory, name, "migration.sql"), "utf8"));
-    }
-    await server.start();
-    client = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`, max: 1 }),
-    });
     await client.user.createMany({ data: [
       { id: "alice", name: "Alice", email: "alice@example.test" },
       { id: "bob", name: "Bob", email: "bob@example.test" },
@@ -95,8 +80,6 @@ test("recurring expense commands enforce ownership and preserve the intended sch
     assert.equal((await alice.list(group.id)).length, 0);
     assert.equal(await client.expense.count({ where: { expenseGroupId: group.id } }), 1);
   } finally {
-    await client?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });

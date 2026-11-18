@@ -1,26 +1,15 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, type Prisma } from "../../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../../generated/prisma/client";
 import { drainRecurringExpenses, runRecurringExpenses } from "../../app/(dashboard)/_lib/recurring-expenses/worker";
 import { parseExpenseDate } from "../../app/lib/expenses/date";
 
 test("recurring expense worker posts each due occurrence atomically", async (t) => {
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, host: "127.0.0.1", port: 0, maxConnections: 2 });
-  let prisma: PrismaClient | undefined;
+  const fixture = await createTestDatabase(2);
+  const { client, db } = fixture;
 
   try {
-    const directory = path.join(process.cwd(), "server/db/migrations");
-    const entries = await readdir(directory, { withFileTypes: true });
-    const migrations = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-    for (const migration of migrations) {
-      await db.exec(await readFile(path.join(directory, migration, "migration.sql"), "utf8"));
-    }
     const tables = await db.query<{ relname: string; relrowsecurity: boolean }>(`
       SELECT relname, relrowsecurity FROM pg_class
       WHERE relname IN ('RecurringExpense', 'RecurringExpenseOccurrence')
@@ -30,15 +19,6 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
       { relname: "RecurringExpense", relrowsecurity: true },
       { relname: "RecurringExpenseOccurrence", relrowsecurity: true },
     ]);
-
-    await server.start();
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({
-        connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`,
-        max: 2,
-      }),
-    });
-    const client = prisma;
     const owner = await client.user.create({ data: { id: "owner", name: "Owner", email: "owner@example.test" } });
     const group = await client.expenseGroup.create({ data: { name: "Home", userId: owner.id } });
     const category = await client.category.create({ data: { name: "Utilities", expenseGroupId: group.id } });
@@ -193,9 +173,7 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
       assert.equal(await client.recurringExpenseOccurrence.count({ where: { recurringExpenseId: rule.id } }), 5);
     });
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });
 

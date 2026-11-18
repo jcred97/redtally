@@ -5,6 +5,7 @@ import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 const MAX_EXPENSE_GROUP_ID = 2_147_483_647;
 const MAX_NAME_LENGTH = 100;
 const EXPENSES_PAGE_SIZE = 25;
+const MERCHANT_OPTIONS_LIMIT = 25;
 const GROUP_HAS_DEPENDENCIES =
   "Remove this expense group's categories, budgets, and bank assignments before deleting it.";
 
@@ -226,18 +227,30 @@ export function createExpenseGroupAccess(
       `;
     },
 
-    async listExpenseHistoryMerchantOptions(id: number) {
+    async listExpenseHistoryMerchantOptions(id: number, search = "", selected?: string) {
       const userId = await requireUserId();
       if (!validId(id)) return [];
+      if (typeof search !== "string" || search.length > 100) return [];
+      const selectedMerchant = parseExpenseHistoryMerchantFilter(selected);
+      const searchText = search.trim().toLowerCase();
 
       return db.$queryRaw<ExpenseHistoryMerchantOption[]>`
-        SELECT ${merchantKey} AS value, MIN(${merchantName}) AS label
-        FROM "Expense" expense
-        JOIN "Spending" expense_group ON expense_group.id = expense."expenseGroupId"
-        WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
-          AND ${merchantName} IS NOT NULL
-        GROUP BY 1
-        ORDER BY lower(MIN(${merchantName})), label, value
+        WITH merchants AS (
+          SELECT ${merchantKey} AS value, MIN(${merchantName}) AS label
+          FROM "Expense" expense
+          JOIN "Spending" expense_group ON expense_group.id = expense."expenseGroupId"
+          WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
+            AND ${merchantName} IS NOT NULL
+            AND (strpos(lower(${merchantName}), ${searchText}) > 0
+              OR ${merchantKey} = ${selectedMerchant ?? null})
+          GROUP BY 1
+        ), options AS (
+          SELECT value, label FROM merchants
+          ORDER BY (value = ${selectedMerchant ?? null}) DESC NULLS LAST,
+            lower(label), label, value
+          LIMIT ${MERCHANT_OPTIONS_LIMIT}
+        )
+        SELECT value, label FROM options ORDER BY lower(label), label, value
       `;
     },
 
@@ -392,7 +405,7 @@ export function createExpenseGroupAccess(
           include: {
             budgets: true,
             bankAssignments: true,
-            categories: { include: { expenses: true } },
+            categories: { orderBy: { id: "asc" } },
           },
         });
         if (!source) {
@@ -428,52 +441,43 @@ export function createExpenseGroupAccess(
           select: {
             id: true,
             publicId: true,
-            bankAssignments: { select: { id: true, bankId: true } },
           },
         });
 
-        const copiedIdsByBank = new Map(copy.bankAssignments.map(({ bankId, id }) => [bankId, id]));
-        const copiedAssignmentIds = new Map(
-          source.bankAssignments.map(({ id, bankId }) => [id, copiedIdsByBank.get(bankId)]),
-        );
-
-        // Nest expenses under their new category so categories with the same name stay distinct.
-        await tx.expenseGroup.update({
-          where: { id: copy.id },
-          data: {
-            categories: {
-              create: source.categories.map((category) => ({
-                name: category.name,
-                icon: category.icon,
-                color: category.color,
-                expenses: {
-                  createMany: {
-                    data: category.expenses.map((expense) => {
-                      const bankAssignmentId = expense.bankAssignmentId === null
-                        ? null
-                        : copiedAssignmentIds.get(expense.bankAssignmentId);
-                      if (bankAssignmentId === undefined) {
-                        throw new Error("Could not match the copied bank assignment");
-                      }
-                      return {
-                        title: expense.title,
-                        merchant: expense.merchant,
-                        amountCentavos: expense.amountCentavos,
-                        date: expense.date,
-                        timeMinutes: expense.timeMinutes,
-                        notes: expense.notes,
-                        legacyBankName: expense.legacyBankName,
-                        paymentMethod: expense.paymentMethod,
-                        bankAssignmentId,
-                      };
-                    }),
-                  },
-                },
-              })),
+        for (const category of source.categories) {
+          // Map by source ID so categories with identical names remain distinct.
+          const copiedCategory = await tx.category.create({
+            data: {
+              expenseGroupId: copy.id,
+              name: category.name,
+              icon: category.icon,
+              color: category.color,
             },
-          },
-          select: { id: true },
-        });
+            select: { id: true },
+          });
+
+          // Keep expense rows in PostgreSQL: large nested Prisma inputs otherwise consume
+          // substantial JavaScript memory and can outlive the transaction timeout.
+          await tx.$executeRaw`
+            INSERT INTO "Expense" (
+              title, merchant, "amountCentavos", date, "timeMinutes", notes, bank,
+              "transactionType", "bankAssignmentId", "expenseGroupId", "categoryId", "createdAt", "updatedAt"
+            )
+            SELECT expense.title, expense.merchant, expense."amountCentavos", expense.date,
+              expense."timeMinutes", expense.notes, expense.bank, expense."transactionType",
+              copied_assignment.id, ${copy.id}, ${copiedCategory.id},
+              CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+            FROM "Expense" expense
+            LEFT JOIN "ExpenseGroupBank" source_assignment
+              ON source_assignment.id = expense."bankAssignmentId"
+                AND source_assignment."expenseGroupId" = ${source.id}
+            LEFT JOIN "ExpenseGroupBank" copied_assignment
+              ON copied_assignment."bankId" = source_assignment."bankId"
+                AND copied_assignment."expenseGroupId" = ${copy.id}
+            WHERE expense."expenseGroupId" = ${source.id}
+              AND expense."categoryId" = ${category.id}
+          `;
+        }
         return { id: copy.id, publicId: copy.publicId };
       }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     },

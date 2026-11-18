@@ -26,6 +26,7 @@ Implemented source includes:
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
+- History's merchant filter searches saved merchants and returns up to 25 options, keeping the active selection available. Search text stays out of filter URLs; selected merchants retain their existing digest values. The database still scans matching history to find distinct merchants.
 - In **New Expense**, paste a receipt image or choose a photo or screenshot. RedTally reads it on your device and suggests a title, merchant, peso total, date, and Manila time when available. Apply the suggestions you want, then review the editable form before saving. The original image and recognized text stay in the browser.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
 - **Import expenses** reads CSV, TSV, and Excel `.xlsx` files up to 5 MB in the browser. Choose a worksheet if needed, map the description, date, and amount columns, and select an existing category for the batch. The preview shows invalid rows and possible duplicates before you choose what to save. Each import supports up to 500 data rows and saves positive PHP expenses.
@@ -70,9 +71,13 @@ Available scripts:
 | --- | --- |
 | `npm run dev` | Start the development server |
 | `npm run lint` | Run ESLint |
+| `npm run typecheck` | Generate Next.js route types and check TypeScript without emitting files |
 | `npm run build` | Generate Prisma client and build Next.js |
 | `npm start` | Serve an existing production build |
-| `npm test` | Run money, date, recurring expense, authentication, ownership, and isolated PostgreSQL migration tests without a live database |
+| `npm test` | Discover every `tests/**/*.test.ts` file and run tests without a live database |
+| `npm run test:native` | Run the isolated native PostgreSQL 50,000-expense duplication and rollback regression |
+
+GitHub CI runs lint, TypeScript, portable tests, and the native PostgreSQL regression for pushes and pull requests. Native tests require `REDTALLY_POSTGRES_BIN` pointing to a PostgreSQL directory containing `initdb` and `pg_ctl`. They start their own password-protected cluster on a random loopback port, apply migrations, and remove the cluster after stopping it; they never use `.env`, `DATABASE_URL`, or an existing database. See [history profiling](docs/performance.md) for reproducible before/after measurements and their limits.
 
 ### Recurring expense worker
 
@@ -132,6 +137,8 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/_home/expense-groups/` | Home expense-group section and its private `_components/` |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
+| `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
+| `app/(dashboard)/spending/[id]/_lib/expenses/` | Authenticated merchant search action |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |
@@ -144,6 +151,10 @@ Authenticated pages render per request because their session check uses request 
 | `server/db/schema.prisma` | Data model |
 | `server/db/migrations/` | Database migration history |
 | `tests/auth/` | Authentication and session tests |
+| `tests/helpers/` | Shared PGlite and native PostgreSQL fixtures and cleanup |
+| `tests/expense-groups/duplication.native.ts` | Native 50,000-expense copy preservation, ownership, and rollback regression |
+| `scripts/` | Automatic test discovery and synthetic history profiling |
+| `.github/workflows/ci.yml` | Lint, TypeScript, and test checks |
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
 | `tests/dashboard/` | Monthly spending, comparison periods, and budget ownership tests |
@@ -153,11 +164,12 @@ Authenticated pages render per request because their session check uses request 
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |
 | `docs/roadmap.md` | Planned milestones and completion criteria |
 | `docs/data-model.md` | Core model, integrity rules, and preservation strategy |
+| `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
 Application code uses grouped feature routes, private `_home` sections, and `_components` and `_lib` folders. `app/(dashboard)/page.tsx` composes the home section. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.
 
 The Prisma schema, migration history, and runtime client live in `server/db/`. Prisma generates its client into the ignored root `generated/` folder. The `@/*` alias resolves from the repository root. Route groups and private folders keep URLs stable as internal files move.
 
-Keep automated test files under the root `tests/` directory, grouped by the area they cover, so application folders contain implementation code. Tests import the implementation from `app/` or `server/`. When adding a test file, include its path in the `npm test` script.
+Keep automated test files under the root `tests/` directory, grouped by the area they cover, so application folders contain implementation code. Tests import the implementation from `app/` or `server/`. Name tests `*.test.ts`; `npm test` discovers them recursively. Ordinary database integration suites share `tests/helpers/database.ts`; migration tests retain their specialized setup.
 
 Follow [AGENTS.md](AGENTS.md), including its requirement to read relevant bundled Next.js documentation before writing application code.

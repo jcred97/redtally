@@ -5,8 +5,10 @@ import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import Select from "@/app/components/forms/Select";
+import MerchantFilter from "./MerchantFilter";
 
 type ExpenseHistoryFiltersProps = {
+  expenseGroupId: number;
   groupPath: string;
   categories: { id: number; name: string }[];
   banks: { value: string; label: string }[];
@@ -27,6 +29,7 @@ type ExpenseHistoryFiltersProps = {
 const fieldClass = "mt-1 block h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
 
 export default function ExpenseHistoryFilters({
+  expenseGroupId,
   groupPath,
   categories,
   banks,
@@ -46,7 +49,6 @@ export default function ExpenseHistoryFilters({
   const categoryUnavailable =
     categoryId !== undefined && !categories.some((category) => category.id === categoryId);
   const bankUnavailable = bank !== undefined && !banks.some(({ value }) => value === bank);
-  const merchantUnavailable = merchant !== undefined && merchant !== "none" && !merchants.some(({ value }) => value === merchant);
 
   return (
     <Form
@@ -95,17 +97,13 @@ export default function ExpenseHistoryFilters({
           ))}
         </Select>
       </div>
-      <div className="min-w-0 text-sm text-gray-300">
-        <label htmlFor="expense-filter-merchant">Merchant</label>
-        <Select id="expense-filter-merchant" name="merchant" defaultValue={merchant ?? ""} className={fieldClass}>
-          <option value="">All merchants</option>
-          <option value="none">No merchant</option>
-          {merchantUnavailable && <option value={merchant}>Unavailable merchant</option>}
-          {merchants.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </Select>
-      </div>
+      <MerchantFilter
+        key={`${expenseGroupId}-${merchant ?? ""}`}
+        expenseGroupId={expenseGroupId}
+        merchants={merchants}
+        merchant={merchant}
+        fieldClass={fieldClass}
+      />
       <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {through && <span className="text-sm text-gray-400">Through {formatExpenseDate(through)}</span>}

@@ -1,13 +1,8 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { createDashboardAccess } from "../../app/(dashboard)/spending/[id]/_lib/dashboard/access";
 import { getDashboardPeriod, shiftDashboardMonth } from "../../app/(dashboard)/spending/[id]/_lib/dashboard/period";
-import { PrismaClient } from "../../generated/prisma/client";
 
 test("dashboard periods cap ongoing comparisons, cover closed months, and respect calendar bounds", () => {
   assert.deepEqual(getDashboardPeriod("2028-03", "2028-03-31"), {
@@ -34,27 +29,10 @@ test("dashboard periods cap ongoing comparisons, cover closed months, and respec
 });
 
 test("dashboard totals and monthly budget writes use the owned group and authoritative records", async (t) => {
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, host: "127.0.0.1", port: 0 });
-  let prisma: PrismaClient | undefined;
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
 
   try {
-    const migrationRoot = path.join(process.cwd(), "server/db/migrations");
-    const migrations = (await readdir(migrationRoot, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
-    for (const migration of migrations) {
-      await db.exec(await readFile(path.join(migrationRoot, migration, "migration.sql"), "utf8"));
-    }
-
-    await server.start();
-    const client = prisma = new PrismaClient({
-      adapter: new PrismaPg({
-        connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`,
-        max: 1,
-      }),
-    });
     await client.user.createMany({
       data: [
         { id: "alice", name: "Alice", email: "alice@example.test" },
@@ -167,8 +145,6 @@ test("dashboard totals and monthly budget writes use the owned group and authori
       assert.equal(await client.budget.count({ where: { expenseGroupId: own.id } }), 1);
     });
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });

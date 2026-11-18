@@ -1,40 +1,14 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 import { createCategoryAccess } from "../../app/(dashboard)/_lib/categories/access";
 
 test("category writes use the current owner and reject unauthorized or invalid writes", async (t) => {
   // Isolated PostgreSQL only; these tests never read DATABASE_URL.
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, host: "127.0.0.1", port: 0 });
-  let prisma: PrismaClient | undefined;
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
 
   try {
-    const directory = path.join(process.cwd(), "server/db/migrations");
-    const migrations = (await readdir(directory, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
-
-    for (const migration of migrations) {
-      await db.exec(
-        await readFile(path.join(directory, migration, "migration.sql"), "utf8"),
-      );
-    }
-
-    await server.start();
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({
-        connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`,
-        max: 1,
-      }),
-    });
-    const client = prisma;
 
     await client.user.createMany({
       data: [
@@ -233,8 +207,6 @@ test("category writes use the current owner and reject unauthorized or invalid w
       await assert.rejects(alice.delete(aliceGroup.id, category.id), /Category not found/);
     });
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });

@@ -1,12 +1,7 @@
+import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
 import test from "node:test";
-import { PGlite } from "@electric-sql/pglite";
-import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
 import { createBankAccess } from "../../app/(dashboard)/_lib/banks/access";
 import {
   createExpenseGroupAccess,
@@ -17,33 +12,10 @@ import {
 
 test("expense-group access isolates users and unclaimed data using real Prisma queries", async (t) => {
   // An isolated, in-memory PostgreSQL instance. Never reads DATABASE_URL.
-  const db = await PGlite.create();
-  const server = new PGLiteSocketServer({ db, host: "127.0.0.1", port: 0 });
-  let prisma: PrismaClient | undefined;
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
 
   try {
-    const directory = path.join(process.cwd(), "server/db/migrations");
-    const migrations = (await readdir(directory, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
-
-    for (const migration of migrations) {
-      await db.exec(
-        await readFile(path.join(directory, migration, "migration.sql"), "utf8"),
-      );
-    }
-
-    await server.start();
-
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({
-        connectionString: `postgresql://postgres:postgres@${server.getServerConn()}/postgres`,
-        max: 1,
-      }),
-    });
-
-    const client = prisma;
 
     await client.user.createMany({
       data: [
@@ -628,6 +600,33 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(missing?.expenses.map(({ merchant }) => merchant), [null]);
     });
 
+    await t.test("merchant searches cap results, preserve the selection, and treat search text literally", async () => {
+      const group = await alice.create("Searchable merchants");
+      const category = await client.category.create({ data: { expenseGroupId: group.id, name: "Shopping" } });
+      await client.expense.createMany({
+        data: [...Array.from({ length: 40 }, (_, index) => `Merchant ${String(index).padStart(2, "0")}`), "100%_Shop"]
+          .map((merchant) => ({
+            expenseGroupId: group.id, categoryId: category.id, title: "Receipt", merchant,
+            amountCentavos: 100, date: new Date("2026-10-24T00:00:00Z"),
+          })),
+      });
+      const options = await alice.listExpenseHistoryMerchantOptions(group.id);
+      assert.equal(options.length, 25);
+      assert.deepEqual(options, await alice.listExpenseHistoryMerchantOptions(group.id));
+      const selected = createHash("sha256").update("merchant 39").digest("hex");
+      assert(!options.some(({ value }) => value === selected));
+      const pinned = await alice.listExpenseHistoryMerchantOptions(group.id, "", selected);
+      assert.equal(pinned.length, 25);
+      assert(pinned.some(({ value, label }) => value === selected && label === "Merchant 39"));
+      assert.deepEqual((await alice.listExpenseHistoryMerchantOptions(group.id, " mErChAnT 39 ")).map(({ value }) => value), [selected]);
+      assert.deepEqual((await alice.listExpenseHistoryMerchantOptions(group.id, "%_")).map(({ label }) => label), ["100%_Shop"]);
+      assert.deepEqual(await alice.listExpenseHistoryMerchantOptions(group.id, "no match"), []);
+      assert.deepEqual(await alice.listExpenseHistoryMerchantOptions(group.id, "x".repeat(101)), []);
+      assert.deepEqual(await bob.listExpenseHistoryMerchantOptions(group.id, "Merchant", selected), []);
+      assert.deepEqual(await alice.listExpenseHistoryMerchantOptions(0, "Merchant"), []);
+      await assert.rejects(anonymous.listExpenseHistoryMerchantOptions(group.id, "Merchant"), /Sign in required/);
+    });
+
     await t.test("bank and payment method filters match the totals and rows across pages", async () => {
       const group = await alice.create("Payment history");
       const category = await client.category.create({
@@ -875,8 +874,6 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       ]);
     });
   } finally {
-    await prisma?.$disconnect();
-    await server.stop();
-    await db.close();
+    await fixture.close();
   }
 });
