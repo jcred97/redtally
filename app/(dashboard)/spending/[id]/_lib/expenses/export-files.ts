@@ -81,14 +81,27 @@ export async function expensePdfResponse(source: ExpenseExportSource, signal?: A
   ];
   if (expenses.length === 0) content.push({ text: "No expenses match the selected filters." });
   for (const expense of expenses) {
+    const heading = `${expense.title} - PHP ${amountText(expense.amountCentavos)}`;
+    // pdfmake clips unbreakable blocks taller than a page. Allow unusually long
+    // legacy titles and titles with many explicit line breaks to flow normally.
+    const keepHeadingWithDate = heading.length <= 160 && heading.split(/[\r\n\u2028\u2029]/u).length <= 24;
     content.push({
-      text: pdfText.text(`${expense.title} - PHP ${amountText(expense.amountCentavos)}`),
-      bold: true, fontSize: 12, margin: [0, 12, 0, 5], headlineLevel: 1,
+      // Move only the heading and the opening details together; the rest of the
+      // expense, including notes longer than a page, can break naturally.
+      unbreakable: keepHeadingWithDate,
+      stack: [
+        { text: pdfText.text(heading), bold: true, fontSize: 12, margin: [0, 12, 0, 5] },
+        {
+          text: [
+            `Date: ${expense.date.toISOString().slice(0, 10)}`,
+            ...(expense.timeMinutes === null ? [] : [`Time (Asia/Manila): ${expenseTimeInput(expense.timeMinutes)}`]),
+          ].join("\n"),
+          lineHeight: 1.25,
+        },
+      ],
     });
     content.push({
       text: pdfText.text([
-        `Date: ${expense.date.toISOString().slice(0, 10)}`,
-        ...(expense.timeMinutes === null ? [] : [`Time (Asia/Manila): ${expenseTimeInput(expense.timeMinutes)}`]),
         `Category: ${expense.categoryName}`,
         `Merchant: ${expense.merchant ?? "-"}`,
         `Payment method: ${paymentText(expense) || "-"}`,
@@ -103,8 +116,6 @@ export async function expensePdfResponse(source: ExpenseExportSource, signal?: A
     pageSize: "A4", pageMargins: [40, 40, 40, 45],
     defaultStyle: { font: "Roboto", fontSize: 10 },
     content,
-    // Keep an expense heading with at least the beginning of its details.
-    pageBreakBefore: (node, queries) => node.headlineLevel === 1 && queries.getFollowingNodesOnPage().length === 0,
     footer: (page, pages) => ({
       stack: [
         { text: `${page} / ${pages}`, fontSize: 9 },

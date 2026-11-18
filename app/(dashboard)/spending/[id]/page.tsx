@@ -24,6 +24,7 @@ import RecurringExpenses from "./_components/recurring-expenses/RecurringExpense
 import {
   getExpenseGroupById,
   getExpenseGroupOptions,
+  getExpenseHistoryAvailability,
   getExpenseHistoryBankOptionsByExpenseGroupId,
   getExpenseHistoryMerchantOptionsByExpenseGroupId,
   getExpensePageByExpenseGroupId,
@@ -70,6 +71,10 @@ export default async function ExpenseGroupPage({
   if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
     notFound();
   }
+  const historyAvailability = expensePage?.totalExpenses === 0
+    ? await getExpenseHistoryAvailability(id, filters)
+    : undefined;
+  if (historyAvailability === null) notFound();
 
   const links = expenseGroupLinks(expenseGroup.publicId, view);
   const { groupPath, expensesHref, categoriesTab, banksTab, recurringTab, dashboardTab, tabSuffix } = links;
@@ -141,6 +146,7 @@ export default async function ExpenseGroupPage({
             historyBankOptions={historyBankOptions}
             historyMerchantOptions={historyMerchantOptions}
             expensePage={expensePage}
+            historyAvailability={historyAvailability}
             view={view}
             links={links}
           />

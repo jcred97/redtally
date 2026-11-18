@@ -73,6 +73,27 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(await bob.listForSwitcher(), [{ id: b.id, publicId: b.publicId, name: b.name }]);
     });
 
+    await t.test("empty history checks distinguish a new group from older expenses matching the other filters", async () => {
+      const category = await client.category.findFirstOrThrow({ where: { expenseGroupId: a.id } });
+      const filters = { month: "2026-11", categoryId: category.id };
+      const empty = await alice.create("No expense history");
+      try {
+        assert.equal(await alice.getExpenseHistoryAvailability(empty.id, filters), "none");
+      } finally {
+        await alice.delete(empty.id);
+      }
+
+      assert.equal(await alice.getExpenseHistoryAvailability(a.id, filters), "older");
+      assert.equal(await alice.getExpenseHistoryAvailability(a.id, { ...filters, merchant: "0".repeat(64) }), "other");
+      assert.equal(await alice.getExpenseHistoryAvailability(a.id, { month: "2026-09" }), "other");
+      assert.equal(await alice.getExpenseHistoryAvailability(a.id, { ...filters, day: "2026-10-25" }), "older");
+      assert.equal(await alice.getExpenseHistoryAvailability(a.id, { ...filters, day: "2026-10-23" }), "other");
+      assert.equal(await alice.getExpenseHistoryAvailability(a.id, {}), "other");
+      assert.equal(await bob.getExpenseHistoryAvailability(a.id, filters), null);
+      assert.equal(await alice.getExpenseHistoryAvailability(legacy.id, filters), null);
+      await assert.rejects(anonymous.getExpenseHistoryAvailability(a.id, filters), /Sign in required/);
+    });
+
     await t.test("public and legacy route keys resolve only for the current owner", async () => {
       for (const [access, own, denied] of [
         [alice, a, [b, legacy]],

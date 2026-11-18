@@ -33,6 +33,10 @@ export async function getExpensePageByExpenseGroupId(
 
 export type ExpenseHistoryEntry = NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>["expenses"][number];
 
+export async function getExpenseHistoryAvailability(id: number, filters: ExpenseHistoryFilters) {
+  return access.getExpenseHistoryAvailability(id, filters);
+}
+
 export async function getExpenseHistoryBankOptionsByExpenseGroupId(id: number) {
   return access.listExpenseHistoryBankOptions(id);
 }

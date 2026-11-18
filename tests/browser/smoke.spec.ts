@@ -169,6 +169,52 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
   await expect(page.getByText("No expenses yet", { exact: true })).toBeVisible();
 });
 
+test("empty expense group guides the first category and expense", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto("/");
+  await page.getByRole("button", { name: /New.*Group/ }).click();
+  const groupDialog = page.getByRole("dialog", { name: "New Expense Group" });
+  await groupDialog.getByLabel("Name", { exact: true }).fill("First expense workflow");
+  await groupDialog.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(groupDialog).not.toBeVisible();
+  await page.getByRole("link", { name: /First expense workflow/ }).click();
+
+  const history = page.getByRole("region", { name: "Expenses", exact: true });
+  await expect(history.getByText("No expenses yet", { exact: true })).toBeVisible();
+  await expect(history.getByText("Create a category to start recording expenses.")).toBeVisible();
+  await expect(history.getByRole("link", { name: "All months", exact: true })).toHaveCount(0);
+  await history.getByRole("link", { name: "Go to Categories", exact: true }).click();
+  await page.getByRole("button", { name: "+ New Category", exact: true }).click();
+  const category = page.getByRole("dialog", { name: "New Category", exact: true });
+  await category.getByLabel("Name", { exact: true }).fill("First category");
+  await category.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(category).not.toBeVisible();
+  await page.getByRole("link", { name: "Expenses", exact: true }).click();
+
+  await expect(history.getByText("No expenses yet", { exact: true })).toBeVisible();
+  await expect(history.getByText("Select + New Expense to add your first expense.")).toBeVisible();
+  await expect(history.getByRole("link", { name: "All months", exact: true })).toHaveCount(0);
+  const expense = await newExpense(page);
+  await expense.getByLabel("Title", { exact: true }).fill("First bus ticket");
+  await expense.getByLabel("Amount (PHP)", { exact: true }).fill("12.50");
+  await expense.getByRole("button", { name: "Save expense", exact: true }).click();
+  await expect(expense).not.toBeVisible();
+  await expect(history.getByRole("heading", { name: "First bus ticket", exact: true })).toBeVisible();
+});
+
+test("empty current month offers older history", async ({ page }) => {
+  await page.goto(`/spending/${data.olderHistory.publicId}`);
+  const history = page.getByRole("region", { name: "Expenses", exact: true });
+  const olderExpense = history.getByRole("cell", { name: "Older train ticket", exact: true });
+  await expect(history.getByText("No expenses this month", { exact: true })).toBeVisible();
+  await expect(olderExpense).toHaveCount(0);
+
+  await history.getByRole("link", { name: "All months", exact: true }).click();
+  await expect(page).toHaveURL(groupPath(data.olderHistory.publicId));
+  await expect(olderExpense).toBeVisible();
+  await expect(history.getByText("No expenses this month", { exact: true })).toHaveCount(0);
+});
+
 test("an owner can delete an empty group after disabling its bank", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /New.*Group/ }).click();
@@ -451,6 +497,48 @@ test("export dialog offers PDF and Excel downloads and restores focus on dismiss
   await page.goto(`/spending/${data.exported.publicId}?day=2026-11-17`);
   const empty = await exportExpenses(page, "Excel (.xlsx)");
   expect(await readSheet((await empty.path())!)).toHaveLength(1);
+});
+
+test("downloads a complete 5,000-row PDF with readable page breaks", async ({ page }, testInfo) => {
+  await page.goto(`/spending/${data.largeExport.publicId}?day=2026-11-18`);
+  await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
+  const download = await exportExpenses(page, "PDF (.pdf)");
+  expect(download.suggestedFilename()).toBe(`expenses-${data.largeExport.publicId}.pdf`);
+  const report = testInfo.outputPath("large-expense-report.pdf");
+  await download.saveAs(report);
+
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const loading = getDocument({ data: new Uint8Array(await readFile(report)), useWasm: false, disableFontFace: true });
+  try {
+    const document = await loading.promise;
+    const expenseIds: number[] = [];
+    let receiptStartPage = 0;
+    let receiptEndPage = 0;
+    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
+      const pdfPage = await document.getPage(pageNumber);
+      const content = await pdfPage.getTextContent();
+      const text = content.items.map((item) => "str" in item ? item.str : "").join(" ");
+      if (pageNumber === 1) {
+        expect(text).toContain("Expense count: 5000");
+        expect(text).toContain("Total: PHP 6150.00");
+      }
+      expect(text).not.toContain("Outside report date");
+      if (text.includes("Receipt starts here")) receiptStartPage = pageNumber;
+      if (text.includes("Receipt ends here")) receiptEndPage = pageNumber;
+
+      const sections = text.split(/Large report expense (\d{4})/g);
+      for (let index = 1; index < sections.length; index += 2) {
+        const id = Number(sections[index]);
+        expenseIds.push(id);
+        expect(sections[index + 1], `Opening details for expense ${id} on page ${pageNumber}`)
+          .toContain("Date: 2026-11-18");
+      }
+      pdfPage.cleanup();
+    }
+    expect(expenseIds).toEqual(Array.from({ length: 5_000 }, (_, index) => index + 1));
+    expect(receiptStartPage).toBeGreaterThan(0);
+    expect(receiptEndPage).toBeGreaterThan(receiptStartPage);
+  } finally { await loading.destroy(); }
 });
 
 test("failed exports keep the dialog open for retry and invalid formats are rejected", async ({ page }) => {

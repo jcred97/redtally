@@ -44,6 +44,8 @@ export type ExpenseHistoryFilters = {
   merchant?: string;
 };
 
+export type ExpenseHistoryAvailability = "none" | "older" | "other";
+
 export type ExpenseExportRow = {
   id: number;
   title: string;
@@ -296,6 +298,31 @@ export function createExpenseGroupAccess(
         )
         SELECT value, label FROM options ORDER BY lower(label), label, value
       `;
+    },
+
+    async getExpenseHistoryAvailability(id: number, filters: ExpenseHistoryFilters) {
+      const userId = await requireUserId();
+      if (!validId(id)) return null;
+
+      const month = parseExpenseMonth(filters.month);
+      const scopeStart = parseExpenseDay(filters.day) ?? (month ? `${month}-01` : undefined);
+      const olderMatch = scopeStart
+        ? Prisma.sql`EXISTS (
+          SELECT 1 FROM "Expense"
+          WHERE "expenseGroupId" = expense_group.id AND date < ${scopeStart}::timestamp
+            ${expenseHistoryFilterSql({ ...filters, day: undefined, month: undefined, through: undefined })}
+        )`
+        : Prisma.sql`false`;
+      const [result] = await db.$queryRaw<{ availability: ExpenseHistoryAvailability }[]>`
+        SELECT CASE
+          WHEN ${olderMatch} THEN 'older'
+          WHEN EXISTS (SELECT 1 FROM "Expense" WHERE "expenseGroupId" = expense_group.id) THEN 'other'
+          ELSE 'none'
+        END AS availability
+        FROM "Spending" expense_group
+        WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
+      `;
+      return result?.availability ?? null;
     },
 
     async getExpensePageById(

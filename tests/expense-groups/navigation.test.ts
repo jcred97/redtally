@@ -49,6 +49,12 @@ test("month scope toggles retain other filters and grouped view", () => {
   }
   assert.equal(parseExpenseGroupQuery({ month: "2026-10" }, today).monthScopeQuery, "allMonths=1");
   assert.equal(parseExpenseGroupQuery({ allMonths: "1" }, today).hasFilters, false);
+
+  const expectedAllMonths = "/spending/id?category=12&paymentMethod=CASH&bank=assignment%3A7&merchant=none&view=grouped&allMonths=1";
+  for (const dateFilter of [{ day: "2026-10-03" }, { month: "2026-10", through: "2026-10-15" }]) {
+    const scopedView = parseExpenseGroupQuery({ ...query, ...dateFilter, page: "2" }, today);
+    assert.equal(expenseGroupLinks("id", scopedView).allMonthsHref, expectedAllMonths);
+  }
 });
 
 test("tab and view links preserve the existing month and pagination behavior", () => {

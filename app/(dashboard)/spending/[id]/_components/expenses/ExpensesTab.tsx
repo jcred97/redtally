@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
+import type { ExpenseHistoryAvailability } from "@/app/(dashboard)/_lib/expense-groups/access";
 import type { getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import type { ExpenseGroupLinks, ExpenseGroupView } from "../../_lib/navigation";
 import ExpenseHistory from "./ExpenseHistory";
@@ -13,13 +14,19 @@ type ExpensesTabProps = {
   historyBankOptions: ComponentProps<typeof ExpenseHistoryFilters>["banks"];
   historyMerchantOptions: ComponentProps<typeof ExpenseHistoryFilters>["merchants"];
   expensePage: NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>;
+  historyAvailability?: ExpenseHistoryAvailability;
   view: ExpenseGroupView;
   links: ExpenseGroupLinks;
 };
 
-export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, historyMerchantOptions, expensePage, view, links }: ExpensesTabProps) {
-  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, grouped, filterQuery, currentMonth, hasOtherFilters, hasFilters } = view;
-  const { groupPath, expenseTab } = links;
+export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, historyMerchantOptions, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
+  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
+  const { groupPath, expenseTab, categoriesTab, allMonthsHref } = links;
+  const firstExpense = historyAvailability === "none";
+  const thisMonthOnly = month === currentMonth && !day && !through && !hasOtherFilters;
+  const emptyStateTitle = firstExpense
+    ? "No expenses yet"
+    : thisMonthOnly ? "No expenses this month" : "No expenses match these filters";
 
   return (
     <>
@@ -90,15 +97,23 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
             <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-gray-800 bg-gray-900">
               <span className="text-2xl">💸</span>
             </div>
-            <p className="font-medium text-gray-300">
-              {hasFilters ? "No expenses match these filters" : "No expenses yet"}
-            </p>
-            {!hasFilters && (
-              <p className="mt-1 text-sm text-gray-500">
-                {categories.length === 0
-                  ? "Add a category in the Categories tab to start recording expenses."
-                  : "Click + New Expense to add your first expense."}
+            <p className="font-medium text-gray-300">{emptyStateTitle}</p>
+            {firstExpense && (categories.length === 0 ? (
+              <>
+                <p className="mt-1 text-sm text-gray-400">Create a category to start recording expenses.</p>
+                <Link href={groupPath + categoriesTab} className="mt-3 text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+                  Go to Categories
+                </Link>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-gray-400">
+                Select <strong className="font-medium text-gray-300">+ New Expense</strong> to add your first expense.
               </p>
+            ))}
+            {historyAvailability === "older" && (
+              <Link href={allMonthsHref} className="mt-3 text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+                All months
+              </Link>
             )}
           </div>
         ) : (

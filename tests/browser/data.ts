@@ -5,7 +5,9 @@ export type BrowserData = {
   group: { id: number; publicId: string; categoryId: number };
   merchants: { id: number; publicId: string };
   exported: { id: number; publicId: string };
+  largeExport: { publicId: string };
   foreign: { id: number; publicId: string };
+  olderHistory: { publicId: string };
 };
 
 export function browserData(): BrowserData {

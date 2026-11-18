@@ -86,8 +86,14 @@ async function main() {
     const exported = await fixture.client.expenseGroup.create({ data: {
       userId, name: "Browser export history", categories: { create: { name: "Export category" } },
     }, include: { categories: true } });
+    const largeExport = await fixture.client.expenseGroup.create({ data: {
+      userId, name: "Browser large export history", categories: { create: { name: "Travel" } },
+    }, include: { categories: true } });
     const foreign = await fixture.client.expenseGroup.create({ data: {
       userId: otherId, name: "Private foreign group", categories: { create: { name: "Foreign category" } },
+    }, include: { categories: true } });
+    const olderHistory = await fixture.client.expenseGroup.create({ data: {
+      userId, name: "Browser older history", categories: { create: [{ name: "Travel" }] },
     }, include: { categories: true } });
     const date = new Date("2026-11-18T00:00:00Z");
     await fixture.client.expense.createMany({ data: [
@@ -103,13 +109,35 @@ async function main() {
         amountCentavos: 10, date,
       })),
       { expenseGroupId: foreign.id, categoryId: foreign.categories[0].id, title: "Foreign secret", amountCentavos: 99999, date },
+      {
+        expenseGroupId: olderHistory.id, categoryId: olderHistory.categories[0].id,
+        title: "Older train ticket", amountCentavos: 18500, date: new Date("2020-01-15T00:00:00Z"),
+      },
+    ] });
+    await fixture.client.expense.createMany({ data: [
+      ...Array.from({ length: 5_000 }, (_, index) => ({
+        expenseGroupId: largeExport.id, categoryId: largeExport.categories[0].id,
+        title: `Large report expense ${String(index + 1).padStart(4, "0")}`,
+        merchant: "City Transport", amountCentavos: 123, date,
+        notes: index === 0 ? [
+          "Receipt starts here",
+          ...Array.from({ length: 70 }, (_, line) => `Travel receipt detail ${line + 1}`),
+          "Receipt ends here",
+        ].join("\n") : null,
+      })),
+      {
+        expenseGroupId: largeExport.id, categoryId: largeExport.categories[0].id,
+        title: "Outside report date", amountCentavos: 456, date: new Date("2026-11-17T00:00:00Z"),
+      },
     ] });
     const data: BrowserData = {
       email, password, userId,
       group: { id: group.id, publicId: group.publicId, categoryId: group.categories[0].id },
       merchants: { id: merchants.id, publicId: merchants.publicId },
       exported: { id: exported.id, publicId: exported.publicId },
+      largeExport: { publicId: largeExport.publicId },
       foreign: { id: foreign.id, publicId: foreign.publicId },
+      olderHistory: { publicId: olderHistory.publicId },
     };
     const env: NodeJS.ProcessEnv = {
       ...browserEnv, NODE_ENV: "production", DATABASE_URL: fixture.connectionString,

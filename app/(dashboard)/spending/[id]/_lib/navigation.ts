@@ -101,10 +101,16 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const recurringTab = `?tab=recurring${viewSuffix}`;
   const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
   const tabSuffix = showDashboard ? dashboardTab : showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : expenseTab;
+  const allMonthsParams = new URLSearchParams(view.filterQuery);
+  allMonthsParams.delete("day");
+  allMonthsParams.delete("month");
+  allMonthsParams.delete("through");
+  allMonthsParams.set("allMonths", "1");
   return {
     groupPath, expenseTab, expensesHref, categoriesTab, banksTab, recurringTab,
     dashboardTab, tabSuffix,
     monthScopeHref: `${groupPath}?${view.monthScopeQuery}`,
+    allMonthsHref: `${groupPath}?${allMonthsParams}`,
     historyViewHref(nextGrouped: boolean, page: number) {
       const query = new URLSearchParams(view.filterQuery);
       if (nextGrouped) query.set("view", "grouped");
