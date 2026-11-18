@@ -91,7 +91,7 @@ export default function ExpenseGroupSettings({
       if (onGroupList) {
         requestAnimationFrame(() => document.getElementById("expense-groups-title")?.focus());
       } else {
-        router.replace("/");
+        router.replace("/expense-groups");
       }
     }
     return result;

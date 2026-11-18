@@ -11,6 +11,7 @@ export async function saveBankAssignment(formData: FormData): Promise<{ success:
   try {
     await access.save(formData);
     revalidatePath("/spending/[id]", "page");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     if (error instanceof TypeError) {

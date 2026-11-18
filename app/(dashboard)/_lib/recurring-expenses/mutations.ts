@@ -14,6 +14,7 @@ export async function runDueExpenses(expenseGroupId: number): Promise<RunDueExpe
     const result = await access.runDue(expenseGroupId);
     revalidatePath("/spending/[id]", "page");
     revalidatePath("/");
+    revalidatePath("/expense-groups");
     return result;
   } catch (error) {
     if (error instanceof TypeError) return { error: error.message };
@@ -30,6 +31,7 @@ export async function changeRecurringExpense(
   try {
     await access.change(expenseGroupId, id, command, formData);
     revalidatePath("/spending/[id]", "page");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     if (error instanceof TypeError) return { error: error.message };

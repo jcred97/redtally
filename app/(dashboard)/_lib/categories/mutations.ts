@@ -61,6 +61,7 @@ async function saveCategoryChange(
 
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
+  revalidatePath("/expense-groups");
 
   return { success: true };
 }

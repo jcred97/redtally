@@ -95,7 +95,7 @@ export default function ExpenseGroupSwitcher({
       >
         <nav aria-label="Switch expense group">
           <Link
-            href="/"
+            href="/expense-groups"
             aria-current={onGroupList ? "page" : undefined}
             onNavigate={(event) => {
               if (onGroupList) event.preventDefault();

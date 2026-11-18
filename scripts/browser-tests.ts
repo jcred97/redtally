@@ -5,6 +5,7 @@ import { createServer } from "node:net";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createAuth } from "../app/lib/auth/config";
+import { getManilaToday, parseExpenseDate } from "../app/lib/expenses/date";
 import { createNativeTestDatabase } from "../tests/helpers/native-database";
 import type { BrowserData } from "../tests/browser/data";
 
@@ -95,6 +96,25 @@ async function main() {
     const olderHistory = await fixture.client.expenseGroup.create({ data: {
       userId, name: "Browser older history", categories: { create: [{ name: "Travel" }] },
     }, include: { categories: true } });
+    const dashboardBudgeted = await fixture.client.expenseGroup.create({ data: {
+      userId, name: "Dashboard household", categories: { create: { name: "Food" } },
+    }, include: { categories: true } });
+    const dashboardUnbudgeted = await fixture.client.expenseGroup.create({ data: {
+      userId, name: "Dashboard work", categories: { create: { name: "Food" } },
+    }, include: { categories: true } });
+    const dashboardMonth = "2020-04";
+    const today = parseExpenseDate(getManilaToday());
+    const tomorrow = new Date(today);
+    tomorrow.setUTCDate(today.getUTCDate() + 1);
+    await fixture.client.budget.create({ data: {
+      expenseGroupId: dashboardBudgeted.id, budgetMonth: parseExpenseDate(`${dashboardMonth}-01`), amountCentavos: 20000,
+    } });
+    await fixture.client.recurringExpense.createMany({ data: [
+      { expenseGroupId: dashboardBudgeted.id, categoryId: dashboardBudgeted.categories[0].id,
+        title: "Scheduled internet", amountCentavos: 5000, frequency: "MONTHLY", startDate: tomorrow, nextDueDate: tomorrow },
+      { expenseGroupId: dashboardUnbudgeted.id, categoryId: dashboardUnbudgeted.categories[0].id,
+        title: "Review storage renewal", amountCentavos: 3500, frequency: "MONTHLY", startDate: today, nextDueDate: today, status: "NEEDS_ATTENTION" },
+    ] });
     const date = new Date("2026-11-18T00:00:00Z");
     await fixture.client.expense.createMany({ data: [
       ...[...Array.from({ length: 30 }, (_, index) => `Merchant ${String(index).padStart(2, "0")}`), "Alpha Bakery", "Beta Cafe"].map((merchant) => ({
@@ -109,6 +129,12 @@ async function main() {
         amountCentavos: 10, date,
       })),
       { expenseGroupId: foreign.id, categoryId: foreign.categories[0].id, title: "Foreign secret", amountCentavos: 99999, date },
+      { expenseGroupId: dashboardBudgeted.id, categoryId: dashboardBudgeted.categories[0].id,
+        title: "Household groceries", merchant: "Local Market", amountCentavos: 1025, date: parseExpenseDate(`${dashboardMonth}-04`) },
+      { expenseGroupId: dashboardBudgeted.id, categoryId: dashboardBudgeted.categories[0].id,
+        title: "Previous month groceries", merchant: "Local Market", amountCentavos: 725, date: parseExpenseDate("2020-03-04") },
+      { expenseGroupId: dashboardUnbudgeted.id, categoryId: dashboardUnbudgeted.categories[0].id,
+        title: "Work groceries", merchant: "Local Market", amountCentavos: 2250, date: parseExpenseDate(`${dashboardMonth}-08`) },
       {
         expenseGroupId: olderHistory.id, categoryId: olderHistory.categories[0].id,
         title: "Older train ticket", amountCentavos: 18500, date: new Date("2020-01-15T00:00:00Z"),
@@ -138,6 +164,7 @@ async function main() {
       largeExport: { publicId: largeExport.publicId },
       foreign: { id: foreign.id, publicId: foreign.publicId },
       olderHistory: { publicId: olderHistory.publicId },
+      dashboard: { month: dashboardMonth, budgeted: dashboardBudgeted.publicId, unbudgeted: dashboardUnbudgeted.publicId },
     };
     const env: NodeJS.ProcessEnv = {
       ...browserEnv, NODE_ENV: "production", DATABASE_URL: fixture.connectionString,

@@ -93,6 +93,9 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
     await page.getByLabel("Email", { exact: true }).fill(data.email);
     await page.getByLabel("Password", { exact: true }).fill(data.password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(page).toHaveURL("/");
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Expense Groups", exact: true }).click();
     await expect(page.getByRole("link", { name: /Browser daily expenses/ })).toBeVisible();
     await page.goto(groupPath(data.foreign.publicId));
     await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
@@ -107,9 +110,72 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
   } finally { await context.close(); }
 });
 
+test("Dashboard selects an owned scope, reconciles reports, and opens group history", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 750 });
+  await page.goto("/");
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups"]);
+  await expect(navigation.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  const filters = page.getByRole("form", { name: "Dashboard filters" });
+  await filters.getByText("Expense groups", { exact: true }).click();
+  await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(1);
+  await expect(page.getByRole("checkbox", { name: "Browser daily expenses", exact: true })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Private foreign group" })).toHaveCount(0);
+
+  await page.getByRole("checkbox", { name: "Browser daily expenses", exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "Dashboard household", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Dashboard work", exact: true }).check();
+  await page.getByLabel("Month", { exact: true }).fill(data.dashboard.month);
+  await page.getByRole("button", { name: "Apply filters" }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.getAll("group").sort()).toEqual([
+    data.dashboard.budgeted, data.dashboard.unbudgeted,
+  ].sort());
+  const spent = page.getByRole("region", { name: "Spent in April 2020" });
+  await expect(spent.getByText("₱32.75", { exact: true })).toBeVisible();
+  await expect(spent.getByText("₱7.25", { exact: true })).toBeVisible();
+  const budget = page.getByRole("region", { name: "Budget progress" });
+  await expect(budget).toContainText("1 of 2 groups budgeted");
+  await expect(budget).toContainText("₱10.25 of ₱200.00");
+  await expect(budget).toContainText("₱22.50 unbudgeted spending");
+  await expect(page.getByText(/Scheduled internet/)).toBeVisible();
+  await expect(page.getByText(/Review storage renewal/)).toBeVisible();
+  const categories = page.getByRole("region", { name: "Spending by category" });
+  await expect(categories.getByRole("link", { name: /Food/ })).toHaveCount(2);
+  await expect(categories.getByRole("link", { name: /Dashboard household/ })).toHaveAttribute("href", /month=2020-04&category=\d+/);
+  const merchants = page.getByRole("region", { name: "Spending by merchant" });
+  await expect(merchants.getByRole("link", { name: /Local Market Dashboard work/ })).toHaveAttribute("href", /month=2020-04&merchant=[a-f0-9]{64}/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  const entry = page.getByRole("region", { name: "Quick expense entry" });
+  await entry.getByLabel("Expense group", { exact: true }).selectOption(data.dashboard.unbudgeted);
+  await expect.poll(() => new URL(page.url()).searchParams.get("entry")).toBe(data.dashboard.unbudgeted);
+  const expense = await newExpense(page);
+  await expense.getByLabel("Title", { exact: true }).fill("Dashboard quick-entry ticket");
+  await expense.getByLabel("Amount (PHP)", { exact: true }).fill("2.50");
+  await expense.getByLabel("Date", { exact: true }).fill(`${data.dashboard.month}-09`);
+  await expense.getByRole("button", { name: "Save expense", exact: true }).click();
+  await expect(expense).not.toBeVisible();
+  await expect(spent.getByText("₱35.25", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Dashboard quick-entry ticket/ })).toBeVisible();
+
+  const recent = page.getByRole("link", { name: /Work groceries/ });
+  await recent.click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe(`/spending/${data.dashboard.unbudgeted}`);
+  await expect(page.getByRole("heading", { name: "Work groceries", exact: true })).toBeVisible();
+  await expect(navigation.getByRole("link", { name: "Expense Groups" })).toHaveAttribute("aria-current", "location");
+
+  await page.goto(`/?month=${data.dashboard.month}&scope=1&group=${data.foreign.publicId}`);
+  await expect(page.getByRole("heading", { name: "No expense groups selected" })).toBeVisible();
+  await filters.getByText("Expense groups", { exact: true }).click();
+  await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await expect(page.getByText("Foreign secret", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Spent in April 2020", exact: true })).toHaveCount(0);
+});
+
 test("phone workflow creates a group/category, preserves a failed draft, retries once, edits and deletes", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
-  await page.goto("/");
+  await page.goto("/expense-groups");
   await page.getByRole("button", { name: /New.*Group/ }).click();
   const groupDialog = page.getByRole("dialog", { name: "New Expense Group" });
   await groupDialog.getByLabel("Name", { exact: true }).fill("Phone workflow");
@@ -171,7 +237,7 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
 
 test("empty expense group guides the first category and expense", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
-  await page.goto("/");
+  await page.goto("/expense-groups");
   await page.getByRole("button", { name: /New.*Group/ }).click();
   const groupDialog = page.getByRole("dialog", { name: "New Expense Group" });
   await groupDialog.getByLabel("Name", { exact: true }).fill("First expense workflow");
@@ -216,7 +282,7 @@ test("empty current month offers older history", async ({ page }) => {
 });
 
 test("an owner can delete an empty group after disabling its bank", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/expense-groups");
   await page.getByRole("button", { name: /New.*Group/ }).click();
   const create = page.getByRole("dialog", { name: "New Expense Group" });
   await create.getByLabel("Name", { exact: true }).fill("Unused bank group");
@@ -241,7 +307,7 @@ test("an owner can delete an empty group after disabling its bank", async ({ pag
   await page.getByRole("button", { name: "Delete Expense Group", exact: true }).click();
   const remove = page.getByRole("dialog", { name: "Delete expense group?" });
   await remove.getByRole("button", { name: "Delete group", exact: true }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/expense-groups");
   await expect(page.getByRole("link", { name: /Browser daily expenses/ })).toBeVisible();
   await expect(groupLink).toHaveCount(0);
 });

@@ -44,6 +44,7 @@ async function saveGroupChange<T extends { success: true }>(change: () => Promis
   try {
     const result = await change();
     revalidatePath("/");
+    revalidatePath("/expense-groups");
     revalidatePath("/spending/[id]", "page");
     return result;
   } catch (error) {

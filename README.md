@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The November 19, 2026 [Overview and connected-finances plan](docs/roadmap.md#planned-global-overview-and-connected-finances) proposes a global home dashboard across selected expense groups. Its first phase uses existing spending, budgets, recurring schedules, and history. Later phases add financial accounts, income/transfers, bills, savings goals, a payday forecast, debt/net worth, and portfolios as their data foundations become available. These are planned capabilities; the current per-group Dashboard remains the implemented reporting view.
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** is the second tab and opens the group list. The [Dashboard and connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances) covers later phases for accounts, income and transfers, bills, goals, forecasts, net worth, and portfolios.
 
 ## Current implementation
 
@@ -23,8 +23,8 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 
 Implemented source includes:
 
-- Expense-group creation, home cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
-- The **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
+- Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
+- Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
@@ -145,7 +145,8 @@ Authenticated pages render per request because their session check uses request 
 | `app/` | Route entry points, root layout, and global styles |
 | `app/(dashboard)/layout.tsx` | Shared navigation for signed-in pages |
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
-| `app/(dashboard)/_home/expense-groups/` | Home expense-group section and its private `_components/` |
+| `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Dashboard route and cross-group reporting feature |
+| `app/(dashboard)/expense-groups/` | Expense Groups list and its private `_components/` |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
@@ -172,7 +173,7 @@ Authenticated pages render per request because their session check uses request 
 | `.github/workflows/ci.yml` | Lint, TypeScript, and test checks |
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
-| `tests/dashboard/` | Monthly spending, comparison periods, and budget ownership tests |
+| `tests/dashboard/` | Cross-group and per-group spending, comparison periods, and budget ownership tests |
 | `tests/db/migrations/public-id.test.ts` | Public UUID backfill, defaults, uniqueness, and preserved records |
 | `tests/db/migrations/` | Tests for PostgreSQL migrations and data preservation |
 | `public/branding/` | Active RedTally header logo and handwritten R coin favicon |
@@ -181,7 +182,7 @@ Authenticated pages render per request because their session check uses request 
 | `docs/data-model.md` | Core model, integrity rules, and preservation strategy |
 | `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
-Application code uses grouped feature routes, private `_home` sections, and `_components` and `_lib` folders. `app/(dashboard)/page.tsx` composes the home section. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.
+Application code uses grouped feature routes, the private Dashboard home feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.
 
 The Prisma schema, migration history, and runtime client live in `server/db/`. Prisma generates its client into the ignored root `generated/` folder. The `@/*` alias resolves from the repository root. Route groups and private folders keep URLs stable as internal files move.
 

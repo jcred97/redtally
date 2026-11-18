@@ -75,6 +75,7 @@ test("expense group switcher preserves keyboard navigation and isolates its dial
 
   await switcher.press("ArrowDown");
   await expect(allGroups).toBeFocused();
+  await expect(allGroups).toHaveAttribute("href", "/expense-groups");
   await expect(current).toHaveAttribute("aria-current", "page");
   await page.keyboard.press("End");
   await expect(create).toBeFocused();

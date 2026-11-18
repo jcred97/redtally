@@ -4,8 +4,8 @@ import { getExpenseGroupOptions, getExpenseGroups } from "@/app/(dashboard)/_lib
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
 import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
 import NewExpenseGroupButton from "@/app/(dashboard)/_components/expense-groups/NewExpenseGroupButton";
-import ExpenseGroupLink from "./_components/ExpenseGroupLink";
-import ExpenseGroupsSkeleton from "./_components/ExpenseGroupsSkeleton";
+import ExpenseGroupLink from "./ExpenseGroupLink";
+import ExpenseGroupsSkeleton from "./ExpenseGroupsSkeleton";
 
 export default function ExpenseGroups() {
   return (

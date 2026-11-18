@@ -65,6 +65,7 @@ type ExpenseHistoryMerchantOption = { value: string; label: string };
 const merchantName = Prisma.sql`NULLIF(btrim(merchant), '')`;
 // Match case variants and keep saved names out of filter URLs.
 const merchantKey = Prisma.sql`encode(sha256(convert_to(lower(${merchantName}), 'UTF8')), 'hex')`;
+export { merchantName as expenseHistoryMerchantName, merchantKey as expenseHistoryMerchantKey };
 
 export class ExpenseGroupAccessError extends Error {}
 

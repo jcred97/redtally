@@ -18,7 +18,7 @@ test("an open dashboard survives a failed session check and clears after sign-ou
   const failedCheck = page.waitForResponse((response) => response.url().endsWith("/api/auth/get-session") && response.status() === 503);
   await page.goto("/");
   await failedCheck;
-  const ownerGroup = page.getByRole("link", { name: /Browser daily expenses/ });
+  const ownerGroup = page.getByRole("region", { name: "Included expense groups" }).getByRole("link", { name: "Browser daily expenses", exact: true });
   await expect(ownerGroup).toBeVisible();
   await page.getByRole("button", { name: "Account menu" }).click();
   await expect(page.getByText(data.email, { exact: true })).toBeVisible();
@@ -40,7 +40,7 @@ test("an open dashboard switches to the current account when the session is rech
   const firstCheck = page.waitForResponse((response) => response.url().endsWith("/api/auth/get-session") && response.ok());
   await page.goto("/");
   await firstCheck;
-  const ownerGroup = page.getByRole("link", { name: /Browser daily expenses/ });
+  const ownerGroup = page.getByRole("region", { name: "Included expense groups" }).getByRole("link", { name: "Browser daily expenses", exact: true });
   await expect(ownerGroup).toBeVisible();
 
   const email = "session-change@example.test";

@@ -56,13 +56,13 @@ Migration `20261115120000_recurring_expenses` adds the schedule and occurrence t
 
 ## Planned financial-model dependencies
 
-Planning update: November 19, 2026. These requirements support the [global Overview roadmap](roadmap.md#planned-global-overview-and-connected-finances); they describe future work, not existing Prisma models or committed migrations.
+These requirements support the [Dashboard and connected-finances roadmap](roadmap.md#dashboard-and-connected-finances). Phase 1 uses the existing expense, budget, and recurring expense models. Later capabilities depend on the additional data described below.
 
 The current `Expense` model records positive PHP outflows. `BankAssignment` configures an institution's payment-method availability within a group; it has no balance and cannot represent several financial accounts at the same bank. Better Auth's `Account` model stores authentication identities and must remain separate from future financial accounts.
 
 | Planned capability | Required model behavior |
 | --- | --- |
-| Global expense Overview | Aggregate only the owner's explicitly included groups and selected date range. Group duplication can copy history; inclusion must be visible. Keep category identity tied to its group and report budget coverage explicitly. |
+| Cross-group expense Dashboard | Aggregate only the owner's included groups and selected date range. Group duplication can copy history, so keep inclusion visible. Keep category identity tied to its group and report budget coverage explicitly. |
 | Financial accounts and transactions | Support multiple accounts per institution, opening balances, income, expenses, linked transfers, and reconciliation. Preserve expense-group organization and define how a financial transaction relates to it before implementing cross-group balances. |
 | Bills and paydays | Separate planned occurrences from confirmed transactions and match them without counting both. Existing recurrence occurrence records prove generation, not payment. |
 | Goals | Allocate portions of real account balances, with funding/withdrawal history and limits against over-allocation. Earmarking is distinct from transferring funds. |

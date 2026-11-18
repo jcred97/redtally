@@ -1,5 +1,11 @@
 import { formatPesoAmount } from "@/app/lib/expenses/money";
-import type { DashboardData } from "../../_lib/dashboard/access";
+
+type SpendingSeries = {
+  month: string;
+  throughDay: string;
+  totalCentavos: number | bigint;
+  dailyCentavos: (number | bigint)[];
+};
 
 const shortMonth = new Intl.DateTimeFormat("en-PH", { month: "short", timeZone: "UTC" });
 const compactPesos = new Intl.NumberFormat("en-PH", { notation: "compact", maximumFractionDigits: 2 });
@@ -15,20 +21,21 @@ function dateRange(month: string, throughDay: string) {
   return `${monthName(month)} 1${day > 1 ? `–${day}` : ""}`;
 }
 
-function stepPath(dailyCentavos: number[], dayCount: number, axisMax: number) {
+function stepPath(dailyCentavos: SpendingSeries["dailyCentavos"], dayCount: number, axisMax: number) {
   // Each step adds that day's expenses at the end of its position on the axis.
   const steps = dailyCentavos.map((amount, index) => {
     const x = (index + 1) * plotWidth / dayCount;
-    const y = plotHeight * (1 - amount / axisMax);
+    const y = plotHeight * (1 - Number(amount) / axisMax);
     return `H${x} V${y}`;
   });
   return `M0 ${plotHeight} ${steps.join(" ")}`;
 }
 
-export default function SpendingTrend({ dashboard }: { dashboard: DashboardData }) {
+export default function SpendingTrend({ dashboard }: { dashboard: SpendingSeries & { comparison: SpendingSeries | null } }) {
   const { month, throughDay, totalCentavos, dailyCentavos, comparison } = dashboard;
   const dayCount = Math.max(dailyCentavos.length, comparison?.dailyCentavos.length ?? 0);
-  const largestTotal = Math.max(totalCentavos, comparison?.totalCentavos ?? 0);
+  // The plot uses numeric coordinates; displayed amounts retain their exact centavos.
+  const largestTotal = Math.max(Number(totalCentavos), Number(comparison?.totalCentavos ?? 0));
   const hasSpending = largestTotal > 0;
   const stepSize = 10 ** Math.max(0, Math.floor(Math.log10(largestTotal / 2)));
   const midpoint = Math.ceil(largestTotal / (2 * stepSize)) * stepSize;

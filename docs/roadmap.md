@@ -1,6 +1,6 @@
 # RedTally roadmap
 
-Planning baseline: October 22, 2026. All unchecked items below are planned work, not implemented capabilities.
+Planning baseline: October 22, 2026. Unchecked items are planned work.
 
 Release update: October 25, 2026. [PR #1](https://github.com/jcred97/redtally/pull/1) merged as `39be226038cb867de9a98fbfb357e013eace4236`; the authentication migration was applied and the matching Vercel production deployment reached ready status. A backup restore was verified, all 25 original business rows were preserved, and the five legacy expense groups remain unclaimed.
 
@@ -61,24 +61,24 @@ The November 11, 2026 browser smoke test used 360 px and 430 px viewports, an is
 - Exported history reconciles with source records, and a backup can be restored successfully.
 - Run lint/build and meaningful automated checks for money handling, validation, and data access as those behaviors are implemented. Exercise the complete workflow on the owner's actual phone.
 
-## Planned: global Overview and connected finances
+## Dashboard and connected finances
 
-Planning update: November 19, 2026. This section records the agreed product direction; all items remain planned. The global Overview is the next product milestone after the outstanding daily-workflow requirements above. It can ship using current expense and budget data before financial accounts or portfolios exist.
+Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases 2 through 4 describe the planned expansion into accounts, forecasting, and investments.
 
 ### Purpose and navigation
 
-Make a user-level **Overview** the signed-in home screen, answering: "Where do I stand, what is coming, and what needs attention?" Keep expense groups and their existing Dashboard tabs as detailed views. Each summary opens the relevant history, budget, account, goal, or portfolio view with its scope preserved.
+**Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups retain their existing Dashboard, Expenses, Recurring, Categories, and Banks views. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 
-### Phase 1: Overview using existing data
+### Phase 1: Dashboard using existing data
 
-- [ ] Show spending for the selected Manila reporting month, with a matched previous-period comparison using the existing dashboard date policy.
-- [ ] Show budget progress for included groups that have a target for that month, with explicit coverage such as "2 of 3 groups budgeted." Compare those targets only with spending in those same groups; show unbudgeted spending separately.
-- [ ] Show upcoming recurring expenses with their scheduled dates, plus schedules needing attention. Label them as scheduled expenses; a generated expense does not establish that a bill was paid.
-- [ ] Show category and merchant breakdowns and recent expenses, with links into matching group history. Preserve group context for categories with identical names.
-- [ ] Let the owner choose which expense groups contribute to Overview and clearly display the active scope. Group duplication copies history, so do not assume all owned groups form a distinct set of real-world spending; do not automatically deduplicate legitimate matching expenses.
-- [ ] Provide month and group filters, quick expense entry, and a route to every included group's existing views.
+- [x] Show spending for the selected Manila reporting month, with a matched previous-period comparison using the existing dashboard date policy.
+- [x] Show budget progress for included groups that have a target for that month, with explicit coverage such as "2 of 3 groups budgeted." Compare those targets only with spending in those same groups and show unbudgeted spending separately.
+- [x] Show upcoming recurring expenses with their scheduled dates, plus schedules needing attention. Scheduled expenses describe expected postings.
+- [x] Show category and merchant breakdowns and recent expenses, with links into matching group history. Preserve group context for categories with identical names.
+- [x] Let the owner choose which expense groups contribute to Dashboard and clearly display the active scope. Dashboard starts with the oldest owned group because duplication can copy an entire history. The reporting month and group selection are kept in the Dashboard URL.
+- [x] Provide month and group filters, quick expense entry, and a route to every included group's existing views.
 
 Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and relevant **Needs attention** items. Place trends, breakdowns, and recent activity underneath. Only show attention items backed by actual state and an action the user can take.
 
@@ -86,7 +86,7 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 
 - [ ] Add balance-bearing financial accounts for cash, banks, e-wallets, credit cards, and loans, allowing multiple named accounts at one institution. Add income, linked transfers, opening balances, and statement reconciliation before presenting cash balances as reliable.
 - [ ] Extend recurring scheduling into a bills and payday timeline with planned, due, overdue, and paid states, reminders, and matching between expected items and actual transactions. Include subscriptions and annual renewals.
-- [ ] Add account balances, income, expenses, and net cash flow to Overview. Internal transfers and credit-card repayments must not count purchases as expenses twice.
+- [ ] Add account balances, income, expenses, and net cash flow to Dashboard. Internal transfers and credit-card repayments must not count purchases as expenses twice.
 - [ ] Add credit-card statement/current balances, minimum payments, due dates, installments, and debt payoff progress.
 
 ### Phase 3: goals, forecasts, and net worth
@@ -100,21 +100,21 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 
 - [ ] Add portfolio value, contributions, withdrawals, returns, and asset allocation once investment transactions, holdings, and dated valuations exist. Balance growth alone is not investment return.
 - [ ] Extend budgets with category limits, optional rollover, payday-based periods, and spending-pace alerts. Category limits and pace alerts can be considered earlier using existing history.
-- [ ] Allow balance privacy controls and reordering/hiding optional dashboard sections. Start with a useful fixed layout; customization can follow the first working Overview.
+- [ ] Allow balance privacy controls and reordering/hiding optional dashboard sections. Customization can follow the first working Dashboard.
 - [ ] Evaluate multi-currency accounts, what-if purchase scenarios, and Philippine-oriented presets such as twice-monthly paydays, e-wallets, installments, and remittances through actual use. These do not imply bank-sync availability.
 
 ### Layout and acceptance criteria
 
-The complete Overview will connect money balances, a payday plan, attention items, monthly performance, upcoming events, goals, investments, and recent activity. Introduce each section only when its data dependency is available.
+The complete Dashboard will connect money balances, a payday plan, attention items, monthly performance, upcoming events, goals, investments, and recent activity. Introduce each section when its data dependency is available.
 
 - Use a single column on phones with actionable information and quick entry near the top. On desktop, place trends and activity beside upcoming obligations and goals. Preserve readable labels, keyboard access, reduced-motion behavior, and usability at 360-430 px without horizontal page scrolling.
 - Clearly label "Balance today," "Spending this month," and "Forecast through next payday" rather than applying one reporting period to every module.
 - Keep budget remaining, available cash, and net worth distinct. Unused credit limits are not assets; goal allocations are not additional assets.
 - Missing or unsupported financial data offers an appropriate next action or an unavailable state, never a fabricated zero. Loading and failed queries must not masquerade as empty financial records.
-- Owner-only totals and drill-downs must agree for the chosen scope and dates. Verify partial budget coverage, duplicated/excluded groups, same-name categories, empty accounts, month boundaries, and failed reads through the normal Overview entry point.
+- Owner-only totals and drill-downs must agree for the chosen scope and dates. Verify partial budget coverage, duplicated/excluded groups, same-name categories, empty accounts, month boundaries, and failed reads through the signed-in Dashboard.
 - Future mixed-currency totals require explicit conversion rates and valuation dates while retaining original-currency amounts. Show data freshness where balances or prices can become stale.
 
-See [planned financial-model dependencies](data-model.md#planned-financial-model-dependencies) for preservation and calculation rules. This plan does not change the current schema or deployment status.
+See [financial-model dependencies](data-model.md#planned-financial-model-dependencies) for preservation and calculation rules. Phase 1 uses the current schema.
 
 ## Later: reliable personal automation
 

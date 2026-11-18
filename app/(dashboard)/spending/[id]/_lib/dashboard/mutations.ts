@@ -24,5 +24,6 @@ async function changeBudget(change: () => Promise<void>): Promise<{ success: tru
   }
 
   revalidatePath("/spending/[id]", "page");
+  revalidatePath("/");
   return { success: true };
 }

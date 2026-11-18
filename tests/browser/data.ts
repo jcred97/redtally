@@ -8,6 +8,7 @@ export type BrowserData = {
   largeExport: { publicId: string };
   foreign: { id: number; publicId: string };
   olderHistory: { publicId: string };
+  dashboard: { month: string; budgeted: string; unbudgeted: string };
 };
 
 export function browserData(): BrowserData {
