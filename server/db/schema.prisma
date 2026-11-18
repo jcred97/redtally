@@ -37,6 +37,7 @@ enum RecurringExpenseStatus {
 
 model ExpenseGroup {
   id                 Int                 @id @default(autoincrement())
+  publicId           String              @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name               String
   categories         Category[]
   budgets            Budget[]

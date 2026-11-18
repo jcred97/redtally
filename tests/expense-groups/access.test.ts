@@ -87,6 +87,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       for (const [access, group] of [[alice, a], [bob, b]] as const) {
         assert.deepEqual(await access.list(), [{
           id: group.id,
+          publicId: group.publicId,
           name: group.name,
           categoryCount: BigInt(1),
           expenseCount: BigInt(1),
@@ -96,8 +97,34 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
     });
 
     await t.test("the group switcher only lists the signed-in user's group IDs and names", async () => {
-      assert.deepEqual(await alice.listForSwitcher(), [{ id: a.id, name: a.name }]);
-      assert.deepEqual(await bob.listForSwitcher(), [{ id: b.id, name: b.name }]);
+      assert.deepEqual(await alice.listForSwitcher(), [{ id: a.id, publicId: a.publicId, name: a.name }]);
+      assert.deepEqual(await bob.listForSwitcher(), [{ id: b.id, publicId: b.publicId, name: b.name }]);
+    });
+
+    await t.test("public and legacy route keys resolve only for the current owner", async () => {
+      for (const [access, own, denied] of [
+        [alice, a, [b, legacy]],
+        [bob, b, [a, legacy]],
+      ] as const) {
+        const expected = { id: own.id, publicId: own.publicId };
+        assert.match(own.publicId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+        assert.deepEqual(await access.resolveRoute(own.publicId), expected);
+        assert.deepEqual(await access.resolveRoute(own.publicId.toUpperCase()), expected);
+        assert.deepEqual(await access.resolveRoute(String(own.id)), expected);
+
+        for (const other of denied) {
+          assert.equal(await access.resolveRoute(other.publicId), null);
+          assert.equal(await access.resolveRoute(String(other.id)), null);
+        }
+      }
+
+      for (const key of [
+        "", "0", "-1", "1.5", "1e0", "0x1", "01", " 1", "1 ", "2147483648",
+        "not-a-uuid", a.publicId.replaceAll("-", ""), ` ${a.publicId}`,
+        "00000000-0000-0000-0000-000000000000", "00000000-0000-4000-8000-000000000000",
+      ]) {
+        assert.equal(await alice.resolveRoute(key), null);
+      }
     });
 
     await t.test("guessed IDs cannot reveal other users or unclaimed groups and expenses", async () => {
@@ -130,6 +157,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       for (const invoke of [
         () => anonymous.list(),
         () => anonymous.listForSwitcher(),
+        () => anonymous.resolveRoute(a.publicId),
+        () => anonymous.resolveRoute(String(a.id)),
+        () => anonymous.resolveRoute("invalid"),
         () => anonymous.getById(a.id),
         () => anonymous.getExpensePageById(a.id, 1),
         () => anonymous.create("Injected"),
@@ -153,11 +183,15 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       const access = createExpenseGroupAccess(client, async () => currentUser);
 
       assert.deepEqual((await access.list()).map((group) => group.id), [a.id]);
+      assert.deepEqual(await access.resolveRoute(a.publicId), { id: a.id, publicId: a.publicId });
 
       currentUser = "bob";
 
       assert.deepEqual((await access.list()).map((group) => group.id), [b.id]);
       assert.equal(await access.getById(a.id), null);
+      assert.equal(await access.resolveRoute(a.publicId), null);
+      assert.equal(await access.resolveRoute(String(a.id)), null);
+      assert.deepEqual(await access.resolveRoute(b.publicId), { id: b.id, publicId: b.publicId });
     });
 
     await t.test("new groups use the server identity and own empty groups can be deleted", async () => {
@@ -227,7 +261,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
 
     await t.test("renaming updates only the owned group and refreshes the switcher label", async () => {
       await alice.rename(a.id, "  Personal budget  ");
-      assert.deepEqual(await alice.listForSwitcher(), [{ id: a.id, name: "Personal budget" }]);
+      assert.deepEqual(await alice.listForSwitcher(), [{ id: a.id, publicId: a.publicId, name: "Personal budget" }]);
       assert.equal((await bob.getById(b.id))?.name, b.name);
       assert.equal((await alice.getExpensePageById(a.id, 1))?.totalExpenses, 1);
     });
@@ -302,8 +336,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         },
       });
 
-      const { id } = await alice.duplicate(source.id);
+      const { id, publicId } = await alice.duplicate(source.id);
       assert.notEqual(id, source.id);
+      assert.notEqual(publicId, source.publicId);
       const copy = await client.expenseGroup.findUniqueOrThrow({
         where: { id },
         include: {
@@ -314,6 +349,8 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         },
       });
       assert.equal(copy.userId, "alice");
+      assert.equal(publicId, copy.publicId);
+      assert.deepEqual(await alice.resolveRoute(publicId), { id, publicId });
       assert.equal(copy.name, "Travel (copy)");
       assert.equal(await bob.getById(id), null);
       assert.equal(copy.expenseSubmissions.length, 0);
@@ -821,6 +858,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(await overview.list(), [
         {
           id: empty.id,
+          publicId: empty.publicId,
           name: empty.name,
           categoryCount: BigInt(0),
           expenseCount: BigInt(0),
@@ -828,6 +866,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         },
         {
           id: populated.id,
+          publicId: populated.publicId,
           name: populated.name,
           categoryCount: BigInt(2),
           expenseCount: BigInt(2),

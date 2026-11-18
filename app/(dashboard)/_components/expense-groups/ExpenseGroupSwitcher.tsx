@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import NewExpenseGroupButton from "./NewExpenseGroupButton";
 
-type ExpenseGroupOption = { id: number; name: string };
+type ExpenseGroupOption = { id: number; publicId: string; name: string };
 
 export default function ExpenseGroupSwitcher({
   currentGroup,
@@ -119,7 +119,7 @@ export default function ExpenseGroupSwitcher({
               return (
                 <li key={group.id}>
                   <Link
-                    href={`/spending/${group.id}${tabSuffix}`}
+                    href={`/spending/${group.publicId}${tabSuffix}`}
                     prefetch={false}
                     aria-current={selected ? "page" : undefined}
                     onNavigate={closeAndFocusTrigger}

@@ -57,7 +57,7 @@ async function ExpenseGroupCards() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {expenseGroups.map((expenseGroup) => (
             <article key={expenseGroup.id} className="relative">
-              <ExpenseGroupLink id={expenseGroup.id}>
+              <ExpenseGroupLink publicId={expenseGroup.publicId}>
                 <div className="group cursor-pointer rounded-xl border border-gray-800 bg-gray-900 p-6 transition-all hover:border-red-500/50 hover:bg-gray-800/80">
                   <h2 className="mb-4 wrap-anywhere pr-10 text-lg leading-tight font-semibold text-white transition-colors group-hover:text-red-400">
                     {expenseGroup.name}

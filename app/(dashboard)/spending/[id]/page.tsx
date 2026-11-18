@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getManilaToday, parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
@@ -29,6 +29,7 @@ import {
   getExpenseHistoryBankOptionsByExpenseGroupId,
   getExpenseHistoryMerchantOptionsByExpenseGroupId,
   getExpensePageByExpenseGroupId,
+  resolveExpenseGroupRoute,
 } from "@/app/(dashboard)/_lib/expense-groups/queries";
 
 // The manual recurring-expense action uses a shorter work budget inside this limit.
@@ -53,9 +54,24 @@ export default async function ExpenseGroupPage({
     view?: string | string[];
   }>;
 }) {
-  const [{ id: rawId }, { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view }] =
+  const [{ id: routeKey }, query] =
     await Promise.all([params, searchParams]);
-  const id = Number(rawId);
+  const routeGroup = await resolveExpenseGroupRoute(routeKey);
+  if (!routeGroup) notFound();
+  if (routeKey !== routeGroup.publicId) {
+    const canonicalQuery = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (Array.isArray(value)) {
+        for (const entry of value) canonicalQuery.append(key, entry);
+      } else if (value !== undefined) {
+        canonicalQuery.append(key, value);
+      }
+    }
+    const suffix = canonicalQuery.size > 0 ? `?${canonicalQuery}` : "";
+    redirect(`/spending/${routeGroup.publicId}${suffix}`);
+  }
+  const id = routeGroup.id;
+  const { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view } = query;
   const showCategories = tab === "categories";
   const showBanks = tab === "banks";
   const showRecurring = tab === "recurring";
@@ -129,7 +145,7 @@ export default async function ExpenseGroupPage({
     notFound();
   }
 
-  const groupPath = `/spending/${expenseGroup.id}`;
+  const groupPath = `/spending/${expenseGroup.publicId}`;
   const expenseTab = grouped ? "?view=grouped" : "";
   const expensesHref = showDashboard && chosenMonth
     ? `${groupPath}?month=${chosenMonth}`
@@ -140,7 +156,7 @@ export default async function ExpenseGroupPage({
   const recurringTab = `?tab=recurring${viewSuffix}`;
   const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
   const tabSuffix = showDashboard ? dashboardTab : showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : expenseTab;
-  const currentGroup = { id: expenseGroup.id, name: expenseGroup.name };
+  const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
 
   function historyViewHref(nextGrouped: boolean) {
@@ -306,6 +322,7 @@ export default async function ExpenseGroupPage({
                 </div>
               ) : (
                 <ExpenseHistory
+                  groupPath={groupPath}
                   expenseGroupId={expenseGroup.id}
                   categories={categoryOptions}
                   bankOptions={bankOptions}
@@ -320,6 +337,7 @@ export default async function ExpenseGroupPage({
           </>
         ) : recurringExpenses ? (
           <RecurringExpenses
+            groupPath={groupPath}
             key={expenseGroup.id}
             expenseGroupId={expenseGroup.id}
             today={today}

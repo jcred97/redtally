@@ -76,7 +76,7 @@ export default function ExpenseGroupSettings({
 
   async function duplicate() {
     const result = await duplicateExpenseGroup(group.id);
-    if ("success" in result) router.push(`/spending/${result.id}${tabSuffix}`);
+    if ("success" in result) router.push(`/spending/${result.publicId}${tabSuffix}`);
     return result;
   }
 

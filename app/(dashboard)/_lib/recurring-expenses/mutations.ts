@@ -12,7 +12,7 @@ export type RunDueExpensesResult = Awaited<ReturnType<typeof access.runDue>> | {
 export async function runDueExpenses(expenseGroupId: number): Promise<RunDueExpensesResult> {
   try {
     const result = await access.runDue(expenseGroupId);
-    revalidatePath(`/spending/${expenseGroupId}`);
+    revalidatePath("/spending/[id]", "page");
     revalidatePath("/");
     return result;
   } catch (error) {
@@ -29,7 +29,7 @@ export async function changeRecurringExpense(
 ): Promise<{ success: true } | { error: string }> {
   try {
     await access.change(expenseGroupId, id, command, formData);
-    revalidatePath(`/spending/${expenseGroupId}`);
+    revalidatePath("/spending/[id]", "page");
     return { success: true };
   } catch (error) {
     if (error instanceof TypeError) return { error: error.message };

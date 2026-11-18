@@ -11,6 +11,7 @@ import GroupedExpenseHistory from "./GroupedExpenseHistory";
 
 type ExpenseHistoryProps = {
   expenseGroupId: number;
+  groupPath: string;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
   expenses: ExpenseHistoryEntry[];
@@ -33,6 +34,7 @@ function expenseDateTime(expense: ExpenseHistoryEntry) {
 
 export default function ExpenseHistory({
   expenseGroupId,
+  groupPath,
   categories,
   bankOptions,
   expenses,
@@ -45,7 +47,7 @@ export default function ExpenseHistory({
     const query = new URLSearchParams(filterQuery);
     if (page > 1) query.set("page", String(page));
     const search = query.size > 0 ? `?${query}` : "";
-    return `/spending/${expenseGroupId}${search}#expense-history-title`;
+    return `${groupPath}${search}#expense-history-title`;
   }
 
   function expenseActions(expense: ExpenseHistoryEntry, menuFocusKey?: string) {

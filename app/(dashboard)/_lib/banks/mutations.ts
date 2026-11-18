@@ -9,8 +9,8 @@ const access = createBankAccess(prisma, requireUserId);
 
 export async function saveBankAssignment(formData: FormData): Promise<{ success: true } | { error: string }> {
   try {
-    const expenseGroupId = await access.save(formData);
-    revalidatePath(`/spending/${expenseGroupId}`);
+    await access.save(formData);
+    revalidatePath("/spending/[id]", "page");
     return { success: true };
   } catch (error) {
     if (error instanceof TypeError) {

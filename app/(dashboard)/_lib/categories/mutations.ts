@@ -14,7 +14,7 @@ export async function createCategory(
   formData: FormData
 ): Promise<CategoryActionState> {
   const expenseGroupId = readId(formData, "expenseGroupId");
-  return saveCategoryChange(expenseGroupId, () =>
+  return saveCategoryChange(() =>
     access.create(expenseGroupId, formData.get("name"))
   );
 }
@@ -25,7 +25,7 @@ export async function updateCategory(
 ): Promise<CategoryActionState> {
   const expenseGroupId = readId(formData, "expenseGroupId");
   const categoryId = readId(formData, "categoryId");
-  return saveCategoryChange(expenseGroupId, () =>
+  return saveCategoryChange(() =>
     access.update(expenseGroupId, categoryId, formData.get("name"))
   );
 }
@@ -36,7 +36,7 @@ export async function deleteCategory(
 ): Promise<CategoryActionState> {
   const expenseGroupId = readId(formData, "expenseGroupId");
   const categoryId = readId(formData, "categoryId");
-  return saveCategoryChange(expenseGroupId, () =>
+  return saveCategoryChange(() =>
     access.delete(expenseGroupId, categoryId)
   );
 }
@@ -47,7 +47,6 @@ function readId(formData: FormData, field: string): number {
 }
 
 async function saveCategoryChange(
-  expenseGroupId: number,
   change: () => Promise<unknown>
 ): Promise<CategoryActionState> {
   try {
@@ -60,7 +59,7 @@ async function saveCategoryChange(
     throw error;
   }
 
-  revalidatePath(`/spending/${expenseGroupId}`);
+  revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
 
   return { success: true };

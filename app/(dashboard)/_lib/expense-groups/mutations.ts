@@ -29,7 +29,7 @@ export async function renameExpenseGroup(id: number, formData: FormData) {
 export async function duplicateExpenseGroup(id: number) {
   return saveGroupChange(async () => {
     const copy = await access.duplicate(id);
-    return { success: true, id: copy.id };
+    return { success: true, id: copy.id, publicId: copy.publicId };
   });
 }
 

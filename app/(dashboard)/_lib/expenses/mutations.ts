@@ -28,7 +28,7 @@ export async function deleteExpense(
     throw error;
   }
 
-  revalidatePath(`/spending/${expenseGroupId}`);
+  revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
 
   return { success: true };
@@ -66,7 +66,7 @@ export async function createExpense(
     throw error;
   }
 
-  revalidatePath(`/spending/${expenseGroupId}`);
+  revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
 
   return { success: true };
@@ -107,7 +107,7 @@ export async function updateExpense(
     throw error;
   }
 
-  revalidatePath(`/spending/${expenseGroupId}`);
+  revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
 
   return { success: true };

@@ -18,6 +18,10 @@ export async function getExpenseGroupById(id: number) {
   return access.getById(id);
 }
 
+export async function resolveExpenseGroupRoute(key: string) {
+  return access.resolveRoute(key);
+}
+
 export async function getExpensePageByExpenseGroupId(
   id: number,
   page: number,

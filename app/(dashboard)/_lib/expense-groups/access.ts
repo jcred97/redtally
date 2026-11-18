@@ -26,6 +26,7 @@ type ExpensePageRow = {
 
 type ExpenseGroupSummary = {
   id: number;
+  publicId: string;
   name: string;
   categoryCount: bigint;
   expenseCount: bigint;
@@ -125,7 +126,7 @@ export function createExpenseGroupAccess(
 
       return db.$queryRaw<ExpenseGroupSummary[]>`
         WITH owned_groups AS (
-          SELECT "id", "name", "createdAt"
+          SELECT "id", "publicId", "name", "createdAt"
           FROM "Spending"
           WHERE "userId" = ${userId}
         ),
@@ -143,7 +144,7 @@ export function createExpenseGroupAccess(
           JOIN owned_groups AS g ON g."id" = e."expenseGroupId"
           GROUP BY e."expenseGroupId"
         )
-        SELECT g."id", g."name",
+        SELECT g."id", g."publicId", g."name",
                COALESCE(c."categoryCount", 0) AS "categoryCount",
                COALESCE(e."expenseCount", 0) AS "expenseCount",
                COALESCE(e."totalCentavos", 0) AS "totalCentavos"
@@ -158,8 +159,25 @@ export function createExpenseGroupAccess(
       const userId = await requireUserId();
       return db.expenseGroup.findMany({
         where: { userId },
-        select: { id: true, name: true },
+        select: { id: true, publicId: true, name: true },
         orderBy: { createdAt: "desc" },
+      });
+    },
+
+    async resolveRoute(key: string) {
+      const userId = await requireUserId();
+      if (/^[1-9]\d{0,9}$/.test(key) && validId(Number(key))) {
+        return db.expenseGroup.findUnique({
+          where: { id: Number(key), userId },
+          select: { id: true, publicId: true },
+        });
+      }
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) {
+        return null;
+      }
+      return db.expenseGroup.findUnique({
+        where: { publicId: key.toLowerCase(), userId },
+        select: { id: true, publicId: true },
       });
     },
 
@@ -409,6 +427,7 @@ export function createExpenseGroupAccess(
           },
           select: {
             id: true,
+            publicId: true,
             bankAssignments: { select: { id: true, bankId: true } },
           },
         });
@@ -455,7 +474,7 @@ export function createExpenseGroupAccess(
           },
           select: { id: true },
         });
-        return { id: copy.id };
+        return { id: copy.id, publicId: copy.publicId };
       }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
     },
 

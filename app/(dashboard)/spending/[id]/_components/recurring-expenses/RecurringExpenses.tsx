@@ -10,7 +10,7 @@ import RunRecurringExpensesButton from "./RunRecurringExpensesButton";
 
 const statusLabels = { ACTIVE: "Active", PAUSED: "Paused", NEEDS_ATTENTION: "Needs attention" };
 
-export default function RecurringExpenses({ rules, ...options }: RecurringExpenseOptions & { rules: RecurringExpenseEntry[] }) {
+export default function RecurringExpenses({ rules, groupPath, ...options }: RecurringExpenseOptions & { rules: RecurringExpenseEntry[]; groupPath: string }) {
   return (
     <section aria-labelledby="recurring-expenses-title">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -23,7 +23,7 @@ export default function RecurringExpenses({ rules, ...options }: RecurringExpens
       {rules.length === 0 ? (
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
           {options.categories.length > 0 ? "No recurring expenses yet." : (
-            <Link href={`/spending/${options.expenseGroupId}?tab=categories`} className="text-red-300 underline underline-offset-4">
+            <Link href={`${groupPath}?tab=categories`} className="text-red-300 underline underline-offset-4">
               Add a category to create a recurring expense.
             </Link>
           )}

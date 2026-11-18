@@ -2,14 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 export default function ExpenseGroupLink({
-  id,
+  publicId,
   children,
 }: {
-  id: number;
+  publicId: string;
   children: ReactNode;
 }) {
   return (
-    <Link href={`/spending/${id}`} className="relative block">
+    <Link href={`/spending/${publicId}`} className="relative block">
       {children}
     </Link>
   );
