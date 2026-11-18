@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import menuStyles from "@/app/components/menus/action-menu.module.css";
 
 type FormDialogProps = {
   triggerLabel: ReactNode;
@@ -203,7 +204,7 @@ export default function FormDialog({
 
   if (triggerVariant === "menu") {
     triggerClass =
-      "flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-200 hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400";
+      `${menuStyles.item} flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left text-sm font-medium text-gray-200`;
   }
 
   return (

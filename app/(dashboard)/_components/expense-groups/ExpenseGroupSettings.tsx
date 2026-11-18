@@ -8,9 +8,12 @@ import {
   renameExpenseGroup,
 } from "@/app/(dashboard)/_lib/expense-groups/mutations";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import Select from "@/app/components/forms/Select";
+import styles from "@/app/components/menus/action-menu.module.css";
+import { useActionMenuKeyboard } from "@/app/components/menus/useActionMenuKeyboard";
 
 const menuItemClass =
-  "flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400";
+  `${styles.item} flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left text-sm font-medium`;
 
 const iconPaths = {
   settings: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2-5h4l.5 2.3 1.8 1 2.2-.7 2 3.4-1.7 1.6v2.8l1.7 1.6-2 3.4-2.2-.7-1.8 1-.5 2.3h-4l-.5-2.3-1.8-1-2.2.7-2-3.4 1.7-1.6v-2.8L3.5 9l2-3.4 2.2.7 1.8-1L10 3Z",
@@ -54,8 +57,10 @@ export default function ExpenseGroupSettings({
   const currencyId = useId();
   const settingsRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const currencyRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
+  const handleMenuKeyDown = useActionMenuKeyboard({ open, setOpen, triggerRef, panelRef });
 
   useEffect(() => {
     if (!open) return;
@@ -99,13 +104,7 @@ export default function ExpenseGroupSettings({
       onBlur={(event) => {
         if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) closeMenu();
       }}
-      onKeyDown={(event) => {
-        if (open && event.key === "Escape" && event.currentTarget.contains(event.target as Node)) {
-          event.stopPropagation();
-          closeMenu();
-          triggerRef.current?.focus();
-        }
-      }}
+      onKeyDown={handleMenuKeyDown}
     >
       <button
         id={settingsId}
@@ -115,7 +114,7 @@ export default function ExpenseGroupSettings({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(!open)}
-        className="flex min-h-10 min-w-10 cursor-pointer items-center justify-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+        className={`${styles.trigger} flex min-h-10 min-w-10 cursor-pointer items-center justify-center gap-2 rounded-md px-2 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800 hover:text-white`}
       >
         <SettingsIcon name="settings" />
         {!onGroupList && "Settings"}
@@ -123,8 +122,9 @@ export default function ExpenseGroupSettings({
 
       <div
         id={panelId}
+        ref={panelRef}
         hidden={!open}
-        className="absolute top-full right-0 z-10 mt-2 w-60 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-gray-800 bg-gray-900 py-1 text-gray-200 shadow-xl"
+        className={`${styles.panel} absolute top-full right-0 z-10 mt-2 w-60 max-w-[calc(100vw-3rem)] p-1 text-gray-200`}
       >
         <FormDialog
           triggerLabel={
@@ -199,7 +199,7 @@ export default function ExpenseGroupSettings({
               Delete Expense Group
             </>
           }
-          triggerClassName={`${menuItemClass} text-red-400 hover:bg-red-500/10`}
+          triggerClassName={`${menuItemClass} text-red-400`}
           destructive
           returnFocusId={settingsId}
           title="Delete expense group?"
@@ -234,15 +234,17 @@ export default function ExpenseGroupSettings({
               <SettingsIcon name="close" />
             </button>
           </div>
-          <label className="mt-6 block text-sm font-medium text-gray-300">
+          <label htmlFor={`${currencyId}-field`} className="mt-6 block text-sm font-medium text-gray-300">
             Expense Group Currency
-            <select
-              disabled
-              className="mt-2 w-full cursor-not-allowed rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-gray-300 disabled:opacity-70"
-            >
-              <option>PHP – Philippine peso</option>
-            </select>
           </label>
+          <Select
+            id={`${currencyId}-field`}
+            value="PHP"
+            options={[{ value: "PHP", label: "PHP – Philippine peso" }]}
+            disabled
+            aria-describedby={`${currencyId}-status`}
+            className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-gray-300 disabled:cursor-not-allowed disabled:opacity-70"
+          />
           <p id={`${currencyId}-status`} className="mt-3 text-sm text-gray-400">
             Currency changes are still in development.
           </p>

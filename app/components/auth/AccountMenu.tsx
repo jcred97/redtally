@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { authClient } from "@/app/lib/auth/client";
 import LoadingScreen from "@/app/components/feedback/LoadingScreen";
+import styles from "@/app/components/menus/action-menu.module.css";
+import { useActionMenuKeyboard } from "@/app/components/menus/useActionMenuKeyboard";
 
 export default function AccountMenu({ name, email }: { name: string; email: string }) {
   const router = useRouter();
   const panelId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const signOutRef = useRef<HTMLButtonElement>(null);
   const submitting = useRef(false);
@@ -17,6 +20,7 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
   const [redirecting, startNavigation] = useTransition();
   const [error, setError] = useState("");
   const pending = authPending || redirecting;
+  const handleMenuKey = useActionMenuKeyboard({ open, setOpen: changeOpen, triggerRef, panelRef });
 
   const displayName = name.trim();
   const nameParts = displayName.split(/\s+/);
@@ -41,6 +45,11 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
   useEffect(() => {
     if (open && !pending && error) signOutRef.current?.focus();
   }, [open, pending, error]);
+
+  function changeOpen(nextOpen: boolean) {
+    if (nextOpen) setError("");
+    setOpen(nextOpen);
+  }
 
   async function signOut() {
     if (submitting.current || pending) return;
@@ -82,12 +91,7 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
             setOpen(false);
           }
         }}
-        onKeyDown={(event) => {
-          if (event.key !== "Escape" || !open || pending) return;
-          event.stopPropagation();
-          setOpen(false);
-          triggerRef.current?.focus();
-        }}
+        onKeyDown={pending ? undefined : handleMenuKey}
       >
         <button
           ref={triggerRef}
@@ -95,19 +99,17 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
           aria-label="Account menu"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => {
-            setError("");
-            setOpen(!open);
-          }}
-          className="flex size-10 cursor-pointer items-center justify-center rounded-full bg-red-600 text-sm font-semibold text-white transition-colors hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+          onClick={() => changeOpen(!open)}
+          className={`${styles.trigger} flex size-10 cursor-pointer items-center justify-center rounded-full bg-red-600 text-sm font-semibold text-white transition-colors hover:bg-red-500`}
         >
           {initials}
         </button>
 
         <div
+          ref={panelRef}
           id={panelId}
           hidden={!open}
-          className="absolute top-full right-0 z-20 mt-2 w-64 max-w-[calc(100vw-3rem)] overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-lg"
+          className={`${styles.panel} absolute top-full right-0 z-20 mt-2 w-64 max-w-[calc(100vw-3rem)] overflow-hidden`}
         >
           <div className="border-b border-gray-800 px-4 py-3">
             <p className="truncate text-sm font-semibold text-white" title={displayName || email}>
@@ -125,7 +127,7 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
               type="button"
               onClick={signOut}
               disabled={pending}
-              className="w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-800 hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 disabled:opacity-60"
+              className={`${styles.item} w-full cursor-pointer px-3 py-2 text-left text-sm text-gray-300 transition-colors disabled:opacity-60`}
             >
               {pending ? "Signing out..." : "Sign out"}
             </button>

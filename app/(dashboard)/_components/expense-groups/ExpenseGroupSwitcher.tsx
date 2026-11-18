@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import styles from "@/app/components/menus/action-menu.module.css";
+import { useActionMenuKeyboard } from "@/app/components/menus/useActionMenuKeyboard";
 import NewExpenseGroupButton from "./NewExpenseGroupButton";
 
 type ExpenseGroupOption = { id: number; publicId: string; name: string };
@@ -18,7 +20,9 @@ export default function ExpenseGroupSwitcher({
   const panelId = useId();
   const switcherRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const handleMenuKeyDown = useActionMenuKeyboard({ open, setOpen, triggerRef, panelRef });
   const onGroupList = currentGroup === undefined;
   const title = currentGroup?.name ?? "All Expense Groups";
 
@@ -55,12 +59,7 @@ export default function ExpenseGroupSwitcher({
           setOpen(false);
         }
       }}
-      onKeyDown={(event) => {
-        if (open && event.key === "Escape" && event.currentTarget.contains(event.target as Node)) {
-          event.stopPropagation();
-          closeAndFocusTrigger();
-        }
-      }}
+      onKeyDown={handleMenuKeyDown}
     >
       <h1
         id={onGroupList ? "expense-groups-title" : "expense-group-title"}
@@ -74,7 +73,7 @@ export default function ExpenseGroupSwitcher({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen(!open)}
-          className="inline-flex max-w-full cursor-pointer items-center gap-2 rounded-sm text-left hover:text-gray-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-400"
+          className={`${styles.trigger} inline-flex max-w-full cursor-pointer items-center gap-2 rounded-sm text-left hover:text-gray-200`}
         >
           <span className="min-w-0 wrap-anywhere">{title}</span>
           <svg
@@ -90,8 +89,9 @@ export default function ExpenseGroupSwitcher({
 
       <div
         id={panelId}
+        ref={panelRef}
         hidden={!open}
-        className="absolute top-full left-0 z-10 mt-2 w-64 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg border border-gray-800 bg-gray-900 text-gray-200 shadow-xl"
+        className={`${styles.panel} absolute top-full left-0 z-10 mt-2 w-64 max-w-[calc(100vw-3rem)] p-1 text-gray-200`}
       >
         <nav aria-label="Switch expense group">
           <Link
@@ -101,7 +101,7 @@ export default function ExpenseGroupSwitcher({
               if (onGroupList) event.preventDefault();
               closeAndFocusTrigger();
             }}
-            className={`flex items-start gap-2 px-4 py-3 text-sm hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${onGroupList ? "bg-red-500/15 font-semibold" : ""}`}
+            className={`${styles.item} flex items-start gap-2 px-4 py-3 text-sm ${onGroupList ? "bg-red-500/15 font-semibold text-red-300" : ""}`}
           >
             <span aria-hidden="true" className="w-4 shrink-0 text-red-400">
               {onGroupList && "✓"}
@@ -123,7 +123,7 @@ export default function ExpenseGroupSwitcher({
                     prefetch={false}
                     aria-current={selected ? "page" : undefined}
                     onNavigate={closeAndFocusTrigger}
-                    className={`flex items-start gap-2 px-4 py-2.5 text-sm hover:bg-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${selected ? "bg-red-500/15 font-semibold" : ""}`}
+                    className={`${styles.item} flex items-start gap-2 px-4 py-2.5 text-sm ${selected ? "bg-red-500/15 font-semibold text-red-300" : ""}`}
                   >
                     <span aria-hidden="true" className="w-4 shrink-0 text-red-400">
                       {selected && "✓"}

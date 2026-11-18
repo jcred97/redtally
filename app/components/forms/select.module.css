@@ -1,0 +1,68 @@
+.trigger {
+  position: relative;
+  padding-inline-end: 2.5rem;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
+.trigger:focus-visible,
+.trigger[aria-expanded="true"] {
+  outline: 2px solid var(--color-red-400);
+  outline-offset: 2px;
+}
+
+.trigger:disabled { cursor: not-allowed; }
+.trigger[aria-invalid="true"] { border-color: var(--color-red-400); }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.menu {
+  composes: panel from "../menus/action-menu.module.css";
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 0.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: white;
+  font-size: 0.875rem;
+}
+
+.option {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.25rem;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.option > :first-child { min-width: 0; }
+.option[aria-selected="true"] { color: var(--color-red-300); }
+.option[data-active="true"] {
+  background: var(--color-gray-800);
+  outline: 1px solid var(--color-red-400);
+  outline-offset: -1px;
+}
+.option[aria-disabled="true"] { color: var(--color-gray-400); cursor: not-allowed; }
+
+@media (forced-colors: active) {
+  .trigger { background-image: none; }
+  .option[data-active="true"] { outline-color: Highlight; }
+  .option[aria-selected="true"] { color: Highlight; }
+  .option[aria-disabled="true"] { color: GrayText; }
+}

@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import menuStyles from "@/app/components/menus/action-menu.module.css";
 import DateInput from "@/app/components/forms/DateInput";
 import Select from "@/app/components/forms/Select";
 import {
@@ -166,7 +167,7 @@ export default function ExpenseFormDialog({
         triggerAriaLabel={expense ? `Edit expense: ${expense.title}` : undefined}
         triggerFocusKey={menuFocusKey ?? (expense ? `expense-${expense.id}` : undefined)}
         triggerVariant={expense ? "secondary" : "primary"}
-        triggerClassName={menuFocusKey ? "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-red-400" : undefined}
+        triggerClassName={menuFocusKey ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm` : undefined}
         returnFocusId={menuFocusKey ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
         dialogSize="wide"
@@ -235,15 +236,14 @@ export default function ExpenseFormDialog({
                 id={`${fieldId}-category`}
                 name="categoryId"
                 value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
+                onChange={setCategoryId}
                 required
                 className={inputClass}
-              >
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </Select>
+                options={[
+                  { value: "", label: "Select a category" },
+                  ...categories.map((category) => ({ value: String(category.id), label: category.name })),
+                ]}
+              />
             </div>
 
             <div className="min-w-0">
@@ -278,14 +278,13 @@ export default function ExpenseFormDialog({
                 id={`${fieldId}-payment-method`}
                 name="paymentMethod"
                 value={paymentMethod}
-                onChange={(event) => changePaymentMethod(event.target.value as PaymentMethod | "")}
+                onChange={(value) => changePaymentMethod(value as PaymentMethod | "")}
                 className={inputClass}
-              >
-                <option value="">No payment method</option>
-                {Object.entries(paymentMethodLabels).map(([method, label]) => (
-                  <option key={method} value={method}>{label}</option>
-                ))}
-              </Select>
+                options={[
+                  { value: "", label: "No payment method" },
+                  ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
+                ]}
+              />
             </div>
             <div className={paymentRowClass}>
               <div className={expense ? undefined : "flex flex-wrap items-baseline justify-between gap-x-2"}>
@@ -298,18 +297,16 @@ export default function ExpenseFormDialog({
                 id={`${fieldId}-bank`}
                 name="bankAssignmentId"
                 value={bankAssignmentId}
-                onChange={(event) => setBankAssignmentId(event.target.value)}
+                onChange={setBankAssignmentId}
                 disabled={!canSelectBank}
                 aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
                 className={inputClass}
-                displayValue={bankLabel}
-              >
-                <option value="">No bank</option>
-                {showUnavailableBank && <option value={bankAssignmentId} disabled>{bankLabel}</option>}
-                {eligibleBanks.map((bank) => (
-                  <option key={bank.id} value={bank.id}>{bank.name}</option>
-                ))}
-              </Select>
+                options={[
+                  { value: "", label: "No bank" },
+                  ...(showUnavailableBank ? [{ value: bankAssignmentId, label: bankLabel, disabled: true }] : []),
+                  ...eligibleBanks.map((bank) => ({ value: String(bank.id), label: bank.name })),
+                ]}
+              />
               {expense && bankHelp && <p id={`${fieldId}-bank-help`} className="col-start-2 mt-1 text-xs text-gray-400">{bankHelp}</p>}
             </div>
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (

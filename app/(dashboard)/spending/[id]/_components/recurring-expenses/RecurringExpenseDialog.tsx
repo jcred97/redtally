@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import { formatPesoInput } from "@/app/lib/expenses/money";
@@ -23,6 +23,8 @@ const inputClass = "mt-1.5 w-full min-w-0 rounded-lg border border-gray-700 bg-g
 export default function RecurringExpenseDialog({
   expenseGroupId, categories, banks, today, rule,
 }: RecurringExpenseOptions & { rule?: RecurringExpenseEntry }) {
+  const fieldId = useId();
+  const bankFieldId = `${fieldId}-bank`;
   const [method, setMethod] = useState<PaymentMethod | "">(rule?.paymentMethod ?? "");
   const [bankId, setBankId] = useState(rule?.bankAssignmentId?.toString() ?? "");
   const eligibleBanks = banks.filter((bank) => bank.paymentMethods.some((value) => value === method));
@@ -63,21 +65,19 @@ export default function RecurringExpenseDialog({
         <input name="amount" type="text" inputMode="decimal" required maxLength={20}
           defaultValue={rule ? formatPesoInput(rule.amountCentavos) : undefined} className={inputClass} />
       </label>
-      <label className="block text-sm text-gray-300">
-        Category
-        <Select name="categoryId" required defaultValue={rule?.categoryId ?? ""} className={inputClass}>
-          <option value="">Select a category</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </Select>
-      </label>
-      <label className="block text-sm text-gray-300">
-        Frequency
-        <Select name="frequency" defaultValue={rule?.frequency ?? "MONTHLY"} className={inputClass}>
-          {recurrenceFrequencies.map((frequency) => (
-            <option key={frequency} value={frequency}>{recurrenceFrequencyLabels[frequency]}</option>
-          ))}
-        </Select>
-      </label>
+      <div className="text-sm text-gray-300">
+        <label htmlFor={`${fieldId}-category`}>Category</label>
+        <Select id={`${fieldId}-category`} name="categoryId" required defaultValue={rule?.categoryId ?? ""} className={inputClass}
+          options={[
+            { value: "", label: "Select a category" },
+            ...categories.map((category) => ({ value: String(category.id), label: category.name })),
+          ]} />
+      </div>
+      <div className="text-sm text-gray-300">
+        <label htmlFor={`${fieldId}-frequency`}>Frequency</label>
+        <Select id={`${fieldId}-frequency`} name="frequency" defaultValue={rule?.frequency ?? "MONTHLY"} className={inputClass}
+          options={recurrenceFrequencies.map((value) => ({ value, label: recurrenceFrequencyLabels[value] }))} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block min-w-0 text-sm text-gray-300">
           Start date
@@ -90,24 +90,27 @@ export default function RecurringExpenseDialog({
             className={inputClass} />
         </label>
       </div>
-      <label className="block text-sm text-gray-300">
-        Payment method
-        <Select name="paymentMethod" value={method} onChange={(event) => changeMethod(event.target.value as PaymentMethod | "")}
-          className={inputClass}>
-          <option value="">No payment method</option>
-          {Object.entries(paymentMethodLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </Select>
-      </label>
+      <div className="text-sm text-gray-300">
+        <label htmlFor={`${fieldId}-payment-method`}>Payment method</label>
+        <Select id={`${fieldId}-payment-method`} name="paymentMethod" value={method}
+          onChange={(value) => changeMethod(value as PaymentMethod | "")} className={inputClass}
+          options={[
+            { value: "", label: "No payment method" },
+            ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
+          ]} />
+      </div>
       {(eligibleBanks.length > 0 || unavailableBank) && (
-        <label className="block text-sm text-gray-300">
-          Bank (optional)
-          <Select name="bankAssignmentId" value={bankId} onChange={(event) => setBankId(event.target.value)} className={inputClass}>
-            <option value="">No bank</option>
-            {unavailableBank && <option value={bankId}>{rule?.bankAssignment?.bank.name} (unavailable)</option>}
-            {eligibleBanks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
-          </Select>
-          {unavailableBank && <span className="mt-1 block text-xs text-gray-400">Choose an available bank or select No bank.</span>}
-        </label>
+        <div className="text-sm text-gray-300">
+          <label htmlFor={bankFieldId}>Bank (optional)</label>
+          <Select id={bankFieldId} name="bankAssignmentId" value={bankId} onChange={setBankId} className={inputClass}
+            aria-describedby={unavailableBank ? `${bankFieldId}-help` : undefined}
+            options={[
+              { value: "", label: "No bank" },
+              ...(unavailableBank ? [{ value: bankId, label: `${rule?.bankAssignment?.bank.name} (unavailable)`, disabled: true }] : []),
+              ...eligibleBanks.map((bank) => ({ value: String(bank.id), label: bank.name })),
+            ]} />
+          {unavailableBank && <span id={`${bankFieldId}-help`} className="mt-1 block text-xs text-gray-400">Choose an available bank or select No bank.</span>}
+        </div>
       )}
     </FormDialog>
   );

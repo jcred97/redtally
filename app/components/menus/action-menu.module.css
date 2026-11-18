@@ -1,0 +1,26 @@
+.panel {
+  border: 1px solid var(--color-gray-700);
+  border-radius: 0.5rem;
+  background: var(--color-gray-900);
+  box-shadow: 0 8px 24px #0006;
+}
+
+.trigger:focus-visible,
+.trigger[aria-expanded="true"] {
+  outline: 2px solid var(--color-red-400);
+  outline-offset: 2px;
+}
+
+.item {
+  border-radius: 0.25rem;
+}
+
+.item:where(:not(:disabled):hover, :focus-visible) {
+  background-color: var(--color-gray-800);
+  outline: 1px solid var(--color-red-400);
+  outline-offset: -1px;
+}
+
+@media (forced-colors: active) {
+  .item:focus-visible { outline-color: Highlight; }
+}

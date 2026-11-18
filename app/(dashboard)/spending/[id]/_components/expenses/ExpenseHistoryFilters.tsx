@@ -26,7 +26,7 @@ type ExpenseHistoryFiltersProps = {
   grouped: boolean;
 };
 
-const fieldClass = "mt-1 block h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
+const fieldClass = "mt-1 block min-h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
 
 export default function ExpenseHistoryFilters({
   expenseGroupId,
@@ -61,18 +61,20 @@ export default function ExpenseHistoryFilters({
       {through && <input type="hidden" name="through" value={through} />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
       <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} />
-      <label className="min-w-0 text-sm text-gray-300">
-        Category
-        <Select name="category" defaultValue={categoryId ?? ""} className={fieldClass}>
-          <option value="">All categories</option>
-          {categoryUnavailable && <option value={categoryId}>Unavailable category</option>}
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </Select>
-      </label>
+      <div className="min-w-0 text-sm text-gray-300">
+        <label htmlFor="expense-filter-category">Category</label>
+        <Select
+          id="expense-filter-category"
+          name="category"
+          defaultValue={categoryId ?? ""}
+          className={fieldClass}
+          options={[
+            { value: "", label: "All categories" },
+            ...(categoryUnavailable ? [{ value: String(categoryId), label: "Unavailable category" }] : []),
+            ...categories.map(({ id, name }) => ({ value: String(id), label: name })),
+          ]}
+        />
+      </div>
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-payment-method">Payment method</label>
         <Select
@@ -80,22 +82,25 @@ export default function ExpenseHistoryFilters({
           name="paymentMethod"
           defaultValue={paymentMethod ?? ""}
           className={fieldClass}
-        >
-          <option value="">All payment methods</option>
-          {Object.entries(paymentMethodLabels).map(([method, label]) => (
-            <option key={method} value={method}>{label}</option>
-          ))}
-        </Select>
+          options={[
+            { value: "", label: "All payment methods" },
+            ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
+          ]}
+        />
       </div>
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-bank">Bank</label>
-        <Select id="expense-filter-bank" name="bank" defaultValue={bank ?? ""} className={fieldClass}>
-          <option value="">All banks</option>
-          {bankUnavailable && <option value={bank}>Unavailable bank</option>}
-          {banks.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </Select>
+        <Select
+          id="expense-filter-bank"
+          name="bank"
+          defaultValue={bank ?? ""}
+          className={fieldClass}
+          options={[
+            { value: "", label: "All banks" },
+            ...(bankUnavailable ? [{ value: bank, label: "Unavailable bank" }] : []),
+            ...banks,
+          ]}
+        />
       </div>
       <MerchantFilter
         key={`${expenseGroupId}-${merchant ?? ""}`}

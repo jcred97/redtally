@@ -1,6 +1,7 @@
 "use client";
 
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import menuStyles from "@/app/components/menus/action-menu.module.css";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { deleteExpense } from "@/app/(dashboard)/_lib/expenses/mutations";
 
@@ -25,7 +26,7 @@ export default function DeleteExpenseButton({
       triggerAriaLabel={`Delete expense: ${expense.title}`}
       triggerFocusKey={menuFocusKey ?? `delete-expense-${expense.id}`}
       triggerVariant="danger"
-      triggerClassName={menuFocusKey ? "w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-red-400" : undefined}
+      triggerClassName={menuFocusKey ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm text-red-400` : undefined}
       destructive
       returnFocusId="expense-group-title"
       title="Delete expense?"

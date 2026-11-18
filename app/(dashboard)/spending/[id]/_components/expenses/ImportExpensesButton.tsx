@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import Select from "@/app/components/forms/Select";
 import {
   previewExpenseImport,
   saveExpenseImport,
@@ -110,6 +111,10 @@ export default function ImportExpensesButton({
   const sheet = sheets[sheetIndex];
   const pdf = sheet?.pdf;
   const headers = sheet?.rows[0]?.cells ?? [];
+  const columnOptions = headers.map((heading, index) => ({
+    value: String(index),
+    label: heading.trim() ? `${displayCell(heading)} (column ${index + 1})` : `Column ${index + 1}`,
+  }));
   const rowCount = Math.max(0, (sheet?.rows.length ?? 0) - 1);
   const mappedColumns = fields.map(({ key }) => columns[key]).filter((column) => column !== "");
   const hasMapping = fields.every(({ key }) => key === "merchant" || columns[key] !== "");
@@ -270,12 +275,16 @@ export default function ImportExpensesButton({
         </div>
 
         {sheets.length > 1 && (
-          <label className="block text-sm text-gray-300">
-            Worksheet
-            <select value={sheetIndex} onChange={(event) => changeSheet(Number(event.target.value))} className={selectClass}>
-              {sheets.map(({ name }, index) => <option key={index} value={index}>{name}</option>)}
-            </select>
-          </label>
+          <div>
+            <label htmlFor={`${fieldId}-worksheet`} className="block text-sm text-gray-300">Worksheet</label>
+            <Select
+              id={`${fieldId}-worksheet`}
+              value={sheetIndex}
+              onChange={(value) => changeSheet(Number(value))}
+              className={selectClass}
+              options={sheets.map(({ name }, index) => ({ value: String(index), label: name }))}
+            />
+          </div>
         )}
 
         {sheet && (rowCount === 0 || rowCount > MAX_IMPORT_ROWS) && (
@@ -304,24 +313,22 @@ export default function ImportExpensesButton({
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {fields.map(({ key, label }) => (
-                  <label key={key} className="block min-w-0 text-sm text-gray-300">
-                    {label} column
-                    <select
+                  <div key={key} className="min-w-0">
+                    <label htmlFor={`${fieldId}-${key}`} className="block text-sm text-gray-300">{label} column</label>
+                    <Select
+                      id={`${fieldId}-${key}`}
                       value={columns[key]}
-                      onChange={(event) => {
-                        setColumns({ ...columns, [key]: event.target.value });
+                      onChange={(value) => {
+                        setColumns({ ...columns, [key]: value });
                         clearPreview();
                       }}
                       className={selectClass}
-                    >
-                      <option value="">{key === "merchant" ? "No merchant column" : "Choose a column"}</option>
-                      {headers.map((heading, index) => (
-                        <option key={index} value={index}>
-                          {heading.trim() ? `${displayCell(heading)} (column ${index + 1})` : `Column ${index + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      options={[
+                        { value: "", label: key === "merchant" ? "No merchant column" : "Choose a column" },
+                        ...columnOptions,
+                      ]}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -329,35 +336,39 @@ export default function ImportExpensesButton({
               <p role="alert" className="text-sm text-red-400">Choose a different column for each expense field.</p>
             )}
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block min-w-0 text-sm text-gray-300">
-                Date format
-                <select
+              <div className="min-w-0">
+                <label htmlFor={`${fieldId}-date-format`} className="block text-sm text-gray-300">Date format</label>
+                <Select
+                  id={`${fieldId}-date-format`}
                   value={dateOrder}
-                  onChange={(event) => {
-                    setDateOrder(event.target.value as DateOrder);
+                  onChange={(value) => {
+                    setDateOrder(value as DateOrder);
                     clearPreview();
                   }}
                   className={selectClass}
-                >
-                  <option value="">Automatic (flag ambiguous dates)</option>
-                  <option value="mdy">Month / day / year</option>
-                  <option value="dmy">Day / month / year</option>
-                </select>
-              </label>
-              <label className="block min-w-0 text-sm text-gray-300">
-                Category for selected expenses
-                <select
+                  options={[
+                    { value: "", label: "Automatic (flag ambiguous dates)" },
+                    { value: "mdy", label: "Month / day / year" },
+                    { value: "dmy", label: "Day / month / year" },
+                  ]}
+                />
+              </div>
+              <div className="min-w-0">
+                <label htmlFor={`${fieldId}-category`} className="block text-sm text-gray-300">Category for selected expenses</label>
+                <Select
+                  id={`${fieldId}-category`}
                   value={categoryId}
-                  onChange={(event) => {
-                    setCategoryId(event.target.value);
+                  onChange={(value) => {
+                    setCategoryId(value);
                     setError("");
                   }}
                   className={selectClass}
-                >
-                  <option value="">Choose a category</option>
-                  {categories.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
-                </select>
-              </label>
+                  options={[
+                    { value: "", label: "Choose a category" },
+                    ...categories.map(({ id, name }) => ({ value: String(id), label: name })),
+                  ]}
+                />
+              </div>
             </div>
           </>
         )}

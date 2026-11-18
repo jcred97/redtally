@@ -172,9 +172,13 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
 test("merchant search debounces input and discards a stale server response", async ({ page }) => {
   await page.goto(groupPath(data.merchants.publicId));
   const search = page.getByRole("searchbox", { name: "Search merchants", exact: true });
-  const merchant = page.getByLabel("Merchant", { exact: true });
+  const merchant = page.getByRole("combobox", { name: "Merchant", exact: true });
+  const merchantOptions = page.getByRole("listbox").getByRole("option");
+  const merchantOption = (name: string) => page.getByRole("listbox").getByRole("option", { name, exact: true });
   await search.fill("Merchant 29");
-  await expect(merchant.locator("option")).toHaveText(["All merchants", "No merchant", "Merchant 29"]);
+  await merchant.click();
+  await expect(merchantOption("Merchant 29")).toBeVisible();
+  await expect(merchantOptions).toHaveCount(3);
   await page.clock.install();
   const alphaReady = deferred();
   const releaseAlpha = deferred();
@@ -210,10 +214,13 @@ test("merchant search debounces input and discards a stale server response", asy
     await page.clock.runFor(300);
     releaseAlpha.resolve();
     await betaReady.promise;
-    await expect(merchant.locator("option")).toHaveText(["All merchants", "No merchant", "Merchant 29"]);
+    await merchant.click();
+    await expect(merchantOption("Merchant 29")).toBeVisible();
+    await expect(merchantOptions).toHaveCount(3);
     releaseBeta.resolve();
-    await expect(merchant.locator("option")).toHaveText(["All merchants", "No merchant", "Beta Cafe"]);
-    await merchant.selectOption({ label: "Beta Cafe" });
+    await expect(merchantOption("Beta Cafe")).toBeVisible();
+    await expect(merchantOptions).toHaveCount(3);
+    await merchantOption("Beta Cafe").click();
     await page.getByRole("button", { name: "Apply filters", exact: true }).click();
     await expect(page).toHaveURL(/merchant=[a-f0-9]{64}/);
     expect(new URL(page.url()).searchParams.has("search")).toBe(false);
@@ -234,9 +241,10 @@ test("CSV merchant mapping survives an uncertain save and an idempotent retry", 
     name: "merchant-import.csv", mimeType: "text/csv",
     buffer: Buffer.from("Date,Description,Amount,Merchant\n2026-11-18,Imported lunch,0.10,Import Cafe\n2026-11-18,Imported lunch,0.10,Other Cafe\n"),
   });
-  await expect(dialog.getByRole("combobox", { name: "Description column", exact: true })).toHaveValue("1");
-  await expect(dialog.getByRole("combobox", { name: "Merchant (optional) column", exact: true })).toHaveValue("3");
-  await dialog.getByRole("combobox", { name: "Category for selected expenses", exact: true }).selectOption(String(data.group.categoryId));
+  await expect(dialog.getByRole("combobox", { name: "Description column", exact: true })).toHaveText("Description (column 2)");
+  await expect(dialog.getByRole("combobox", { name: "Merchant (optional) column", exact: true })).toHaveText("Merchant (column 4)");
+  await dialog.getByRole("combobox", { name: "Category for selected expenses", exact: true }).click();
+  await dialog.getByRole("listbox").getByRole("option", { name: "Food", exact: true }).click();
   await dialog.getByRole("button", { name: "Preview expenses", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: "Expense preview" })).toBeFocused();
   await expect(dialog.getByText("Import Cafe", { exact: true })).toBeVisible();

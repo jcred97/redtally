@@ -68,18 +68,15 @@ export default function MerchantFilter({
         id={`${id}-merchant`}
         name="merchant"
         value={selected}
-        onChange={(event) => setSelected(event.target.value)}
+        onChange={setSelected}
         className={fieldClass}
-      >
-        <option value="">All merchants</option>
-        <option value="none">No merchant</option>
-        {selected && selected !== "none" && !selectedOption && (
-          <option value={selected}>Unavailable merchant</option>
-        )}
-        {visibleOptions.map(({ value, label }) => (
-          <option key={value} value={value}>{label}</option>
-        ))}
-      </Select>
+        options={[
+          { value: "", label: "All merchants" },
+          { value: "none", label: "No merchant" },
+          ...(selected && selected !== "none" && !selectedOption ? [{ value: selected, label: "Unavailable merchant" }] : []),
+          ...visibleOptions,
+        ]}
+      />
       <p id={`${id}-status`} role="status" className="mt-1 text-xs text-gray-400">{status}</p>
     </div>
   );
