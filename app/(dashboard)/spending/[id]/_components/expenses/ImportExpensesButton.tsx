@@ -239,9 +239,9 @@ export default function ImportExpensesButton({
   return (
     <div>
       <FormDialog
-        triggerLabel="Import expenses"
+        triggerLabel="Import Expenses"
         triggerVariant="secondary"
-        title="Import expenses"
+        title="Import Expenses"
         description="Choose a spreadsheet or bank statement, then preview the expenses before saving."
         dialogSize="wide"
         onOpenAction={reset}

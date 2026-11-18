@@ -45,13 +45,6 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
       <section aria-labelledby="expense-history-title">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h2 id="expense-history-title" tabIndex={-1} className="text-lg font-semibold">Expenses</h2>
-          <a
-            href={`${groupPath}/export?${filterQuery}`}
-            download
-            className="ml-auto inline-flex min-h-9 items-center rounded-lg border border-gray-700 px-3 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400"
-          >
-            Export CSV
-          </a>
           <nav aria-label="Expense history view" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">
             {[
               { label: "Table", grouped: false },

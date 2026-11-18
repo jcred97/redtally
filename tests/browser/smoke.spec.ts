@@ -215,8 +215,8 @@ test("merchant search debounces input and discards a stale server response", asy
 
 test("CSV merchant mapping survives an uncertain save and an idempotent retry", async ({ page }) => {
   await page.goto(groupPath());
-  await page.getByRole("button", { name: "Import expenses", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Import expenses", exact: true });
+  await page.getByRole("button", { name: "Import Expenses", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Import Expenses", exact: true });
   await dialog.getByLabel("Expense file", { exact: true }).setInputFiles({
     name: "merchant-import.csv", mimeType: "text/csv",
     buffer: Buffer.from("Date,Description,Amount,Merchant\n2026-11-18,Imported lunch,0.10,Import Cafe\n2026-11-18,Imported lunch,0.10,Other Cafe\n"),

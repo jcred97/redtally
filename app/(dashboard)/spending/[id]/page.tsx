@@ -113,6 +113,13 @@ export default async function ExpenseGroupPage({
               ) : (
                 <div className="flex flex-wrap items-start justify-end gap-2 [&_button]:ml-0">
                   <ImportExpensesButton key={expenseGroup.id} expenseGroupId={expenseGroup.id} categories={categoryOptions} />
+                  <a
+                    href={`${groupPath}/export?${view.filterQuery}`}
+                    download
+                    className="button-secondary whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium max-sm:px-2.5 max-sm:text-xs"
+                  >
+                    Export CSV
+                  </a>
                   <NewExpenseButton expenseGroupId={expenseGroup.id} categories={categoryOptions} bankOptions={bankOptions} />
                 </div>
               )}
