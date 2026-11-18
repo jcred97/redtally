@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import { formatPesoInput } from "@/app/lib/expenses/money";
@@ -24,6 +24,7 @@ export default function RecurringExpenseDialog({
   expenseGroupId, categories, banks, today, rule,
 }: RecurringExpenseOptions & { rule?: RecurringExpenseEntry }) {
   const fieldId = useId();
+  const submissionId = useRef("");
   const bankFieldId = `${fieldId}-bank`;
   const [method, setMethod] = useState<PaymentMethod | "">(rule?.paymentMethod ?? "");
   const [bankId, setBankId] = useState(rule?.bankAssignmentId?.toString() ?? "");
@@ -47,6 +48,7 @@ export default function RecurringExpenseDialog({
         ? "Changes apply to future postings. Changing the frequency or start date recalculates the schedule from today."
         : "Expenses post on their scheduled dates. A past start date will add any missed expenses."}
       onOpenAction={() => {
+        if (!rule) submissionId.current = crypto.randomUUID();
         setMethod(rule?.paymentMethod ?? "");
         setBankId(rule?.bankAssignmentId?.toString() ?? "");
       }}
@@ -54,7 +56,10 @@ export default function RecurringExpenseDialog({
       pendingLabel="Saving..."
       pendingMessage="Saving recurring expense..."
       failureMessage="Unable to save the recurring expense. Please try again."
-      submitAction={(data) => changeRecurringExpense(expenseGroupId, rule?.id ?? null, rule ? "edit" : "create", data)}
+      submitAction={(data) => {
+        if (!rule) data.set("submissionId", submissionId.current);
+        return changeRecurringExpense(expenseGroupId, rule?.id ?? null, rule ? "edit" : "create", data);
+      }}
     >
       <label className="block text-sm text-gray-300">
         Title

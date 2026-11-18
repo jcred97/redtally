@@ -91,6 +91,8 @@ test("bank dropdown supports keyboard selection, cancellation, and saving its va
   const deleteAction = page.getByRole("button", { name: "Delete expense: Keyboard bank selection", exact: true });
   await actions.press("ArrowDown");
   await expect(editAction).toBeFocused();
+  // Focusing the trigger can queue a scroll notification that arrives after the menu opens.
+  await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
   await page.keyboard.press("End");
   await expect(deleteAction).toBeFocused();
   await page.keyboard.press("Home");

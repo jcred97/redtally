@@ -44,6 +44,7 @@ model ExpenseGroup {
   bankAssignments    BankAssignment[]
   expenseSubmissions ExpenseSubmission[]
   recurringExpenses  RecurringExpense[]
+  recurringExpenseSubmissions RecurringExpenseSubmission[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   // Null means preserved, unclaimed legacy data; never visible to signed-in users.
@@ -122,6 +123,7 @@ model RecurringExpense {
   nextDueDate      DateTime                    @db.Date
   status           RecurringExpenseStatus      @default(ACTIVE)
   occurrences      RecurringExpenseOccurrence[]
+  submission       RecurringExpenseSubmission?
   createdAt        DateTime                    @default(now())
   updatedAt        DateTime                    @updatedAt
 
@@ -129,6 +131,17 @@ model RecurringExpense {
   @@index([categoryId, expenseGroupId])
   @@index([bankAssignmentId, expenseGroupId])
   @@index([status, nextDueDate, id])
+}
+
+model RecurringExpenseSubmission {
+  expenseGroupId     Int
+  id                 String            @db.Uuid
+  payloadHash        String
+  recurringExpenseId Int?              @unique
+  expenseGroup       ExpenseGroup      @relation(fields: [expenseGroupId], references: [id], onDelete: Cascade)
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+
+  @@id([expenseGroupId, id])
 }
 
 model RecurringExpenseOccurrence {

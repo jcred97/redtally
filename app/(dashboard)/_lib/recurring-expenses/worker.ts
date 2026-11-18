@@ -32,10 +32,10 @@ export async function runRecurringExpenses(
 
   for (let attempt = 0; attempt < limit && shouldContinue(); attempt++) {
     const result = await db.$transaction(async (tx) => {
-      // A shared group lock keeps the rule's ownership stable during the write.
+      // Advancing a rule updates updatedAt, so other waiting rules get a turn even across cron runs.
       const [rule] = await tx.$queryRaw<RecurringExpense[]>`
         SELECT rule.* ${dueRules}
-        ORDER BY rule."nextDueDate", rule."id"
+        ORDER BY rule."updatedAt", rule."nextDueDate", rule."id"
         LIMIT 1
         FOR UPDATE OF rule SKIP LOCKED
         FOR SHARE OF expense_group

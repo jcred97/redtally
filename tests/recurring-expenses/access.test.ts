@@ -1,5 +1,6 @@
 import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { createCategoryAccess } from "../../app/(dashboard)/_lib/categories/access";
 import { createRecurringExpenseAccess } from "../../app/(dashboard)/_lib/recurring-expenses/access";
@@ -7,7 +8,7 @@ import { runRecurringExpenses } from "../../app/(dashboard)/_lib/recurring-expen
 import { parseExpenseDate } from "../../app/lib/expenses/date";
 
 test("recurring expense commands enforce ownership and preserve the intended schedule", async () => {
-  const fixture = await createTestDatabase();
+  const fixture = await createTestDatabase(2);
   const { client } = fixture;
 
   try {
@@ -26,17 +27,30 @@ test("recurring expense commands enforce ownership and preserve the intended sch
     const draft = (overrides: Record<string, string> = {}) => {
       const data = new FormData();
       for (const [name, value] of Object.entries({
-        title: "Internet", amount: "1499.75", categoryId: String(category.id),
+        submissionId: randomUUID(), title: "Internet", amount: "1499.75", categoryId: String(category.id),
         frequency: "MONTHLY", startDate: "2026-01-31", ...overrides,
       })) data.set(name, value);
       return data;
     };
 
-    await assert.rejects(bob.change(group.id, null, "create", draft()), /not found/);
-    await assert.rejects(alice.change(group.id, null, "create", draft({ categoryId: String(foreignCategory.id) })), /this expense group/);
+    const firstDraft = draft();
+    const firstDraftId = String(firstDraft.get("submissionId"));
+    await assert.rejects(bob.change(group.id, null, "create", firstDraft), /not found/);
+    await assert.rejects(alice.change(group.id, null, "create", draft({ submissionId: "" })), /identify this draft/);
+    await assert.rejects(alice.change(group.id, null, "create", draft({
+      submissionId: firstDraftId, categoryId: String(foreignCategory.id),
+    })), /this expense group/);
     await assert.rejects(alice.change(group.id, null, "create", draft({ endDate: "2026-01-30" })), /on or after/);
     assert.deepEqual(await alice.list(group.id), []);
-    await alice.change(group.id, null, "create", draft());
+    // A lost response can leave two requests for the same draft in flight.
+    await Promise.all([
+      alice.change(group.id, null, "create", firstDraft),
+      alice.change(group.id, null, "create", firstDraft),
+    ]);
+    await assert.rejects(alice.change(group.id, null, "create", draft({
+      submissionId: firstDraftId, amount: "20",
+    })), /different details/);
+    assert.equal((await alice.list(group.id)).length, 1);
     const [rule] = await alice.list(group.id);
     assert.equal(rule.amountCentavos, 149975);
     assert.deepEqual(await bob.list(group.id), []);
@@ -57,7 +71,9 @@ test("recurring expense commands enforce ownership and preserve the intended sch
     const otherGroup = await client.expenseGroup.create({ data: { name: "Other", userId: "alice" } });
     const otherCategory = await client.category.create({ data: { name: "Utilities", expenseGroupId: otherGroup.id } });
     const dueToday = { startDate: "2026-03-31", endDate: "2026-03-31" };
-    await alice.change(otherGroup.id, null, "create", draft({ ...dueToday, categoryId: String(otherCategory.id) }));
+    await alice.change(otherGroup.id, null, "create", draft({
+      ...dueToday, submissionId: firstDraftId, categoryId: String(otherCategory.id),
+    }));
     await bob.change(foreignGroup.id, null, "create", draft({ ...dueToday, categoryId: String(foreignCategory.id) }));
 
     await assert.rejects(bob.runDue(group.id), /not found/i);
@@ -75,10 +91,16 @@ test("recurring expense commands enforce ownership and preserve the intended sch
     assert.equal((await runRecurringExpenses(client, today())).generated, 2);
 
     await alice.change(group.id, rule.id, "edit", draft({ startDate: "2026-03-31", frequency: "DAILY" }));
+    await alice.change(group.id, null, "create", firstDraft);
     assert.equal((await alice.list(group.id))[0].nextDueDate.toISOString().slice(0, 10), "2026-04-01");
     await alice.change(group.id, rule.id, "delete", new FormData());
+    await assert.rejects(alice.change(group.id, null, "create", firstDraft), /since been deleted/);
     assert.equal((await alice.list(group.id)).length, 0);
     assert.equal(await client.expense.count({ where: { expenseGroupId: group.id } }), 1);
+    // Two intentionally separate drafts may have identical values.
+    await alice.change(group.id, null, "create", draft());
+    await alice.change(group.id, null, "create", draft());
+    assert.equal((await alice.list(group.id)).length, 2);
   } finally {
     await fixture.close();
   }

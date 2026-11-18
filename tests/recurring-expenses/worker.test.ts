@@ -12,12 +12,13 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
   try {
     const tables = await db.query<{ relname: string; relrowsecurity: boolean }>(`
       SELECT relname, relrowsecurity FROM pg_class
-      WHERE relname IN ('RecurringExpense', 'RecurringExpenseOccurrence')
+      WHERE relname IN ('RecurringExpense', 'RecurringExpenseOccurrence', 'RecurringExpenseSubmission')
       ORDER BY relname
     `);
     assert.deepEqual(tables.rows, [
       { relname: "RecurringExpense", relrowsecurity: true },
       { relname: "RecurringExpenseOccurrence", relrowsecurity: true },
+      { relname: "RecurringExpenseSubmission", relrowsecurity: true },
     ]);
     const owner = await client.user.create({ data: { id: "owner", name: "Owner", email: "owner@example.test" } });
     const group = await client.expenseGroup.create({ data: { name: "Home", userId: owner.id } });
@@ -42,7 +43,7 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
       });
     }
 
-    await t.test("catches up in due date order, keeps month anchors, and includes the end date", async () => {
+    await t.test("catches up each schedule in order, keeps month anchors, and includes the end date", async () => {
       const rule = await createRule("2027-01-31", { endDate: parseExpenseDate("2027-03-31") });
       const paused = await createRule("2027-01-31", { status: "PAUSED" });
       const unclaimed = await createRule("2027-01-31", {
@@ -171,6 +172,37 @@ test("recurring expense worker posts each due occurrence atomically", async (t) 
         generated: 3, needsAttention: 0, alreadyRecorded: 0, hasCatchUpRemaining: false,
       });
       assert.equal(await client.recurringExpenseOccurrence.count({ where: { recurringExpenseId: rule.id } }), 5);
+    });
+
+    await t.test("another owner's due schedule gets a turn before a backfill takes a second slot", async () => {
+      const today = parseExpenseDate("2027-08-10");
+      const backlog = await createRule("2027-08-01", { frequency: "DAILY", endDate: today });
+      const otherGroup = await client.expenseGroup.create({
+        data: {
+          name: "Bills", user: { create: { id: "other", name: "Other", email: "other@example.test" } },
+          categories: { create: { name: "Utilities" } },
+        },
+        include: { categories: true },
+      });
+      const dueToday = await createRule("2027-08-10", {
+        expenseGroupId: otherGroup.id, categoryId: otherGroup.categories[0].id, endDate: today,
+      });
+
+      // Each invocation has time for just one occurrence. Fairness must survive a restart.
+      for (const expectedRule of [backlog, dueToday]) {
+        let slots = 1;
+        const result = await drainRecurringExpenses(client, today, () => slots-- > 0);
+        assert.equal(result.generated, 1);
+        assert.equal(result.hasCatchUpRemaining, true);
+        const first = await client.recurringExpenseOccurrence.findUniqueOrThrow({
+          where: { recurringExpenseId_dueDate: { recurringExpenseId: expectedRule.id, dueDate: expectedRule.startDate } },
+        });
+        assert.ok(first.expenseId);
+      }
+      assert.equal(await client.recurringExpenseOccurrence.count({ where: { recurringExpenseId: backlog.id } }), 1);
+      const remaining = await drainRecurringExpenses(client, today, () => true);
+      assert.equal(remaining.generated, 9);
+      assert.equal(remaining.hasCatchUpRemaining, false);
     });
   } finally {
     await fixture.close();

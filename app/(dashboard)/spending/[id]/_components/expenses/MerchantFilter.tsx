@@ -6,6 +6,11 @@ import { searchExpenseMerchants } from "../../_lib/expenses/merchants";
 
 type MerchantOption = { value: string; label: string };
 
+function resultStatus(options: MerchantOption[]) {
+  if (options.length === 25) return "Showing up to 25 merchants. Refine your search for more.";
+  return options.length === 0 ? "No matching merchants." : "";
+}
+
 export default function MerchantFilter({
   expenseGroupId,
   merchants,
@@ -20,20 +25,21 @@ export default function MerchantFilter({
   const id = useId();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(merchant ?? "");
-  const [options, setOptions] = useState(merchants);
+  const [searchOptions, setSearchOptions] = useState<MerchantOption[] | null>(null);
   const [status, setStatus] = useState("");
+  const usePageOptions = !search.trim() && selected === (merchant ?? "");
+  const options = usePageOptions ? merchants : searchOptions ?? merchants;
 
   useEffect(() => {
+    if (usePageOptions) return;
     let active = true;
     const timer = setTimeout(async () => {
       setStatus("Searching merchants…");
       try {
         const results = await searchExpenseMerchants(expenseGroupId, search, selected);
         if (active) {
-          setOptions(results);
-          setStatus(results.length === 25
-            ? "Showing up to 25 merchants. Refine your search for more."
-            : results.length === 0 ? "No matching merchants." : "");
+          setSearchOptions(results);
+          setStatus(resultStatus(results));
         }
       } catch {
         if (active) setStatus("Could not search merchants. Try again.");
@@ -43,7 +49,7 @@ export default function MerchantFilter({
       active = false;
       clearTimeout(timer);
     };
-  }, [expenseGroupId, search, selected]);
+  }, [expenseGroupId, search, selected, usePageOptions]);
 
   const selectedOption = options.find(({ value }) => value === selected)
     ?? merchants.find(({ value }) => value === selected);
@@ -77,7 +83,7 @@ export default function MerchantFilter({
           ...visibleOptions,
         ]}
       />
-      <p id={`${id}-status`} role="status" className="mt-1 text-xs text-gray-400">{status}</p>
+      <p id={`${id}-status`} role="status" className="mt-1 text-xs text-gray-400">{usePageOptions ? resultStatus(merchants) : status}</p>
     </div>
   );
 }

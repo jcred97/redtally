@@ -38,7 +38,7 @@ Implemented source includes:
 - Database-backed authentication rate limiting and private ownership of new expense groups.
 - Philippine peso display formatting.
 
-Sessions last seven days and can renew after one day. Server-rendered pages only validate the session; browser requests renew both the database expiry and the HTTP-only cookie together. A shared browser component checks the session on mount, when the window regains focus or reconnects, and every five minutes while a session exists. Expired or revoked sessions cannot be renewed.
+Sessions last seven days and can renew after one day. Server-rendered pages validate the session. Browser requests renew both the database expiry and the HTTP-only cookie together. The dashboard checks the session on mount, on sign-out from another tab, when the window regains focus or reconnects, and every five minutes while a session exists. When a check confirms a sign-out or account change, the dashboard clears the previous account's data and opens the appropriate page.
 
 The Banks tab includes a Philippine starter catalog. Expense group owners can enable banks and choose the payment methods they use in each group. In the expense form, the optional bank picker shows only banks enabled for the selected payment method. Apply the committed migrations to populate the catalog in an existing database.
 
@@ -92,9 +92,9 @@ All export formats keep generated report headings, totals, field labels, and col
 
 ### Recurring expense worker
 
-Apply migration `20261115120000_recurring_expenses` before deploying the matching app, and set a separate random `CRON_SECRET` in Vercel Production. The cron in `vercel.json` invokes `/api/cron/recurring-expenses` daily during the 1 a.m. Manila hour. The endpoint requires `Authorization: Bearer <CRON_SECRET>`. For an isolated local database, set the same variable in `.env` and call the endpoint with that header to exercise a run.
+Apply the recurring expense migrations through `20261119010000_recurring_expense_submissions` before deploying the matching app. If a schedule save is interrupted, retrying from the open dialog reuses the original draft. Set a separate random `CRON_SECRET` in Vercel Production. The cron in `vercel.json` invokes `/api/cron/recurring-expenses` daily during the 1 a.m. Manila hour. The endpoint requires `Authorization: Bearer <CRON_SECRET>`. For an isolated local database, set the same variable in `.env` and call the endpoint with that header to exercise a run.
 
-Each invocation processes due occurrences oldest first in batches of 50. It stops starting transactions after 45 seconds to leave room for in-flight work within the 60-second function limit. If due work remains, the response reports `hasCatchUpRemaining` and the function logs a warning with the run counts. The next scheduled run resumes automatically, or an operator can call the same protected endpoint to continue sooner. An ineligible bank puts its schedule in Needs attention so other schedules keep posting.
+Each invocation processes batches of up to 50 occurrences. The worker chooses the least recently updated due schedule and posts its oldest missed date. Advancing a schedule moves it behind the other waiting schedules, including when a later invocation resumes the backlog. The worker stops starting transactions after 45 seconds to leave room for in-flight work within the 60-second function limit. If due work remains, the response reports `hasCatchUpRemaining` and the function logs a warning with the run counts. The next scheduled run resumes automatically, or an operator can call the same protected endpoint to continue sooner. An ineligible bank puts its schedule in Needs attention so other schedules keep posting.
 
 ### Exact money and migration
 

@@ -7,7 +7,7 @@ const MAX_NAME_LENGTH = 100;
 const EXPENSES_PAGE_SIZE = 25;
 const MERCHANT_OPTIONS_LIMIT = 25;
 const GROUP_HAS_DEPENDENCIES =
-  "Remove this expense group's categories, budgets, and bank assignments before deleting it.";
+  "Remove this expense group's categories and budgets before deleting it.";
 
 type ExpensePageRow = {
   totalExpenses: bigint;
@@ -540,26 +540,24 @@ export function createExpenseGroupAccess(
 
     async delete(id: number) {
       const userId = await requireUserId();
-
       const where = ownedGroup(id, userId);
       try {
-        const result = await db.expenseGroup.deleteMany({
-          where: {
-            ...where,
-            categories: { none: {} },
-            budgets: { none: {} },
-            bankAssignments: { none: {} },
-          },
+        await db.$transaction(async (tx) => {
+          // Lock the owned group before touching its bank settings, in the same order as bank saves.
+          const [group] = await tx.$queryRaw<{ hasRecords: boolean }[]>`
+            SELECT EXISTS (SELECT 1 FROM "Category" WHERE "spendingId" = g.id)
+                OR EXISTS (SELECT 1 FROM "Budget" WHERE "expenseGroupId" = g.id) AS "hasRecords"
+            FROM "Spending" g WHERE g.id = ${id} AND g."userId" = ${userId}
+            FOR UPDATE OF g
+          `;
+          if (!group) throw new ExpenseGroupAccessError("Expense group not found");
+          if (group.hasRecords) throw new ExpenseGroupAccessError(GROUP_HAS_DEPENDENCIES);
+
+          await tx.bankAssignment.deleteMany({ where: { expenseGroupId: id } });
+          await tx.expenseGroup.delete({ where });
         });
-        if (result.count > 0) {
-          return;
-        }
-        if (!(await db.expenseGroup.findUnique({ where, select: { id: true } }))) {
-          throw new ExpenseGroupAccessError("Expense group not found");
-        }
-        throw new ExpenseGroupAccessError(GROUP_HAS_DEPENDENCIES);
       } catch (error) {
-        // The foreign keys also protect records added while the delete was in flight.
+        // Foreign keys protect records committed while the group lock was being acquired.
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
           throw new ExpenseGroupAccessError(GROUP_HAS_DEPENDENCIES);
         }

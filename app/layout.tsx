@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ViewTransition } from "react";
-import SessionRefresh from "@/app/components/auth/SessionRefresh";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,7 +25,6 @@ export default function RootLayout({
       className={`${geistSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SessionRefresh />
         <ViewTransition update="page-fade">
           <div className="flex flex-1 flex-col">{children}</div>
         </ViewTransition>

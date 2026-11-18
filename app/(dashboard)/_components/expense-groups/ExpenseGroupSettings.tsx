@@ -203,7 +203,7 @@ export default function ExpenseGroupSettings({
           destructive
           returnFocusId={settingsId}
           title="Delete expense group?"
-          description="This permanently removes the group. Only empty expense groups can be deleted."
+          description="This permanently removes the group and its bank settings. Remove any categories and budgets first."
           onOpenAction={closeMenu}
           submitLabel="Delete group"
           pendingLabel="Deleting…"

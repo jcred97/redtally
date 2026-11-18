@@ -169,6 +169,101 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
   await expect(page.getByText("No expenses yet", { exact: true })).toBeVisible();
 });
 
+test("an owner can delete an empty group after disabling its bank", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /New.*Group/ }).click();
+  const create = page.getByRole("dialog", { name: "New Expense Group" });
+  await create.getByLabel("Name", { exact: true }).fill("Unused bank group");
+  await create.getByRole("button", { name: "Create", exact: true }).click();
+  const groupLink = page.getByRole("link", { name: /Unused bank group/ });
+  await groupLink.click();
+  await page.getByRole("link", { name: "Banks", exact: true }).click();
+
+  const disabledBank = page.getByRole("button", { name: "BPI Not enabled", exact: true });
+  await disabledBank.click();
+  const bank = page.getByRole("dialog", { name: "BPI", exact: true });
+  const enabled = bank.getByLabel("Enable for this expense group");
+  await enabled.check();
+  await bank.getByLabel("Debit card").check();
+  await bank.getByRole("button", { name: "Save changes" }).click();
+  await page.getByRole("button", { name: "BPI Enabled", exact: true }).click();
+  await enabled.uncheck();
+  await bank.getByRole("button", { name: "Save changes" }).click();
+  await expect(disabledBank).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Delete Expense Group", exact: true }).click();
+  const remove = page.getByRole("dialog", { name: "Delete expense group?" });
+  await remove.getByRole("button", { name: "Delete group", exact: true }).click();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("link", { name: /Browser daily expenses/ })).toBeVisible();
+  await expect(groupLink).toHaveCount(0);
+});
+
+test("a lost schedule response can be retried from the dialog and posts one expense", async ({ page }) => {
+  const title = "Schedule retry regression";
+  await page.goto(`/spending/${data.group.publicId}?tab=recurring`);
+  await page.getByRole("button", { name: "+ New Recurring Expense", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "New recurring expense", exact: true });
+  await dialog.getByLabel("Title", { exact: true }).fill(title);
+  await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("15.25");
+  await dialog.getByRole("combobox", { name: "Category", exact: true }).click();
+  await dialog.getByRole("option", { name: "Food", exact: true }).click();
+  const startDay = await dialog.getByLabel("Start date", { exact: true }).inputValue();
+  await dialog.getByLabel("End date (optional)", { exact: true }).fill(startDay);
+
+  const createRequests: string[] = [];
+  await page.route("**/spending/**", async (route) => {
+    if (isAction(route, title)) {
+      createRequests.push(route.request().postData()!);
+      if (createRequests.length === 1) {
+        await route.fetch();
+        await route.abort("failed");
+        return;
+      }
+    }
+    await route.continue();
+  });
+  const save = dialog.getByRole("button", { name: "Create schedule", exact: true });
+  await save.click();
+  await expect(dialog.getByRole("alert")).toContainText("Unable to save");
+  const submissions = await db.query<{ id: string }>(
+    `SELECT submission.id FROM "RecurringExpenseSubmission" submission
+     JOIN "RecurringExpense" rule ON rule.id = submission."recurringExpenseId"
+     WHERE rule."expenseGroupId" = $1 AND rule.title = $2`, [data.group.id, title],
+  );
+  expect(submissions.rows).toHaveLength(1);
+  await save.click();
+  await expect(dialog).not.toBeVisible();
+  expect(createRequests).toHaveLength(2);
+  for (const request of createRequests) expect(request).toContain(submissions.rows[0].id);
+  await expect(page.getByRole("heading", { name: title, exact: true })).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Run due expenses", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "1 expense posted." })).toBeVisible();
+  expect(await expenseCount(title, data.group.id)).toBe(1);
+});
+
+test("merchant options come from the expense page on load and pagination", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.headers()["next-action"]) requests.push(request.url());
+  });
+  await page.clock.install();
+  await page.goto(groupPath(data.merchants.publicId));
+  const merchant = page.getByRole("combobox", { name: "Merchant", exact: true });
+  for (const pageNumber of [1, 2]) {
+    await expect(page.getByText(`Page ${pageNumber} of 2`, { exact: true })).toBeVisible();
+    await merchant.click();
+    await expect(page.getByRole("option", { name: "Alpha Bakery", exact: true })).toBeVisible();
+    await merchant.press("Escape");
+    await expect(page.getByText("Showing up to 25 merchants. Refine your search for more.")).toBeVisible();
+    await page.clock.runFor(500);
+    expect(requests).toEqual([]);
+    if (pageNumber === 1) await page.getByRole("link", { name: "Next", exact: true }).click();
+  }
+});
+
 test("merchant search debounces input and discards a stale server response", async ({ page }) => {
   await page.goto(groupPath(data.merchants.publicId));
   const search = page.getByRole("searchbox", { name: "Search merchants", exact: true });

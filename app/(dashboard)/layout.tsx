@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import AccountMenu from "@/app/components/auth/AccountMenu";
+import SessionRefresh from "@/app/components/auth/SessionRefresh";
 import { requireUser } from "@/app/lib/auth/session";
 import redTallyLogo from "@/public/branding/redtally-logo.png";
 
@@ -13,7 +14,7 @@ export default async function DashboardLayout({
   const user = await requireUser();
 
   return (
-    <>
+    <SessionRefresh userId={user.id}>
       <header className="border-b border-gray-800 bg-background text-white">
         <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 sm:gap-8 sm:px-6">
           <Link
@@ -41,6 +42,6 @@ export default async function DashboardLayout({
         </div>
       </header>
       {children}
-    </>
+    </SessionRefresh>
   );
 }

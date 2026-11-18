@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { getManilaToday, parseExpenseDate } from "@/app/lib/expenses/date";
 import { getRecurringDateOnOrAfter, recurrenceFrequencies, type RecurrenceFrequency } from "@/app/lib/expenses/recurrence";
@@ -5,6 +6,7 @@ import { parseExpenseInput, parsePaymentSelection, validateBankSelection } from 
 import { drainRecurringExpenses, RECURRING_WORK_BUDGET_MS } from "./worker";
 
 const NOT_FOUND = "Recurring expense not found in this expense group.";
+const SUBMISSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const commands = ["create", "edit", "pause", "resume", "delete"] as const;
 export type RecurringExpenseCommand = (typeof commands)[number];
@@ -42,6 +44,50 @@ function readRule(formData: FormData) {
     paymentMethod: payment?.paymentMethod ?? null,
     bankAssignmentId: payment?.bankAssignmentId ?? null,
   };
+}
+
+async function createRule(
+  tx: Prisma.TransactionClient,
+  expenseGroupId: number,
+  userId: string,
+  values: ReturnType<typeof readRule>,
+  submissionId: FormDataEntryValue | null,
+) {
+  if (typeof submissionId !== "string" || submissionId.length !== 36 || !SUBMISSION_ID_PATTERN.test(submissionId)) {
+    throw new TypeError("Unable to identify this draft. Refresh the page and try again.");
+  }
+  const [group] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT id FROM "Spending" WHERE id = ${expenseGroupId} AND "userId" = ${userId} FOR SHARE
+  `;
+  if (!group) throw new TypeError(NOT_FOUND);
+
+  const key = { expenseGroupId, id: submissionId.toLowerCase() };
+  const where = { expenseGroupId_id: key };
+  // Keep the persisted hash independent of form field order and the rule's later edits.
+  const payloadHash = createHash("sha256").update(JSON.stringify([
+    values.categoryId, values.title, values.amountCentavos, values.frequency,
+    values.startDate, values.endDate, values.paymentMethod, values.bankAssignmentId,
+  ])).digest("hex");
+  // A competing retry waits for the original transaction to commit or roll back.
+  const claim = await tx.recurringExpenseSubmission.createMany({
+    data: { ...key, payloadHash }, skipDuplicates: true,
+  });
+  if (claim.count === 0) {
+    const previous = await tx.recurringExpenseSubmission.findUniqueOrThrow({ where });
+    if (previous.payloadHash !== payloadHash) {
+      throw new TypeError("This draft was already saved with different details. Close it and review the saved schedule.");
+    }
+    if (previous.recurringExpenseId === null) {
+      throw new TypeError("This schedule was already saved and has since been deleted.");
+    }
+    return;
+  }
+
+  await validateBankSelection(tx, expenseGroupId, values);
+  const rule = await tx.recurringExpense.create({
+    data: { ...values, expenseGroupId, nextDueDate: values.startDate }, select: { id: true },
+  });
+  await tx.recurringExpenseSubmission.update({ where, data: { recurringExpenseId: rule.id } });
 }
 
 export function createRecurringExpenseAccess(
@@ -87,13 +133,7 @@ export function createRecurringExpenseAccess(
       try {
         await db.$transaction(async (tx) => {
           if (command === "create" && values) {
-            const [group] = await tx.$queryRaw<{ id: number }[]>`
-              SELECT id FROM "Spending" WHERE id = ${expenseGroupId} AND "userId" = ${userId} FOR SHARE
-            `;
-            if (!group) throw new TypeError(NOT_FOUND);
-            await validateBankSelection(tx, expenseGroupId, values);
-            await tx.recurringExpense.create({ data: { ...values, expenseGroupId, nextDueDate: values.startDate } });
-            return;
+            return createRule(tx, expenseGroupId, userId, values, formData.get("submissionId"));
           }
 
           // Serialize owner changes with the worker before reading the current schedule.

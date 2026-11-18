@@ -16,17 +16,25 @@ export default function ExpenseActionMenu({
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const openingBounds = useRef<DOMRect | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     const popover = popoverRef.current;
-    if (!popover) return;
+    const trigger = triggerRef.current;
+    const anchor = openingBounds.current;
+    if (!popover || !trigger || !anchor) return;
     const dismiss = () => popover.hidePopover();
-    window.addEventListener("scroll", dismiss, true);
+    const dismissIfMoved = () => {
+      // A scroll caused by focusing the trigger can be delivered after the menu is positioned.
+      const { top, bottom, right } = trigger.getBoundingClientRect();
+      if (top !== anchor.top || bottom !== anchor.bottom || right !== anchor.right) dismiss();
+    };
+    window.addEventListener("scroll", dismissIfMoved, true);
     window.addEventListener("resize", dismiss);
     return () => {
-      window.removeEventListener("scroll", dismiss, true);
+      window.removeEventListener("scroll", dismissIfMoved, true);
       window.removeEventListener("resize", dismiss);
     };
   }, [open]);
@@ -35,7 +43,9 @@ export default function ExpenseActionMenu({
     const popover = popoverRef.current;
     const trigger = triggerRef.current;
     if (!popover || !trigger) return;
-    const { top, bottom, right } = trigger.getBoundingClientRect();
+    const bounds = trigger.getBoundingClientRect();
+    openingBounds.current = bounds;
+    const { top, bottom, right } = bounds;
     const spaceBelow = window.innerHeight - bottom;
     const placeAbove = spaceBelow < 120 && top > spaceBelow;
     popover.style.right = `${Math.max(8, window.innerWidth - right)}px`;

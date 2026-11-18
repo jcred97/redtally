@@ -27,6 +27,7 @@ User
 | `Bank` | Shared institution catalog | Unique normalized key; active flag; assigned banks cannot be deleted |
 | `BankAssignment` | Enables a bank for a group and configures supported payment methods | Unique group/bank; four capabilities default to enabled; referenced assignments cannot be deleted |
 | `RecurringExpense` | Schedule and next due date for an expense in one group | Same-group category and bank assignment; positive integer centavos; calendar dates with an inclusive optional end date |
+| `RecurringExpenseSubmission` | Records a schedule draft and its original payload hash | A draft ID is unique within its group. Deleting the schedule preserves the claim so a late retry cannot recreate it. |
 | `RecurringExpenseOccurrence` | Records that the worker posted a scheduled date | Unique schedule and due date; survives expense deletion until the schedule itself is deleted |
 
 Application names are mapped to the existing database identifiers. These naming improvements require no additional migration or record changes:
@@ -43,7 +44,7 @@ Application names are mapped to the existing database identifiers. These naming 
 
 Bank keys are the lower-case bank name after trimming surrounding spaces and collapsing internal whitespace. The caller supplies the key; a database CHECK rejects a key that does not match that normalization. Migration `20261111130000_philippine_bank_catalog` adds a starter catalog based on Bangko Sentral ng Pilipinas listings and preserves entries with matching keys. [Universal and commercial banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Commercial/assets.aspx) · [Digital banks](https://www.bsp.gov.ph/PaymentAndSettlement/PPDD_Payments_Bulletin.pdf) · [Rural banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Rural/assets.aspx)
 
-The Banks tab lets owners enable a catalog bank for their group and choose one or more payment methods they use with it. The expense form offers active assignments for the selected payment method. The server checks the same eligibility when a new bank is selected. Deactivation preserves the assignment, its method preferences, and historical expense links. Editing other expense details preserves the saved payment details.
+The Banks tab lets owners enable a catalog bank for their group and choose one or more payment methods they use with it. The expense form offers active assignments for the selected payment method. The server checks the same eligibility when a new bank is selected. Deactivation preserves the assignment, its method preferences, and historical expense links. Editing other expense details preserves the saved payment details. Deleting a group with no categories or budgets removes its bank settings in the same transaction.
 
 `Expense.expenseGroupId` is backfilled from its category. Composite foreign keys to `Category(id, expenseGroupId)` and `BankAssignment(id, expenseGroupId)` enforce group consistency even outside the UI. The category's Prisma field maps to the physical `spendingId` column. These keys also prevent reparenting an assigned expense, category, or assignment into an incompatible group.
 

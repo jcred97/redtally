@@ -241,10 +241,55 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
     await t.test("groups with dependent records keep their categories and expenses", async () => {
       await assert.rejects(
         alice.delete(a.id),
-        /Remove this expense group's categories, budgets, and bank assignments before deleting it/,
+        /Remove this expense group's categories and budgets before deleting it/,
       );
       assert.equal((await alice.getById(a.id))?.categories.length, 1);
       assert.equal((await alice.getExpensePageById(a.id, 1))?.totalExpenses, 1);
+    });
+
+    await t.test("deleting an empty group removes only its bank settings", async () => {
+      const group = await alice.create("Bank settings only");
+      const banks = createBankAccess(client, async () => "alice");
+      const [disabledBank, enabledBank] = await client.bank.findMany({
+        where: { active: true }, orderBy: { id: "asc" }, take: 2,
+      });
+      const settings = new FormData();
+      settings.set("expenseGroupId", String(group.id));
+      settings.set("supportedDebitCard", "on");
+      settings.set("bankId", String(disabledBank.id));
+      settings.set("active", "on");
+      await banks.save(settings);
+      settings.delete("active");
+      await banks.save(settings);
+      settings.set("bankId", String(enabledBank.id));
+      settings.set("active", "on");
+      await banks.save(settings);
+
+      const assignments = () => client.bankAssignment.findMany({
+        where: { expenseGroupId: group.id }, orderBy: { id: "asc" },
+      });
+      const before = await assignments();
+      assert.deepEqual(before.map((row) => row.active), [false, true]);
+      const otherGroup = await bob.create("Keep this bank");
+      const otherAssignment = await client.bankAssignment.create({
+        data: { expenseGroupId: otherGroup.id, bankId: enabledBank.id },
+      });
+      await assert.rejects(bob.delete(group.id), /Expense group not found/);
+      assert.deepEqual(await assignments(), before);
+
+      const budget = await client.budget.create({
+        data: { expenseGroupId: group.id, budgetMonth: new Date("2026-11-01"), amountCentavos: 500 },
+      });
+      await assert.rejects(alice.delete(group.id), /categories and budgets/);
+      assert.deepEqual(await assignments(), before);
+
+      await client.budget.delete({ where: { id: budget.id } });
+      await alice.delete(group.id);
+      assert.equal(await alice.getById(group.id), null);
+      assert.deepEqual(await assignments(), []);
+      assert.equal(await client.bank.count({ where: { id: { in: [disabledBank.id, enabledBank.id] } } }), 2);
+      assert.deepEqual(await client.bankAssignment.findUnique({ where: { id: otherAssignment.id } }), otherAssignment);
+      await bob.delete(otherGroup.id);
     });
 
     await t.test("duplicate assigns fresh IDs and preserves exact values, relationships, and settings", async () => {
