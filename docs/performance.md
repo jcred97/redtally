@@ -63,7 +63,13 @@ Memory samples in native mode include Node and Prisma, but not the separate Post
 
 The fixed 50,000-row PGlite workload also passed: duplication took 1,355.7 ms, with sampled RSS increase 11.5 MiB and heap increase 2.8 MiB. PGlite runs inside Node, so its memory samples include the database engine and cannot be compared directly with native PostgreSQL Node-only memory samples.
 
-## Next decisions
+## CSV export verification
+
+The streaming CSV export was checked separately against an isolated native PostgreSQL 18.7 cluster on the same machine. A 50,000-expense history produced 100 batches of at most 500 rows; streamed CSV amounts totaled exactly 1,250,075,000 centavos, matching an independent SQL aggregate and the history summary. The check took about 855 ms, including CSV parsing and reconciliation. Month, day, merchant, and combined category/payment filters also reconciled. CSV values had exact two-decimal PHP amounts, all nine columns, no repeated rows, and a private/no-store response.
+
+This is a local synthetic correctness and batching check, not a production download-time guarantee. Export uses ascending expense IDs and caps the maximum ID when preparation starts. It does not hold a long-lived snapshot transaction: later inserts are excluded, while concurrent edits/deletions can change unread batches. The portable export tests permanently cover multiple batches, all filters, unauthorized access, empty results, CSV escaping, and cancellation.
+
+## Next profiling decisions
 
 Keep existing numbered-page navigation and indexes until representative workloads are measured against an isolated native PostgreSQL instance matching deployment. Capture query plans with `EXPLAIN (ANALYZE, BUFFERS)`, application memory peaks, transaction duration, and concurrent workloads. Include low- and high-selectivity filters, grouped day totals, skewed dates, and the largest realistic merchant/category distributions.
 

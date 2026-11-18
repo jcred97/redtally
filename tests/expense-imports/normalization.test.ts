@@ -29,3 +29,14 @@ test("import rejects foreign currencies, negative amounts, invalid grouping, and
     assert.throws(() => normalizeExpenseImportRow(3, { ...values, amount }, "submission"));
   }
 });
+
+test("optional merchants trim, preserve Unicode, and use manual expense validation", () => {
+  assert.equal(normalizeExpenseImportRow(2, { ...values, merchant: "  Café 日本  " }, "id").merchant, "Café 日本");
+  assert.equal(normalizeExpenseImportRow(2, { ...values, merchant: " \t " }, "id").merchant, null);
+  assert.equal(normalizeExpenseImportRow(2, { ...values, merchant: "é".repeat(100) }, "id").merchant?.length, 100);
+  assert.throws(() => normalizeExpenseImportRow(2, { ...values, merchant: "é".repeat(101) }, "id"), /100 characters/);
+  assert.throws(() => normalizeExpenseImportRow(2, { ...values, merchant: "a\0b" }, "id"), /valid merchant/);
+  assert.equal(expenseImportKey("Lunch", "2026-11-18", 100, " Café "), expenseImportKey("Lunch", "2026-11-18", 100, "café"));
+  assert.notEqual(expenseImportKey("Lunch", "2026-11-18", 100, "Cafe A"), expenseImportKey("Lunch", "2026-11-18", 100, "Cafe B"));
+  assert.equal(expenseImportKey("Lunch", "2026-11-18", 100), expenseImportKey("Lunch", "2026-11-18", 100, null));
+});

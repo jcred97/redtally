@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { expenseImportKey, MAX_IMPORT_ROWS } from "@/app/lib/expenses/import";
 import { parseExpenseInput } from "../expenses/access";
+import { parseMerchant } from "@/app/lib/expenses/merchant";
 
 const MAX_RECORD_ID = 2_147_483_647;
 const SUBMISSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -22,7 +23,7 @@ function parseRows(input: unknown) {
   return Array.from(input, (row: unknown) => {
     if (row === null || typeof row !== "object") throw new TypeError("Invalid expense row.");
 
-    const { rowNumber, submissionId, title, amount, date } = row as Record<string, unknown>;
+    const { rowNumber, submissionId, title, amount, date, merchant } = row as Record<string, unknown>;
     if (!validId(rowNumber) || rowNumbers.has(rowNumber)) throw new TypeError("Invalid or repeated row number.");
     if (typeof submissionId !== "string" || submissionId.length !== 36 || !SUBMISSION_ID_PATTERN.test(submissionId)) {
       throw new TypeError(`Row ${rowNumber} is missing a valid draft ID.`);
@@ -35,7 +36,7 @@ function parseRows(input: unknown) {
 
     try {
       if (typeof title === "string" && title.includes("\0")) throw new TypeError("Title contains an invalid character.");
-      return { rowNumber, id, values: parseExpenseInput({ title, amount, date }) };
+      return { rowNumber, id, values: { ...parseExpenseInput({ title, amount, date }), merchant: parseMerchant(merchant) } };
     } catch (error) {
       if (error instanceof TypeError) throw new TypeError(`Row ${rowNumber}: ${error.message}`);
       throw error;
@@ -43,14 +44,15 @@ function parseRows(input: unknown) {
   });
 }
 
-type ParsedExpense = ReturnType<typeof parseExpenseInput>;
+type ParsedExpense = ReturnType<typeof parseExpenseInput> & { merchant?: string | null };
 
-function expenseKey({ title, amountCentavos, date }: ParsedExpense) {
-  return JSON.stringify([title, amountCentavos, date.toISOString().slice(0, 10)]);
+function expenseKey({ title, amountCentavos, date, merchant }: ParsedExpense) {
+  // Keep existing draft hashes compatible when a file has no merchant column.
+  return JSON.stringify([title, amountCentavos, date.toISOString().slice(0, 10), ...(merchant ? [merchant] : [])]);
 }
 
-function duplicateKey({ title, amountCentavos, date }: ParsedExpense) {
-  return expenseImportKey(title, date.toISOString().slice(0, 10), amountCentavos);
+function duplicateKey({ title, amountCentavos, date, merchant }: ParsedExpense) {
+  return expenseImportKey(title, date.toISOString().slice(0, 10), amountCentavos, merchant);
 }
 
 export function createExpenseImportAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
@@ -78,9 +80,12 @@ export function createExpenseImportAccess(db: PrismaClient, requireUserId: () =>
           category: { expenseGroup: { userId } },
           OR: [...datesAndAmounts.values()],
         },
-        select: { title: true, amountCentavos: true, date: true },
+        select: { title: true, amountCentavos: true, date: true, merchant: true },
       });
-      const keys = new Set(existing.map(duplicateKey));
+      // Without a mapped merchant, retain the original conservative duplicate warning.
+      const keys = new Set(existing.flatMap((expense) => [
+        duplicateKey(expense), duplicateKey({ ...expense, merchant: undefined }),
+      ]));
       return rows.filter(({ values }) => keys.has(duplicateKey(values))).map(({ rowNumber }) => rowNumber);
     },
 
@@ -136,7 +141,7 @@ export function createExpenseImportAccess(db: PrismaClient, requireUserId: () =>
         if (newRows.length > 0) {
           const created = await tx.expense.createManyAndReturn({
             data: newRows.map(({ values }) => ({ ...values, expenseGroupId, categoryId })),
-            select: { id: true, title: true, amountCentavos: true, date: true },
+            select: { id: true, title: true, amountCentavos: true, date: true, merchant: true },
           });
 
           // The database may return rows in any order. Identical expenses share a bucket.

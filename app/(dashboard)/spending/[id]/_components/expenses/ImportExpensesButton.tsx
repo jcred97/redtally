@@ -17,8 +17,9 @@ import type { ImportSheet } from "../../_lib/import-files";
 
 const fields = [
   { key: "date", label: "Date", aliases: ["date", "expense date", "transaction date", "posting date"] },
-  { key: "title", label: "Description", aliases: ["description", "title", "notes", "merchant", "particulars"] },
+  { key: "title", label: "Description", aliases: ["description", "title", "notes", "particulars"] },
   { key: "amount", label: "Amount (PHP)", aliases: ["amount", "expense amount", "amount php", "debit"] },
+  { key: "merchant", label: "Merchant (optional)", aliases: ["merchant", "merchant name", "payee", "vendor"] },
 ] as const;
 
 type ColumnMapping = Record<(typeof fields)[number]["key"], string>;
@@ -27,7 +28,7 @@ type DateOrder = "" | "mdy" | "dmy";
 type PreviewRow = {
   rowNumber: number;
   sourcePage?: number;
-  values: { date: string; title: string; amount: string };
+  values: { date: string; title: string; amount: string; merchant?: string };
 } & (
   | { expense: ExpenseImportRow; key: string; centavos: number }
   | { error: string }
@@ -39,7 +40,7 @@ type Preview = {
   fileMatches: Set<number>;
 };
 
-const emptyMapping: ColumnMapping = { date: "", title: "", amount: "" };
+const emptyMapping: ColumnMapping = { date: "", title: "", amount: "", merchant: "" };
 const selectClass =
   "mt-1.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white outline-none focus:border-red-400 disabled:opacity-60";
 
@@ -55,6 +56,11 @@ function guessColumns(headers: string[]): ColumnMapping {
       }
     }
   }
+  // Older files may use Merchant as their only description column.
+  if (!mapping.title) {
+    mapping.title = mapping.merchant;
+    mapping.merchant = "";
+  }
   return mapping;
 }
 
@@ -64,11 +70,12 @@ function readPreviewRows(sheet: ImportSheet, columns: ColumnMapping, dateOrder: 
       date: cells[Number(columns.date)] ?? "",
       title: cells[Number(columns.title)] ?? "",
       amount: cells[Number(columns.amount)] ?? "",
+      merchant: columns.merchant === "" ? undefined : cells[Number(columns.merchant)] ?? "",
     };
     try {
       const expense = normalizeExpenseImportRow(rowNumber, values, crypto.randomUUID(), dateOrder || undefined);
       const centavos = parsePesoAmount(expense.amount);
-      return { rowNumber, sourcePage, values, expense, centavos, key: expenseImportKey(expense.title, expense.date, centavos) };
+      return { rowNumber, sourcePage, values, expense, centavos, key: expenseImportKey(expense.title, expense.date, centavos, expense.merchant) };
     } catch (error) {
       return { rowNumber, sourcePage, values, error: error instanceof Error ? error.message : "Invalid expense." };
     }
@@ -104,9 +111,9 @@ export default function ImportExpensesButton({
   const pdf = sheet?.pdf;
   const headers = sheet?.rows[0]?.cells ?? [];
   const rowCount = Math.max(0, (sheet?.rows.length ?? 0) - 1);
-  const mappedColumns = fields.map(({ key }) => columns[key]);
-  const hasMapping = mappedColumns.every((column) => column !== "");
-  const distinctColumns = new Set(mappedColumns).size === fields.length;
+  const mappedColumns = fields.map(({ key }) => columns[key]).filter((column) => column !== "");
+  const hasMapping = fields.every(({ key }) => key === "merchant" || columns[key] !== "");
+  const distinctColumns = new Set(mappedColumns).size === mappedColumns.length;
   const categoryExists = categories.some(({ id }) => String(id) === categoryId);
   const canPreview = !reading && rowCount > 0 && rowCount <= MAX_IMPORT_ROWS && hasMapping && distinctColumns;
 
@@ -136,7 +143,7 @@ export default function ImportExpensesButton({
     setSheetIndex(index);
     const nextSheet = availableSheets[index];
     setColumns(nextSheet?.pdf
-      ? { date: "0", title: "1", amount: "2" }
+      ? { date: "0", title: "1", amount: "2", merchant: "" }
       : guessColumns(nextSheet?.rows[0]?.cells ?? []));
     clearPreview();
   }
@@ -295,7 +302,7 @@ export default function ImportExpensesButton({
                 )}
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {fields.map(({ key, label }) => (
                   <label key={key} className="block min-w-0 text-sm text-gray-300">
                     {label} column
@@ -307,7 +314,7 @@ export default function ImportExpensesButton({
                       }}
                       className={selectClass}
                     >
-                      <option value="">Choose a column</option>
+                      <option value="">{key === "merchant" ? "No merchant column" : "Choose a column"}</option>
                       {headers.map((heading, index) => (
                         <option key={index} value={index}>
                           {heading.trim() ? `${displayCell(heading)} (column ${index + 1})` : `Column ${index + 1}`}
@@ -395,6 +402,7 @@ export default function ImportExpensesButton({
                       <td className="p-2 text-gray-400">{pdf ? row.sourcePage : row.rowNumber}</td>
                       <td className="space-y-1 wrap-break-word p-2">
                         <p>{"expense" in row ? row.expense.title : displayCell(row.values.title)}</p>
+                        {row.values.merchant?.trim() && <p className="text-xs text-gray-400">{"expense" in row ? row.expense.merchant : displayCell(row.values.merchant)}</p>}
                         {"error" in row && <p className="text-xs text-red-400">{row.error}</p>}
                         {preview.existingMatches.has(row.rowNumber) && <p className="text-xs text-amber-300">Possible duplicate in this group</p>}
                         {preview.fileMatches.has(row.rowNumber) && <p className="text-xs text-amber-300">Similar row in this file</p>}

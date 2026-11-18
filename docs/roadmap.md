@@ -44,7 +44,8 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 
 ### 4. Verify recovery and private access
 
-- [ ] Provide a usable export and document an ongoing backup/restore procedure. The October 25 authentication release included a verified isolated backup restore; user export and the ongoing recovery workflow remain planned.
+- [x] Provide owner-only CSV expense-history export, respecting the current filters across all pages and preserving exact amounts, recorded dates/times, and merchant/category/payment/bank/notes fields. Exports stream in bounded batches and escape spreadsheet formula-like text.
+- [ ] Document and operationalize an ongoing database backup/restore procedure. The October 25 authentication release included a verified isolated backup restore; CSV history export does not replace a full account/database backup.
 - [x] Add authentication and ownership checks covering implemented reads and mutations in source.
 - [x] Activate those protections through a coordinated migration/deployment and verify signed-out, cross-user, and session-revocation behavior in the deployed environment. Production HTTP checks passed on October 25, 2026; temporary test accounts and groups were removed.
 

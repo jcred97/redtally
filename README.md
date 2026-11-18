@@ -27,9 +27,10 @@ Implemented source includes:
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
 - History's merchant filter searches saved merchants and returns up to 25 options, keeping the active selection available. Search text stays out of filter URLs; selected merchants retain their existing digest values. The database still scans matching history to find distinct merchants.
+- **Export CSV** downloads every expense matching the current history filters, including rows beyond the current page. It includes exact PHP amounts, calendar dates, recorded Manila times, title, merchant, category, payment method, bank, and notes. Choose **All months** first to export the full group. Exports stream in batches and require the group's owner; spreadsheet formula-like text is escaped.
 - In **New Expense**, paste a receipt image or choose a photo or screenshot. RedTally reads it on your device and suggests a title, merchant, peso total, date, and Manila time when available. Apply the suggestions you want, then review the editable form before saving. The original image and recognized text stay in the browser.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
-- **Import expenses** reads CSV, TSV, and Excel `.xlsx` files up to 5 MB in the browser. Choose a worksheet if needed, map the description, date, and amount columns, and select an existing category for the batch. The preview shows invalid rows and possible duplicates before you choose what to save. Each import supports up to 500 data rows and saves positive PHP expenses.
+- **Import expenses** reads CSV, TSV, and Excel `.xlsx` files up to 5 MB in the browser. Choose a worksheet if needed, map the description, date, amount, and optional merchant columns, and select an existing category for the batch. The preview shows invalid rows and possible duplicates before you choose what to save. Each import supports up to 500 data rows and saves positive PHP expenses. Named merchants distinguish otherwise matching expenses; files without merchants retain conservative duplicate warnings. Retrying an uncertain save reuses its draft IDs and does not create another copy.
 - The same import dialog accepts unlocked PDF bank statements with selectable text, up to 5 MB and 30 pages. PDF import expects date, description, and debit, withdrawal, or purchase headings on each transaction page of a PHP statement, with four-digit years in the transaction dates. The preview shows source pages so you can compare extracted debits with the statement and deselect transfers or other entries. For scanned PDFs or other statement layouts, use the bank’s CSV or Excel export when available.
 - Email/password sign-up, sign-in, and sign-out through Better Auth, with authenticated server-side queries and actions using Prisma and PostgreSQL.
 - Database-backed authentication rate limiting and private ownership of new expense groups.
@@ -76,8 +77,12 @@ Available scripts:
 | `npm start` | Serve an existing production build |
 | `npm test` | Discover every `tests/**/*.test.ts` file and run tests without a live database |
 | `npm run test:native` | Run the isolated native PostgreSQL 50,000-expense duplication and rollback regression |
+| `npm run test:browser` | Run Chromium smoke tests against the production build and a disposable native PostgreSQL cluster |
+| `npm run test:browser:install` | Install Chromium in the project's Playwright cache |
 
-GitHub CI runs lint, TypeScript, portable tests, and the native PostgreSQL regression for pushes and pull requests. Native tests require `REDTALLY_POSTGRES_BIN` pointing to a PostgreSQL directory containing `initdb` and `pg_ctl`. They start their own password-protected cluster on a random loopback port, apply migrations, and remove the cluster after stopping it; they never use `.env`, `DATABASE_URL`, or an existing database. See [history profiling](docs/performance.md) for reproducible before/after measurements and their limits.
+GitHub CI runs lint, TypeScript, portable tests, the native PostgreSQL regression, a production build, and Chromium browser checks for pushes and pull requests. Native and browser tests require `REDTALLY_POSTGRES_BIN` pointing to a PostgreSQL directory containing `initdb` and `pg_ctl`. They start their own password-protected cluster on a random loopback port, apply migrations, and remove the cluster after stopping it; they never use `.env`, `DATABASE_URL`, or an existing database. Browser checks also require Playwright's Chromium (`npm run test:browser:install`) and a production build. See [history profiling](docs/performance.md) for reproducible before/after measurements and their limits.
+
+CSV exports are expense-history copies, not complete account backups: they do not include budgets, recurring schedules, or account settings. An export caps the maximum expense ID when it starts; later inserts are excluded, while edits and deletions can affect batches that have not been read yet. For a stable recovery copy, finish editing before downloading and check the exported count and amount against the same history filters. Database backup/restore operations remain a separate deployment responsibility.
 
 ### Recurring expense worker
 
@@ -138,13 +143,14 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
-| `app/(dashboard)/spending/[id]/_lib/expenses/` | Authenticated merchant search action |
+| `app/(dashboard)/spending/[id]/_lib/expenses/` | Authenticated merchant search action and CSV streaming helpers |
+| `app/(dashboard)/spending/[id]/export/` | Owner-only streaming CSV download using history filters |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |
 | `app/api/cron/recurring-expenses/` | Protected scheduled worker entry point |
 | `app/lib/auth/` | Better Auth configuration, browser and server clients, and session checks |
-| `app/lib/expenses/` | Expense dates and exact centavo parsing, formatting, and totals |
+| `app/lib/expenses/` | Expense dates, exact centavo parsing/formatting/totals, merchant validation, and import normalization |
 | `app/components/` | Shared auth, dialog, feedback, and native form-field components |
 | `app/components/forms/` | Reusable Select and DateInput controls with shared icons and picker behavior |
 | `server/db/client.ts` | Shared runtime database client |
@@ -153,7 +159,9 @@ Authenticated pages render per request because their session check uses request 
 | `tests/auth/` | Authentication and session tests |
 | `tests/helpers/` | Shared PGlite and native PostgreSQL fixtures and cleanup |
 | `tests/expense-groups/duplication.native.ts` | Native 50,000-expense copy preservation, ownership, and rollback regression |
-| `scripts/` | Automatic test discovery and synthetic history profiling |
+| `tests/browser/` | Production browser smoke coverage with an isolated native database |
+| `scripts/` | Automatic test discovery, synthetic history profiling, and isolated browser-test lifecycle |
+| `playwright.config.ts` | Chromium browser smoke configuration |
 | `.github/workflows/ci.yml` | Lint, TypeScript, and test checks |
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |

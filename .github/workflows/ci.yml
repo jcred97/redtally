@@ -10,7 +10,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,3 +29,21 @@ jobs:
           test -x "$postgres_bin/pg_ctl"
           echo "REDTALLY_POSTGRES_BIN=$postgres_bin" >> "$GITHUB_ENV"
       - run: npm run test:native
+      - name: Build the production application
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://test:test@127.0.0.1:1/build_only
+          DIRECT_URL: postgresql://test:test@127.0.0.1:1/build_only
+          BETTER_AUTH_SECRET: build-only-secret-never-used-for-real-accounts
+          BETTER_AUTH_URL: http://127.0.0.1:3000
+          CRON_SECRET: build-only-cron-secret
+      - run: npm run test:browser:install -- --with-deps
+      - run: npm run test:browser
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-diagnostics
+          path: test-results/browser
+          if-no-files-found: ignore
+          retention-days: 7

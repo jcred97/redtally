@@ -3,6 +3,7 @@ import { PaymentMethod, Prisma, type BankAssignment, type PrismaClient } from "@
 import { parsePesoAmount } from "@/app/lib/expenses/money";
 import { parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { bankPaymentMethodFields, type BankPaymentMethod } from "@/app/lib/expenses/payment";
+import { parseMerchant } from "@/app/lib/expenses/merchant";
 
 const MAX_RECORD_ID = 2_147_483_647;
 const SUBMISSION_ID_PATTERN =
@@ -108,15 +109,6 @@ export async function validateBankSelection(
   if (!assignment?.[bankPaymentMethodFields[paymentMethod]]) {
     throw new BankSelectionError("This bank is unavailable for the selected payment method in this expense group.");
   }
-}
-
-function parseMerchant(value: unknown): string | null | undefined {
-  if (value === undefined || value === null) return value;
-  if (typeof value !== "string" || value.includes("\0")) throw new TypeError("Enter a valid merchant name.");
-
-  const merchant = value.trim();
-  if (merchant.length > 100) throw new TypeError("Merchant must be 100 characters or fewer.");
-  return merchant || null;
 }
 
 export function createExpenseAccess(

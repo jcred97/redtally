@@ -1,23 +1,27 @@
 import { parseExpenseDate } from "./date";
 import { formatPesoInput, parsePesoAmount } from "./money";
+import { parseMerchant } from "./merchant";
 
 export const MAX_IMPORT_ROWS = 500;
 
 export type ExpenseImportRow = {
   rowNumber: number;
   title: string;
+  merchant?: string | null;
   amount: string;
   date: string;
   submissionId: string;
 };
 
-export function expenseImportKey(title: string, date: string, amountCentavos: number): string {
-  return JSON.stringify([title.trim().toLowerCase(), date, amountCentavos]);
+export function expenseImportKey(title: string, date: string, amountCentavos: number, merchant?: string | null): string {
+  const normalizedMerchant = merchant?.trim().toLowerCase();
+  return JSON.stringify([title.trim().toLowerCase(), date, amountCentavos,
+    ...(normalizedMerchant ? [normalizedMerchant] : [])]);
 }
 
 export function normalizeExpenseImportRow(
   rowNumber: number,
-  values: { title: string; amount: string; date: string },
+  values: { title: string; amount: string; date: string; merchant?: string | null },
   submissionId: string,
   dateOrder?: "mdy" | "dmy",
 ): ExpenseImportRow {
@@ -51,5 +55,6 @@ export function normalizeExpenseImportRow(
   }
   const amount = formatPesoInput(parsePesoAmount(rawAmount.replaceAll(",", "")));
 
-  return { rowNumber, title, amount, date, submissionId };
+  const merchant = parseMerchant(values.merchant);
+  return { rowNumber, title, amount, date, submissionId, ...(merchant === undefined ? {} : { merchant }) };
 }

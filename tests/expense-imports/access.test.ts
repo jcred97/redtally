@@ -1,6 +1,6 @@
 import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
 import { createExpenseImportAccess } from "../../app/(dashboard)/_lib/expense-imports/access";
 import { MAX_IMPORT_ROWS } from "../../app/lib/expenses/import";
@@ -99,6 +99,50 @@ test("expense imports check ownership, report matches, and save atomically", asy
       assert.deepEqual(await imports.preview(aliceGroup.id, rows), []);
       assert.equal(await imports.save(aliceGroup.id, category.id, rows), MAX_IMPORT_ROWS);
       assert.equal(await client.expense.count({ where: { categoryId: category.id } }), MAX_IMPORT_ROWS + 1);
+    });
+
+    await t.test("merchants persist without cross-linking otherwise identical imported rows", async () => {
+      const rows = [" Café 日本 ", "Other café"].map((merchant, index) => ({
+        ...draft, title: "Merchant import", merchant, rowNumber: index + 2, submissionId: randomUUID(),
+      }));
+      assert.equal(await imports.save(aliceGroup.id, category.id, rows), 2);
+      assert.equal(await imports.save(aliceGroup.id, category.id, [...rows].reverse()), 2);
+      for (const row of rows) {
+        const submission = await client.expenseSubmission.findUniqueOrThrow({
+          where: { expenseGroupId_id: { expenseGroupId: aliceGroup.id, id: row.submissionId } }, include: { expense: true },
+        });
+        assert.equal(submission.expense?.merchant, row.merchant.trim());
+      }
+      await assert.rejects(imports.save(aliceGroup.id, category.id, [{ ...rows[0], merchant: "Changed" }]), /different details/);
+      const invalid = ["x".repeat(101), "bad\0name", 123];
+      for (const merchant of invalid) {
+        await assert.rejects(imports.save(aliceGroup.id, category.id, [{ ...rows[0], submissionId: randomUUID(), merchant }]), /Row 2/);
+      }
+      assert.equal(await client.expense.count({ where: { title: "Merchant import" } }), 2);
+    });
+
+    await t.test("named merchant duplicate checks distinguish merchants and preserve old unmapped warnings", async () => {
+      const row = { ...draft, title: "Merchant import", rowNumber: 2, submissionId: randomUUID() };
+      assert.deepEqual(await imports.preview(aliceGroup.id, [{ ...row, merchant: " café 日本 " }]), [2]);
+      assert.deepEqual(await imports.preview(aliceGroup.id, [{ ...row, merchant: "Different" }]), []);
+      assert.deepEqual(await imports.preview(aliceGroup.id, [row]), [2]);
+      assert.deepEqual(await imports.preview(aliceGroup.id, [{ ...row, merchant: "  " }]), [2]);
+      const bobImports = createExpenseImportAccess(client, async () => "bob");
+      assert.deepEqual(await bobImports.preview(bobGroup.id, [{ ...row, merchant: "café 日本" }]), []);
+    });
+
+    await t.test("pre-merchant draft hashes remain retryable for absent or blank merchants", async () => {
+      const row = { ...draft, title: "Old import", rowNumber: 2, submissionId: randomUUID() };
+      const expense = await client.expense.create({ data: {
+        title: row.title, amountCentavos: 15075, date: new Date(row.date), categoryId: category.id, expenseGroupId: aliceGroup.id,
+      } });
+      const payloadHash = createHash("sha256")
+        .update(JSON.stringify(["expense-import", category.id, JSON.stringify([row.title, 15075, row.date])])).digest("hex");
+      await client.expenseSubmission.create({ data: { id: row.submissionId, expenseGroupId: aliceGroup.id, expenseId: expense.id, payloadHash } });
+      assert.equal(await imports.save(aliceGroup.id, category.id, [row]), 1);
+      assert.equal(await imports.save(aliceGroup.id, category.id, [{ ...row, merchant: " " }]), 1);
+      assert.equal(await client.expense.count({ where: { title: row.title } }), 1);
+      await assert.rejects(imports.save(aliceGroup.id, category.id, [{ ...row, merchant: "New merchant" }]), /different details/);
     });
   } finally {
     await fixture.close();

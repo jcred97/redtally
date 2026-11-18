@@ -44,6 +44,19 @@ export type ExpenseHistoryFilters = {
   merchant?: string;
 };
 
+export type ExpenseExportRow = {
+  id: number;
+  title: string;
+  merchant: string | null;
+  amountCentavos: number;
+  date: Date;
+  timeMinutes: number | null;
+  notes: string | null;
+  categoryName: string;
+  paymentMethod: PaymentMethod | null;
+  bankName: string | null;
+};
+
 type ExpenseHistoryBankOption = { value: string; label: string };
 type ExpenseHistoryMerchantOption = { value: string; label: string };
 
@@ -114,6 +127,37 @@ function copyName(name: string) {
     .replace(/[\uD800-\uDBFF]$/, "")
     .trimEnd();
   return (shortened || "Expense Group") + suffix;
+}
+
+function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMethod, bank, merchant }: ExpenseHistoryFilters) {
+  const selectedDay = parseExpenseDay(day);
+  const selectedMonth = parseExpenseMonth(month);
+  const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
+  const selectedThrough = parseExpenseDay(through);
+  const monthThrough = selectedThrough?.slice(0, 7) === selectedMonth ? selectedThrough : undefined;
+  const dateFilter = selectedDay
+    ? Prisma.sql`AND date >= ${selectedDay}::timestamp AND date < ${selectedDay}::timestamp + INTERVAL '1 day'`
+    : monthStart
+      ? Prisma.sql`AND date >= ${monthStart}::timestamp AND date < ${monthThrough
+        ? Prisma.sql`${monthThrough}::timestamp + INTERVAL '1 day'`
+        : Prisma.sql`${monthStart}::timestamp + INTERVAL '1 month'`}`
+      : Prisma.empty;
+  const categoryFilter = categoryId !== undefined && validId(categoryId)
+    ? Prisma.sql`AND "categoryId" = ${categoryId}` : Prisma.empty;
+  const paymentMethodFilter = paymentMethod
+    ? Prisma.sql`AND "transactionType" = ${paymentMethod}::"TransactionType"` : Prisma.empty;
+  let bankFilter = Prisma.empty;
+  if (bank && "assignmentId" in bank) {
+    bankFilter = Prisma.sql`AND "bankAssignmentId" = ${bank.assignmentId}`;
+  } else if (bank) {
+    bankFilter = Prisma.sql`AND "bankAssignmentId" IS NULL AND bank ~ '[^[:space:]]'
+      AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
+  }
+  const selectedMerchant = parseExpenseHistoryMerchantFilter(merchant);
+  const merchantFilter = selectedMerchant === "none"
+    ? Prisma.sql`AND ${merchantName} IS NULL`
+    : selectedMerchant ? Prisma.sql`AND ${merchantKey} = ${selectedMerchant}` : Prisma.empty;
+  return Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${merchantFilter}`;
 }
 
 // Identity is resolved per operation, never captured at startup or supplied by a browser.
@@ -257,49 +301,14 @@ export function createExpenseGroupAccess(
     async getExpensePageById(
       id: number,
       requestedPage: number,
-      { day, month, through, categoryId, paymentMethod, bank, merchant }: ExpenseHistoryFilters = {},
+      filters: ExpenseHistoryFilters = {},
       includeDayTotals = false,
     ) {
       const userId = await requireUserId();
       if (!validId(id)) return null;
 
       const page = Number.isSafeInteger(requestedPage) && requestedPage >= 1 ? requestedPage : 1;
-      const selectedDay = parseExpenseDay(day);
-      const selectedMonth = parseExpenseMonth(month);
-      const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
-      const selectedThrough = parseExpenseDay(through);
-      const monthThrough = selectedThrough?.slice(0, 7) === selectedMonth ? selectedThrough : undefined;
-      // The date column stores UTC calendar dates. Use the same bounds for totals and rows.
-      const dateFilter = selectedDay
-        ? Prisma.sql`AND date >= ${selectedDay}::timestamp
-                     AND date < ${selectedDay}::timestamp + INTERVAL '1 day'`
-        : monthStart
-          ? Prisma.sql`AND date >= ${monthStart}::timestamp
-                       AND date < ${monthThrough
-                         ? Prisma.sql`${monthThrough}::timestamp + INTERVAL '1 day'`
-                         : Prisma.sql`${monthStart}::timestamp + INTERVAL '1 month'`}`
-          : Prisma.empty;
-      const categoryFilter = categoryId !== undefined && validId(categoryId)
-        ? Prisma.sql`AND "categoryId" = ${categoryId}`
-        : Prisma.empty;
-      const paymentMethodFilter = paymentMethod
-        ? Prisma.sql`AND "transactionType" = ${paymentMethod}::"TransactionType"`
-        : Prisma.empty;
-      let bankFilter = Prisma.empty;
-      if (bank && "assignmentId" in bank) {
-        bankFilter = Prisma.sql`AND "bankAssignmentId" = ${bank.assignmentId}`;
-      } else if (bank) {
-        bankFilter = Prisma.sql`AND "bankAssignmentId" IS NULL
-          AND bank ~ '[^[:space:]]'
-          AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
-      }
-      const selectedMerchant = parseExpenseHistoryMerchantFilter(merchant);
-      const merchantFilter = selectedMerchant === "none"
-        ? Prisma.sql`AND ${merchantName} IS NULL`
-        : selectedMerchant
-          ? Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`
-          : Prisma.empty;
-      const expenseFilters = Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${merchantFilter}`;
+      const expenseFilters = expenseHistoryFilterSql(filters);
       // Count every matching expense on a day, including those outside the current page.
       const dayTotals = includeDayTotals
         ? Prisma.sql`COUNT(*) OVER (PARTITION BY date::date) AS "dayExpenseCount",
@@ -373,6 +382,53 @@ export function createExpenseGroupAccess(
           category: { name: row.categoryName, icon: row.categoryIcon },
           bankAssignment: row.bankName === null ? null : { bank: { name: row.bankName } },
         })),
+      };
+    },
+
+    async prepareExpenseExport(id: number, filters: ExpenseHistoryFilters = {}) {
+      const userId = await requireUserId();
+      if (!validId(id)) return null;
+      const [group] = await db.$queryRaw<{ publicId: string; maxId: number }[]>`
+        SELECT "publicId", COALESCE((
+          SELECT MAX(id) FROM "Expense" WHERE "expenseGroupId" = expense_group.id
+        ), 0)::int AS "maxId"
+        FROM "Spending" expense_group
+        WHERE id = ${id} AND "userId" = ${userId}
+      `;
+      if (!group) return null;
+      const expenseFilters = expenseHistoryFilterSql(filters);
+
+      return {
+        publicId: group.publicId,
+        async *batches() {
+          let afterId = 0;
+          while (afterId < group.maxId) {
+            // Each batch rechecks ownership. A maximum ID excludes newer inserts;
+            // concurrent edits/deletes can still affect batches not yet downloaded.
+            const rows = await db.$queryRaw<ExpenseExportRow[]>`
+              WITH matching AS (
+                SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", notes,
+                  "categoryId", "bankAssignmentId", bank, "transactionType"
+                FROM "Expense"
+                WHERE "expenseGroupId" = ${id} AND id > ${afterId} AND id <= ${group.maxId}
+                  ${expenseFilters}
+                  AND EXISTS (SELECT 1 FROM "Spending" WHERE id = ${id} AND "userId" = ${userId})
+                ORDER BY id LIMIT 500
+              )
+              SELECT matching.id, matching.title, matching.merchant, matching."amountCentavos",
+                matching.date, matching."timeMinutes", matching.notes, category.name AS "categoryName",
+                matching."transactionType" AS "paymentMethod", COALESCE(bank.name, matching.bank) AS "bankName"
+              FROM matching
+              JOIN "Category" category ON category.id = matching."categoryId" AND category."spendingId" = ${id}
+              LEFT JOIN "ExpenseGroupBank" assignment ON assignment.id = matching."bankAssignmentId" AND assignment."expenseGroupId" = ${id}
+              LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
+              ORDER BY matching.id
+            `;
+            if (rows.length === 0) return;
+            yield rows;
+            afterId = rows[rows.length - 1].id;
+          }
+        },
       };
     },
 
