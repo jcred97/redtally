@@ -274,7 +274,9 @@ test("merchant search debounces input and discards a stale server response", asy
   await merchant.click();
   await expect(merchantOption("Merchant 29")).toBeVisible();
   await expect(merchantOptions).toHaveCount(3);
-  await page.clock.install();
+  const clockStart = Date.now();
+  await page.clock.install({ time: clockStart });
+  await page.clock.pauseAt(clockStart + 1_000);
   const alphaReady = deferred();
   const releaseAlpha = deferred();
   const betaReady = deferred();
@@ -304,6 +306,7 @@ test("merchant search debounces input and discards a stale server response", asy
     expect(alphaRequests).toBe(0);
     await page.clock.runFor(1);
     await alphaReady.promise;
+    await page.clock.resume();
     expect(alphaRequests).toBe(1);
     await search.fill("Beta");
     await page.clock.runFor(300);
