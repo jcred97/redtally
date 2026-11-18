@@ -53,6 +53,25 @@ Category display names and totals are derived by queries/UI rather than duplicat
 
 Migration `20261115120000_recurring_expenses` adds the schedule and occurrence tables with row-level security and no Data API policies. The worker creates the expense, records its scheduled date, and advances the schedule in one transaction. Duplicating an expense group copies its ordinary expense history and starts with an empty Recurring tab.
 
+## Planned financial-model dependencies
+
+Planning update: November 19, 2026. These requirements support the [global Overview roadmap](roadmap.md#planned-global-overview-and-connected-finances); they describe future work, not existing Prisma models or committed migrations.
+
+The current `Expense` model records positive PHP outflows. `BankAssignment` configures an institution's payment-method availability within a group; it has no balance and cannot represent several financial accounts at the same bank. Better Auth's `Account` model stores authentication identities and must remain separate from future financial accounts.
+
+| Planned capability | Required model behavior |
+| --- | --- |
+| Global expense Overview | Aggregate only the owner's explicitly included groups and selected date range. Group duplication can copy history; inclusion must be visible. Keep category identity tied to its group and report budget coverage explicitly. |
+| Financial accounts and transactions | Support multiple accounts per institution, opening balances, income, expenses, linked transfers, and reconciliation. Preserve expense-group organization and define how a financial transaction relates to it before implementing cross-group balances. |
+| Bills and paydays | Separate planned occurrences from confirmed transactions and match them without counting both. Existing recurrence occurrence records prove generation, not payment. |
+| Goals | Allocate portions of real account balances, with funding/withdrawal history and limits against over-allocation. Earmarking is distinct from transferring funds. |
+| Credit cards and loans | Track liabilities, statement obligations, and payments. Purchases count as spending; repayment transfers do not count that spending again. |
+| Cash-flow forecasts | Derive dated projections from recorded balances and expected events, with explicit assumptions, scope, and freshness. Budget remaining alone cannot establish available cash. |
+| Net worth and portfolios | Use assets minus liabilities and dated valuations. Separate contributions/withdrawals from investment returns; goal allocations and unused credit limits add no assets. |
+| Multi-currency reporting | Retain original amounts/currencies and explicit exchange-rate snapshots and dates. Never add raw amounts in different currencies. PHP remains the current implementation. |
+
+Introduce financial-account and transaction storage additively, with a deliberate migration design. Preserve existing expense IDs, amounts, dates, ownership, and history. Do not infer opening balances from bank labels or reinterpret historical `BANK_TRANSFER` payment methods as confirmed internal transfers. Owners must deliberately map history and supply opening balances. Existing expenses not yet mapped to a financial account remain visible only to their expense-group owner; unclaimed groups remain hidden. Future global queries and mutations need the same server-side ownership enforcement as existing group features.
+
 ## Data-preserving rollout
 
 Migration `20261022150000_core_expense_group_model` runs in one transaction. It adds the new tables, adds/backfills each expense's group ID, and strengthens foreign keys. It neither renames nor recreates the original tables, resets sequences, nor changes existing amounts, titles, dates, bank text, categories, or group names. Existing `/spending/[id]` URLs remain supported.

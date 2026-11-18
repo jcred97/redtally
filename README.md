@@ -15,6 +15,8 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
+The November 19, 2026 [Overview and connected-finances plan](docs/roadmap.md#planned-global-overview-and-connected-finances) proposes a global home dashboard across selected expense groups. Its first phase uses existing spending, budgets, recurring schedules, and history. Later phases add financial accounts, income/transfers, bills, savings goals, a payday forecast, debt/net worth, and portfolios as their data foundations become available. These are planned capabilities; the current per-group Dashboard remains the implemented reporting view.
+
 ## Current implementation
 
 The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense groups also have optional monthly `Budget` targets and `BankAssignment` records. Server-side session checks and ownership filters protect expense groups and their child data. Existing groups remain unclaimed (`userId = null`) and hidden from all signed-in users until deliberately assigned through an administrative process. Prisma mappings retain the existing database names and data: `ExpenseGroup` maps to `Spending`, and `BankAssignment` maps to `ExpenseGroupBank`. `Budget` uses the existing `Budget` table. Expense payment choices use `PaymentMethod` (the existing `TransactionType` enum); `paymentMethod` and `legacyBankName` map to the existing `transactionType` and `bank` columns. Category's `expenseGroupId` still maps to `spendingId`.
