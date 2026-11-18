@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { readSheet } from "read-excel-file/node";
 import { Pool } from "pg";
 import { test as base, expect, type BrowserContext, type Page, type Route } from "@playwright/test";
 import { browserData } from "./data";
@@ -41,6 +42,18 @@ async function newExpense(page: Page) {
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
   await expect(dialog).toBeVisible();
   return dialog;
+}
+
+async function exportExpenses(page: Page, format = "CSV (.csv)") {
+  await page.getByRole("button", { name: "Export Expenses", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Export Expenses", exact: true });
+  await dialog.getByRole("radio", { name: format, exact: false }).check();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"), dialog.getByRole("button", { name: "Download", exact: true }).click(),
+  ]);
+  await expect(dialog).not.toBeVisible();
+  expect(await download.failure()).toBeNull();
+  return download;
 }
 
 function deferred() {
@@ -250,9 +263,7 @@ test("CSV merchant mapping survives an uncertain save and an idempotent retry", 
     { merchant: "Import Cafe", amountCentavos: 10 }, { merchant: "Other Cafe", amountCentavos: 10 },
   ]);
   await page.reload();
-  const [download] = await Promise.all([
-    page.waitForEvent("download"), page.getByRole("link", { name: "Export CSV", exact: true }).click(),
-  ]);
+  const download = await exportExpenses(page);
   const csv = await readFile((await download.path())!, "utf8");
   expect(csv).toContain("Import Cafe");
   expect(csv).toContain("Other Cafe");
@@ -261,19 +272,102 @@ test("CSV merchant mapping survives an uncertain save and an idempotent retry", 
 test("CSV download includes all filtered rows beyond the visible history page", async ({ page }) => {
   await page.goto(groupPath(data.exported.publicId));
   await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
-  const [download] = await Promise.all([
-    page.waitForEvent("download"), page.getByRole("link", { name: "Export CSV", exact: true }).click(),
-  ]);
+  const download = await exportExpenses(page);
   const csv = await readFile((await download.path())!, "utf8");
   expect(csv.charCodeAt(0)).toBe(0xfeff);
   expect(csv.match(/Export expense /g)).toHaveLength(35);
   expect(csv).not.toContain("Foreign secret");
   await page.goto(`/spending/${data.exported.publicId}?day=2026-11-17`);
-  const [emptyDownload] = await Promise.all([
-    page.waitForEvent("download"), page.getByRole("link", { name: "Export CSV", exact: true }).click(),
-  ]);
+  const emptyDownload = await exportExpenses(page);
   const emptyCsv = await readFile((await emptyDownload.path())!, "utf8");
   expect(emptyCsv.trim().split(/\r?\n/)).toHaveLength(1);
+});
+
+test("export dialog offers PDF and Excel downloads and restores focus on dismissal", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto(groupPath(data.exported.publicId));
+  const trigger = page.getByRole("button", { name: "Export Expenses", exact: true });
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Export Expenses", exact: true });
+  await expect(dialog.getByRole("radio", { name: /CSV/ })).toBeChecked();
+  await expect(dialog.getByRole("radio", { name: /PDF/ })).toBeVisible();
+  await expect(dialog.getByRole("radio", { name: /Excel/ })).toBeVisible();
+  const bounds = await dialog.boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(360);
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+
+  const pdf = await exportExpenses(page, "PDF (.pdf)");
+  expect(pdf.suggestedFilename()).toMatch(/\.pdf$/);
+  const pdfBytes = await readFile((await pdf.path())!);
+  expect(pdfBytes.subarray(0, 5).toString()).toBe("%PDF-");
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const loading = getDocument({ data: new Uint8Array(pdfBytes), useWasm: false, disableFontFace: true });
+  try {
+    const document = await loading.promise;
+    let text = "";
+    let coloredPixels = 0;
+    for (let number = 1; number <= document.numPages; number++) {
+      const pdfPage = await document.getPage(number);
+      const content = await pdfPage.getTextContent();
+      text += content.items.map((item) => "str" in item ? item.str : "").join("");
+      if (content.items.some((item) => "str" in item && item.str.includes("🍱"))) {
+        const viewport = pdfPage.getViewport({ scale: 2 });
+        const factory = document.canvasFactory as {
+          create(width: number, height: number): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D };
+          destroy(target: { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D }): void;
+        };
+        const target = factory.create(Math.ceil(viewport.width), Math.ceil(viewport.height));
+        try {
+          await pdfPage.render({ canvas: target.canvas, canvasContext: target.context, viewport }).promise;
+          const pixels = target.context.getImageData(0, 0, target.canvas.width, target.canvas.height).data;
+          for (let index = 0; index < pixels.length; index += 4) {
+            const red = pixels[index], green = pixels[index + 1], blue = pixels[index + 2];
+            if (Math.max(red, green, blue) - Math.min(red, green, blue) > 40) coloredPixels++;
+          }
+        } finally { factory.destroy(target); }
+      }
+    }
+    for (const value of ["午餐🍱中文", "台灣商店🛒𠮷野家", "コーヒー・スーパー", "한국어", "👩🏽‍💻", "🇵🇭"]) {
+      expect(text.replace(/\s/gu, "")).toContain(value);
+    }
+    expect(text).not.toMatch(/[\u0000\uFFFD]/u);
+    expect(coloredPixels).toBeGreaterThan(20);
+  } finally { await loading.destroy(); }
+  const excel = await exportExpenses(page, "Excel (.xlsx)");
+  expect(excel.suggestedFilename()).toMatch(/\.xlsx$/);
+  const rows = await readSheet((await excel.path())!);
+  expect(rows).toHaveLength(36);
+  expect(JSON.stringify(rows)).toContain("Export expense 35");
+  expect(JSON.stringify(rows)).not.toContain("Foreign secret");
+  await page.goto(`/spending/${data.exported.publicId}?day=2026-11-17`);
+  const empty = await exportExpenses(page, "Excel (.xlsx)");
+  expect(await readSheet((await empty.path())!)).toHaveLength(1);
+});
+
+test("failed exports keep the dialog open for retry and invalid formats are rejected", async ({ page }) => {
+  await page.goto(groupPath(data.exported.publicId));
+  const exportPath = `/spending/${data.exported.publicId}/export`;
+  for (const format of ["invalid", "csv&format=pdf"]) {
+    const response = await page.request.get(`${exportPath}?format=${format}`);
+    expect(response.status()).toBe(400);
+    expect(response.headers()["cache-control"]).toContain("no-store");
+  }
+  const pattern = "**/export?**";
+  await page.route(pattern, (route) => route.fulfill({ status: 500, body: "Export failed" }));
+  await page.getByRole("button", { name: "Export Expenses", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Export Expenses", exact: true });
+  await dialog.getByRole("button", { name: "Download", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Unable to export expenses");
+  await expect(dialog.getByRole("radio", { name: /CSV/ })).toBeChecked();
+  await page.unroute(pattern);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"), dialog.getByRole("button", { name: "Download", exact: true }).click(),
+  ]);
+  expect(await download.failure()).toBeNull();
+  await expect(dialog).not.toBeVisible();
 });
 
 test("receipt OCR loads the real local worker, applies suggestions, and cancels a late scan", async ({ page }) => {

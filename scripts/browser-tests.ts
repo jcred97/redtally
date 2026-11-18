@@ -97,7 +97,10 @@ async function main() {
       })),
       ...Array.from({ length: 35 }, (_, index) => ({
         expenseGroupId: exported.id, categoryId: exported.categories[0].id,
-        title: `Export expense ${index + 1}`, merchant: "Export Market", amountCentavos: 10, date,
+        title: `Export expense ${index + 1}${index === 34 ? " 午餐 🍱 中文" : ""}`,
+        merchant: index === 34 ? "台灣商店 🛒 𠮷野家" : "Export Market",
+        notes: index === 34 ? "日本語 コーヒー・スーパー 한국어 👩🏽‍💻 🇵🇭" : null,
+        amountCentavos: 10, date,
       })),
       { expenseGroupId: foreign.id, categoryId: foreign.categories[0].id, title: "Foreign secret", amountCentavos: 99999, date },
     ] });

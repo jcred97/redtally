@@ -27,7 +27,7 @@ Implemented source includes:
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
 - History's merchant filter searches saved merchants and returns up to 25 options, keeping the active selection available. Search text stays out of filter URLs; selected merchants retain their existing digest values. The database still scans matching history to find distinct merchants.
-- **Export CSV** downloads every expense matching the current history filters, including rows beyond the current page. It includes exact PHP amounts, calendar dates, recorded Manila times, title, merchant, category, payment method, bank, and notes. Choose **All months** first to export the full group. Exports stream in batches and require the group's owner; spreadsheet formula-like text is escaped.
+- **Export Expenses** opens a file-type chooser for CSV, PDF, or Excel (`.xlsx`). Each download includes every expense matching the current history filters, including rows beyond the current page, with PHP amounts, calendar dates, recorded Manila times, title, merchant, category, payment method, bank, and notes. Choose **All months** first to export the full group. CSV works well for imports, PDF for sharing and printing, and Excel for spreadsheet analysis. Exports require the group's owner; CSV formula-like text is escaped and Excel text is stored as literal strings. CSV streams in batches; PDF and Excel are prepared before downloading.
 - In **New Expense**, paste a receipt image or choose a photo or screenshot. RedTally reads it on your device and suggests a title, merchant, peso total, date, and Manila time when available. Apply the suggestions you want, then review the editable form before saving. The original image and recognized text stay in the browser.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
 - **Import expenses** reads CSV, TSV, and Excel `.xlsx` files up to 5 MB in the browser. Choose a worksheet if needed, map the description, date, amount, and optional merchant columns, and select an existing category for the batch. The preview shows invalid rows and possible duplicates before you choose what to save. Each import supports up to 500 data rows and saves positive PHP expenses. Named merchants distinguish otherwise matching expenses; files without merchants retain conservative duplicate warnings. Retrying an uncertain save reuses its draft IDs and does not create another copy.
@@ -82,7 +82,11 @@ Available scripts:
 
 GitHub CI runs lint, TypeScript, portable tests, the native PostgreSQL regression, a production build, and Chromium browser checks for pushes and pull requests. Native and browser tests require `REDTALLY_POSTGRES_BIN` pointing to a PostgreSQL directory containing `initdb` and `pg_ctl`. They start their own password-protected cluster on a random loopback port, apply migrations, and remove the cluster after stopping it; they never use `.env`, `DATABASE_URL`, or an existing database. Browser checks also require Playwright's Chromium (`npm run test:browser:install`) and a production build. See [history profiling](docs/performance.md) for reproducible before/after measurements and their limits.
 
-CSV exports are expense-history copies, not complete account backups: they do not include budgets, recurring schedules, or account settings. An export caps the maximum expense ID when it starts; later inserts are excluded, while edits and deletions can affect batches that have not been read yet. For a stable recovery copy, finish editing before downloading and check the exported count and amount against the same history filters. Database backup/restore operations remain a separate deployment responsibility.
+Expense exports are expense-history copies, not complete account backups: they do not include budgets, recurring schedules, or account settings. An export caps the maximum expense ID when it starts; later inserts are excluded, while edits and deletions can affect batches that have not been read yet. For a stable recovery copy, finish editing before downloading and check the exported count and amount against the same history filters. Database backup/restore operations remain a separate deployment responsibility.
+
+PDF reports embed bundled fonts for accented text, simplified and traditional Chinese, Japanese, and Korean, and render emoji in color. Emoji sequences, including joined families, flags, and skin-tone modifiers, stay together when wrapping. Shared Han characters use Japanese glyph forms. The export works offline and keeps the text selectable; equivalent emoji presentation selectors may be normalized when copying text. Explicit text-presentation symbols stay monochrome. Font sources and licenses are documented in `server/pdf/fonts/README.md`.
+
+All export formats keep generated report headings, totals, field labels, and column names plain. User-entered emoji in expense titles, merchants, categories, bank names, and notes are preserved. Exports do not add decorative emoji, category icons, or bank logos to the data.
 
 ### Recurring expense worker
 
@@ -143,8 +147,8 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
-| `app/(dashboard)/spending/[id]/_lib/expenses/` | Authenticated merchant search action and CSV streaming helpers |
-| `app/(dashboard)/spending/[id]/export/` | Owner-only streaming CSV download using history filters |
+| `app/(dashboard)/spending/[id]/_lib/expenses/` | Authenticated merchant search action and CSV, PDF, and Excel export helpers |
+| `app/(dashboard)/spending/[id]/export/` | Owner-only expense downloads using history filters |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |
@@ -156,6 +160,7 @@ Authenticated pages render per request because their session check uses request 
 | `server/db/client.ts` | Shared runtime database client |
 | `server/db/schema.prisma` | Data model |
 | `server/db/migrations/` | Database migration history |
+| `server/pdf/fonts/`, `server/pdf/emoji/` | Licensed CJK fonts, selectable emoji text, and color emoji artwork bundled into PDF exports |
 | `tests/auth/` | Authentication and session tests |
 | `tests/helpers/` | Shared PGlite and native PostgreSQL fixtures and cleanup |
 | `tests/expense-groups/duplication.native.ts` | Native 50,000-expense copy preservation, ownership, and rollback regression |
