@@ -15,6 +15,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Write code that people can read easily. Use descriptive names and straightforward control flow. Use comments to explain decisions that are hard to infer from the code.
 - Always remove temporary files you create for a task once they are no longer needed. Clean them up before finishing, even if a command fails.
 
+## User experience
+
+- Make every feature easy to find, understand, and use. Give common tasks a direct path with clear labels, sensible defaults, visible primary actions, and as few clicks or taps as practical.
+- Walk through the main workflow before finishing. Remove unnecessary screens and repeated inputs while keeping controls accessible and preserving necessary confirmations.
+
 ## Repository structure
 
 - Group related files by feature or purpose. Use short role names within each folder, such as `access.ts`, `mutations.ts`, and `queries.ts`. Give React component files the same descriptive name as their component.
