@@ -1,89 +1,35 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import Select from "@/app/components/forms/Select";
-import { searchExpenseMerchants } from "../../_lib/expenses/merchants";
-
-type MerchantOption = { value: string; label: string };
-
-function resultStatus(options: MerchantOption[]) {
-  if (options.length === 25) return "Showing up to 25 merchants. Refine your search for more.";
-  return options.length === 0 ? "No matching merchants." : "";
-}
+import { useState } from "react";
 
 export default function MerchantFilter({
-  expenseGroupId,
-  merchants,
   merchant,
+  merchantLabel,
+  merchantSearch,
   fieldClass,
 }: {
-  expenseGroupId: number;
-  merchants: MerchantOption[];
   merchant?: string;
+  merchantLabel?: string;
+  merchantSearch?: string;
   fieldClass: string;
 }) {
-  const id = useId();
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(merchant ?? "");
-  const [searchOptions, setSearchOptions] = useState<MerchantOption[] | null>(null);
-  const [status, setStatus] = useState("");
-  const usePageOptions = !search.trim() && selected === (merchant ?? "");
-  const options = usePageOptions ? merchants : searchOptions ?? merchants;
-
-  useEffect(() => {
-    if (usePageOptions) return;
-    let active = true;
-    const timer = setTimeout(async () => {
-      setStatus("Searching merchants…");
-      try {
-        const results = await searchExpenseMerchants(expenseGroupId, search, selected);
-        if (active) {
-          setSearchOptions(results);
-          setStatus(resultStatus(results));
-        }
-      } catch {
-        if (active) setStatus("Could not search merchants. Try again.");
-      }
-    }, 300);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [expenseGroupId, search, selected, usePageOptions]);
-
-  const selectedOption = options.find(({ value }) => value === selected)
-    ?? merchants.find(({ value }) => value === selected);
-  const visibleOptions = selectedOption && !options.some(({ value }) => value === selected)
-    ? [selectedOption, ...options]
-    : options;
+  const [search, setSearch] = useState(merchantSearch ?? merchantLabel ?? "");
+  const keepExactFilter = merchant !== undefined && search === merchantLabel;
 
   return (
     <div className="min-w-0 text-sm text-gray-300">
-      <label htmlFor={`${id}-merchant`}>Merchant</label>
+      <label htmlFor="expense-filter-merchant">Merchant</label>
       <input
+        id="expense-filter-merchant"
         type="search"
-        aria-label="Search merchants"
-        aria-describedby={`${id}-status`}
+        name={keepExactFilter ? undefined : "merchantSearch"}
         placeholder="Search merchants"
         maxLength={100}
         value={search}
         onChange={(event) => setSearch(event.target.value)}
         className={fieldClass}
       />
-      <Select
-        id={`${id}-merchant`}
-        name="merchant"
-        value={selected}
-        onChange={setSelected}
-        className={fieldClass}
-        options={[
-          { value: "", label: "All merchants" },
-          { value: "none", label: "No merchant" },
-          ...(selected && selected !== "none" && !selectedOption ? [{ value: selected, label: "Unavailable merchant" }] : []),
-          ...visibleOptions,
-        ]}
-      />
-      <p id={`${id}-status`} role="status" className="mt-1 text-xs text-gray-400">{usePageOptions ? resultStatus(merchants) : status}</p>
+      {keepExactFilter && <input type="hidden" name="merchant" value={merchant} />}
     </div>
   );
 }

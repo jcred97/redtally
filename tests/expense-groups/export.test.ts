@@ -78,7 +78,7 @@ test("history export uses bounded owner-only batches and the history filters", a
         {}, { month: "2026-11" }, { day: "2026-10-31" },
         { month: "2026-11", through: "2026-11-01" }, { categoryId: category.id },
         { bank: { assignmentId: assignment.id } }, { bank: { legacyKey } },
-        { merchant }, { merchant: "none" }, { paymentMethod: "CASH" },
+        { merchant }, { merchant: "none" }, { merchantSearch: "fEe Sh" }, { paymentMethod: "CASH" },
         { month: "2026-11", categoryId: category.id, paymentMethod: "CREDIT_CARD", merchant },
         { categoryId: 2147483647 },
         parseExpenseGroupQuery({ month: "invalid", category: ["1", "2"], page: "9" }, "2026-11-18").filters,

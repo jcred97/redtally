@@ -2,6 +2,7 @@ import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 import {
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryMerchantFilter,
+  parseExpenseHistoryMerchantSearch,
   parseExpenseHistoryPaymentMethod,
 } from "@/app/(dashboard)/_lib/expense-groups/access";
 
@@ -46,13 +47,15 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const paymentMethod = parseExpenseHistoryPaymentMethod(rawMethod);
   const bank = parseExpenseHistoryBankFilter(rawBank);
   const bankFilterValue = bank && typeof rawBank === "string" ? rawBank : undefined;
-  const merchant = parseExpenseHistoryMerchantFilter(rawMerchant);
-  const filters = { day, month, through, categoryId, paymentMethod, bank, merchant };
+  const merchantSearch = parseExpenseHistoryMerchantSearch(query.merchantSearch);
+  const merchant = merchantSearch ? undefined : parseExpenseHistoryMerchantFilter(rawMerchant);
+  const filters = { day, month, through, categoryId, paymentMethod, bank, merchant, merchantSearch };
   const filterParams = new URLSearchParams();
   if (categoryId !== undefined) filterParams.set("category", String(categoryId));
   if (paymentMethod !== undefined) filterParams.set("paymentMethod", paymentMethod);
   if (bankFilterValue !== undefined) filterParams.set("bank", bankFilterValue);
   if (merchant !== undefined) filterParams.set("merchant", merchant);
+  if (merchantSearch !== undefined) filterParams.set("merchantSearch", merchantSearch);
   const hasOtherFilters = filterParams.size > 0;
   const hasFilters = month !== undefined || hasOtherFilters;
   const monthScopeParams = new URLSearchParams(filterParams);
@@ -80,7 +83,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   return {
     showCategories, showBanks, showRecurring, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, chosenMonth, dashboardMonth,
-    day, month, through, categoryId, paymentMethod, bankFilterValue, merchant,
+    day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, merchantSearch,
     filters, hasOtherFilters, hasFilters, filterQuery,
     monthScopeQuery: monthScopeParams.toString(),
   };

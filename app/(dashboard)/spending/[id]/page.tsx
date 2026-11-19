@@ -26,7 +26,7 @@ import {
   getExpenseGroupOptions,
   getExpenseHistoryAvailability,
   getExpenseHistoryBankOptionsByExpenseGroupId,
-  getExpenseHistoryMerchantOptionsByExpenseGroupId,
+  getExpenseHistoryMerchantLabel,
   getExpensePageByExpenseGroupId,
   resolveExpenseGroupRoute,
 } from "@/app/(dashboard)/_lib/expense-groups/queries";
@@ -56,14 +56,14 @@ export default async function ExpenseGroupPage({
     grouped, requestedPage, currentMonth, dashboardMonth, filters, merchant,
   } = view;
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, historyMerchantOptions, recurringExpenses, dashboard] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring || showDashboard ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
-    showExpenses ? getExpenseHistoryMerchantOptionsByExpenseGroupId(id, "", merchant) : [],
+    showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
     showRecurring ? getRecurringExpenses(id) : null,
     showDashboard ? getDashboard(id, dashboardMonth, today) : null,
   ]);
@@ -144,7 +144,7 @@ export default async function ExpenseGroupPage({
             categories={categoryOptions}
             bankOptions={bankOptions}
             historyBankOptions={historyBankOptions}
-            historyMerchantOptions={historyMerchantOptions}
+            merchantLabel={merchant === "none" ? "No merchant" : merchant ? merchantLabel ?? "Unavailable merchant" : undefined}
             expensePage={expensePage}
             historyAvailability={historyAvailability}
             view={view}

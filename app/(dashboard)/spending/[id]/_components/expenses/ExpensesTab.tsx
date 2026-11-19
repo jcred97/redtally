@@ -12,15 +12,15 @@ type ExpensesTabProps = {
   categories: ComponentProps<typeof ExpenseHistory>["categories"];
   bankOptions: ComponentProps<typeof ExpenseHistory>["bankOptions"];
   historyBankOptions: ComponentProps<typeof ExpenseHistoryFilters>["banks"];
-  historyMerchantOptions: ComponentProps<typeof ExpenseHistoryFilters>["merchants"];
+  merchantLabel?: string;
   expensePage: NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>;
   historyAvailability?: ExpenseHistoryAvailability;
   view: ExpenseGroupView;
   links: ExpenseGroupLinks;
 };
 
-export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, historyMerchantOptions, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
-  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
+export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
+  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, merchantSearch, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
   const { groupPath, expenseTab, categoriesTab, allMonthsHref } = links;
   const firstExpense = historyAvailability === "none";
   const thisMonthOnly = month === currentMonth && !day && !through && !hasOtherFilters;
@@ -33,10 +33,8 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
       <ExpenseHistoryFilters
         key={`${expenseGroupId}:${filterQuery}:${expensePage.page}`}
         groupPath={groupPath}
-        expenseGroupId={expenseGroupId}
         categories={categories}
         banks={historyBankOptions}
-        merchants={historyMerchantOptions}
         month={month}
         day={day}
         through={through}
@@ -44,6 +42,8 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
         paymentMethod={paymentMethod}
         bank={bankFilterValue}
         merchant={merchant}
+        merchantLabel={merchantLabel}
+        merchantSearch={merchantSearch}
         grouped={grouped}
         monthScopeHref={links.monthScopeHref}
         clearFiltersHref={groupPath + expenseTab}

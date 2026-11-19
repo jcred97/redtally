@@ -629,7 +629,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       await alice.delete(group.id);
     });
 
-    await t.test("merchant options and filtered history are private and use the same matching rows and totals", async () => {
+    await t.test("exact merchant filters and labels stay private and preserve history totals", async () => {
       const group = await alice.create("Merchant filter group");
       const category = await client.category.create({ data: { expenseGroupId: group.id, name: "Transport" } });
       const date = new Date("2026-10-24T00:00:00Z");
@@ -641,13 +641,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         ].map((expense, index) => ({ ...expense, expenseGroupId: group.id, categoryId: category.id, date, title: `Receipt ${index}` })),
       });
 
-      const options = await alice.listExpenseHistoryMerchantOptions(group.id);
       const grab = createHash("sha256").update("grab").digest("hex");
-      assert.equal(options.length, 2);
-      assert.equal(options[0].value, grab);
-      assert.equal(options[0].label.toLowerCase(), "grab");
-      assert.equal(options[1].label, "GrabFood");
-      assert.deepEqual(await bob.listExpenseHistoryMerchantOptions(group.id), []);
+      assert.equal((await alice.getExpenseHistoryMerchantLabel(group.id, grab))?.toLowerCase(), "grab");
+      assert.equal(await bob.getExpenseHistoryMerchantLabel(group.id, grab), null);
       assert.equal(await bob.getExpensePageById(group.id, 1, { merchant: grab }), null);
       assert.equal(parseExpenseHistoryMerchantFilter("Grab"), undefined);
       assert.equal(parseExpenseHistoryMerchantFilter([grab]), undefined);
@@ -666,31 +662,25 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(missing?.expenses.map(({ merchant }) => merchant), [null]);
     });
 
-    await t.test("merchant searches cap results, preserve the selection, and treat search text literally", async () => {
+    await t.test("merchant text search matches case-insensitive literal substrings across pages", async () => {
       const group = await alice.create("Searchable merchants");
       const category = await client.category.create({ data: { expenseGroupId: group.id, name: "Shopping" } });
       await client.expense.createMany({
-        data: [...Array.from({ length: 40 }, (_, index) => `Merchant ${String(index).padStart(2, "0")}`), "100%_Shop"]
+        data: [...Array.from({ length: 40 }, (_, index) => `Merchant ${String(index).padStart(2, "0")}`), "100%_Shop", null]
           .map((merchant) => ({
             expenseGroupId: group.id, categoryId: category.id, title: "Receipt", merchant,
             amountCentavos: 100, date: new Date("2026-10-24T00:00:00Z"),
           })),
       });
-      const options = await alice.listExpenseHistoryMerchantOptions(group.id);
-      assert.equal(options.length, 25);
-      assert.deepEqual(options, await alice.listExpenseHistoryMerchantOptions(group.id));
-      const selected = createHash("sha256").update("merchant 39").digest("hex");
-      assert(!options.some(({ value }) => value === selected));
-      const pinned = await alice.listExpenseHistoryMerchantOptions(group.id, "", selected);
-      assert.equal(pinned.length, 25);
-      assert(pinned.some(({ value, label }) => value === selected && label === "Merchant 39"));
-      assert.deepEqual((await alice.listExpenseHistoryMerchantOptions(group.id, " mErChAnT 39 ")).map(({ value }) => value), [selected]);
-      assert.deepEqual((await alice.listExpenseHistoryMerchantOptions(group.id, "%_")).map(({ label }) => label), ["100%_Shop"]);
-      assert.deepEqual(await alice.listExpenseHistoryMerchantOptions(group.id, "no match"), []);
-      assert.deepEqual(await alice.listExpenseHistoryMerchantOptions(group.id, "x".repeat(101)), []);
-      assert.deepEqual(await bob.listExpenseHistoryMerchantOptions(group.id, "Merchant", selected), []);
-      assert.deepEqual(await alice.listExpenseHistoryMerchantOptions(0, "Merchant"), []);
-      await assert.rejects(anonymous.listExpenseHistoryMerchantOptions(group.id, "Merchant"), /Sign in required/);
+      const filter = { merchantSearch: " mErChAnT " };
+      const second = await alice.getExpensePageById(group.id, 2, filter, true);
+      assert.equal(second?.totalExpenses, 40);
+      assert.equal(second?.expenses.length, 15);
+      assert.deepEqual(second?.expenses[0].daySummary, { count: 40, totalCentavos: BigInt(4000) });
+      const literal = await alice.getExpensePageById(group.id, 1, { merchantSearch: "%_" });
+      assert.deepEqual(literal?.expenses.map(({ merchant }) => merchant), ["100%_Shop"]);
+      assert.equal((await alice.getExpensePageById(group.id, 1, { merchantSearch: "no match" }))?.totalExpenses, 0);
+      assert.equal(await bob.getExpensePageById(group.id, 1, filter), null);
     });
 
     await t.test("bank and payment method filters match the totals and rows across pages", async () => {

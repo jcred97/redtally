@@ -28,7 +28,7 @@ Implemented source includes:
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
-- History's merchant filter searches saved merchants and returns up to 25 options, keeping the active selection available. Search text stays out of filter URLs; selected merchants retain their existing digest values. The database still scans matching history to find distinct merchants.
+- Enter part of a merchant name and choose **Apply filters** to search expense history. Matching is case-insensitive, and the search text is included in the filtered URL. Dashboard merchant links retain their exact matches.
 - **Export Expenses** opens a file-type chooser for CSV, PDF, or Excel (`.xlsx`). Each download includes every expense matching the current history filters, including rows beyond the current page, with PHP amounts, calendar dates, recorded Manila times, title, merchant, category, payment method, bank, and notes. Choose **All months** first to export the full group. CSV works well for imports, PDF for sharing and printing, and Excel for spreadsheet analysis. Exports require the group's owner; CSV formula-like text is escaped and Excel text is stored as literal strings. CSV streams in batches; PDF and Excel are prepared before downloading.
 - In **New Expense**, paste a receipt image or choose a photo or screenshot. RedTally reads it on your device and suggests a title, merchant, peso total, date, and Manila time when available. Apply the suggestions you want, then review the editable form before saving. The original image and recognized text stay in the browser.
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
@@ -150,7 +150,7 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
-| `app/(dashboard)/spending/[id]/_lib/expenses/` | Authenticated merchant search action and CSV, PDF, and Excel export helpers |
+| `app/(dashboard)/spending/[id]/_lib/expenses/` | CSV, PDF, and Excel export helpers |
 | `app/(dashboard)/spending/[id]/export/` | Owner-only expense downloads using history filters |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |

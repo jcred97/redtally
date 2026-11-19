@@ -8,11 +8,9 @@ import Select from "@/app/components/forms/Select";
 import MerchantFilter from "./MerchantFilter";
 
 type ExpenseHistoryFiltersProps = {
-  expenseGroupId: number;
   groupPath: string;
   categories: { id: number; name: string }[];
   banks: { value: string; label: string }[];
-  merchants: { value: string; label: string }[];
   month?: string;
   day?: string;
   through?: string;
@@ -20,6 +18,8 @@ type ExpenseHistoryFiltersProps = {
   paymentMethod?: PaymentMethod;
   bank?: string;
   merchant?: string;
+  merchantLabel?: string;
+  merchantSearch?: string;
   monthScopeHref: string;
   clearFiltersHref: string;
   canClearFilters: boolean;
@@ -29,11 +29,9 @@ type ExpenseHistoryFiltersProps = {
 const fieldClass = "mt-1 block min-h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
 
 export default function ExpenseHistoryFilters({
-  expenseGroupId,
   groupPath,
   categories,
   banks,
-  merchants,
   month,
   day,
   through,
@@ -41,6 +39,8 @@ export default function ExpenseHistoryFilters({
   paymentMethod,
   bank,
   merchant,
+  merchantLabel,
+  merchantSearch,
   monthScopeHref,
   clearFiltersHref,
   canClearFilters,
@@ -103,10 +103,9 @@ export default function ExpenseHistoryFilters({
         />
       </div>
       <MerchantFilter
-        key={`${expenseGroupId}-${merchant ?? ""}`}
-        expenseGroupId={expenseGroupId}
-        merchants={merchants}
         merchant={merchant}
+        merchantLabel={merchantLabel}
+        merchantSearch={merchantSearch}
         fieldClass={fieldClass}
       />
       <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">

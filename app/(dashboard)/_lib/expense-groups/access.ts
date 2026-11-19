@@ -5,7 +5,6 @@ import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 const MAX_EXPENSE_GROUP_ID = 2_147_483_647;
 const MAX_NAME_LENGTH = 100;
 const EXPENSES_PAGE_SIZE = 25;
-const MERCHANT_OPTIONS_LIMIT = 25;
 const GROUP_HAS_DEPENDENCIES =
   "Remove this expense group's categories and budgets before deleting it.";
 
@@ -42,6 +41,7 @@ export type ExpenseHistoryFilters = {
   paymentMethod?: PaymentMethod;
   bank?: { assignmentId: number } | { legacyKey: string };
   merchant?: string;
+  merchantSearch?: string;
 };
 
 export type ExpenseHistoryAvailability = "none" | "older" | "other";
@@ -60,10 +60,9 @@ export type ExpenseExportRow = {
 };
 
 type ExpenseHistoryBankOption = { value: string; label: string };
-type ExpenseHistoryMerchantOption = { value: string; label: string };
 
 const merchantName = Prisma.sql`NULLIF(btrim(merchant), '')`;
-// Match case variants and keep saved names out of filter URLs.
+// Exact merchant links identify case variants without exposing saved names.
 const merchantKey = Prisma.sql`encode(sha256(convert_to(lower(${merchantName}), 'UTF8')), 'hex')`;
 export { merchantName as expenseHistoryMerchantName, merchantKey as expenseHistoryMerchantKey };
 
@@ -102,6 +101,12 @@ export function parseExpenseHistoryMerchantFilter(value: unknown): string | unde
     : undefined;
 }
 
+export function parseExpenseHistoryMerchantSearch(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.includes("\0")) return undefined;
+  const search = value.trim();
+  return search && search.length <= MAX_NAME_LENGTH ? search : undefined;
+}
+
 function parseName(name: unknown) {
   if (typeof name !== "string" || !name.trim()) {
     throw new TypeError("Name is required");
@@ -132,7 +137,7 @@ function copyName(name: string) {
   return (shortened || "Expense Group") + suffix;
 }
 
-function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMethod, bank, merchant }: ExpenseHistoryFilters) {
+function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMethod, bank, merchant, merchantSearch }: ExpenseHistoryFilters) {
   const selectedDay = parseExpenseDay(day);
   const selectedMonth = parseExpenseMonth(month);
   const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
@@ -157,9 +162,15 @@ function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMetho
       AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
   }
   const selectedMerchant = parseExpenseHistoryMerchantFilter(merchant);
-  const merchantFilter = selectedMerchant === "none"
-    ? Prisma.sql`AND ${merchantName} IS NULL`
-    : selectedMerchant ? Prisma.sql`AND ${merchantKey} = ${selectedMerchant}` : Prisma.empty;
+  const search = parseExpenseHistoryMerchantSearch(merchantSearch);
+  let merchantFilter = Prisma.empty;
+  if (search) {
+    merchantFilter = Prisma.sql`AND strpos(lower(${merchantName}), lower(${search})) > 0`;
+  } else if (selectedMerchant === "none") {
+    merchantFilter = Prisma.sql`AND ${merchantName} IS NULL`;
+  } else if (selectedMerchant) {
+    merchantFilter = Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`;
+  }
   return Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${merchantFilter}`;
 }
 
@@ -274,31 +285,17 @@ export function createExpenseGroupAccess(
       `;
     },
 
-    async listExpenseHistoryMerchantOptions(id: number, search = "", selected?: string) {
+    async getExpenseHistoryMerchantLabel(id: number, merchant: string) {
       const userId = await requireUserId();
-      if (!validId(id)) return [];
-      if (typeof search !== "string" || search.length > 100) return [];
-      const selectedMerchant = parseExpenseHistoryMerchantFilter(selected);
-      const searchText = search.trim().toLowerCase();
-
-      return db.$queryRaw<ExpenseHistoryMerchantOption[]>`
-        WITH merchants AS (
-          SELECT ${merchantKey} AS value, MIN(${merchantName}) AS label
-          FROM "Expense" expense
-          JOIN "Spending" expense_group ON expense_group.id = expense."expenseGroupId"
-          WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
-            AND ${merchantName} IS NOT NULL
-            AND (strpos(lower(${merchantName}), ${searchText}) > 0
-              OR ${merchantKey} = ${selectedMerchant ?? null})
-          GROUP BY 1
-        ), options AS (
-          SELECT value, label FROM merchants
-          ORDER BY (value = ${selectedMerchant ?? null}) DESC NULLS LAST,
-            lower(label), label, value
-          LIMIT ${MERCHANT_OPTIONS_LIMIT}
-        )
-        SELECT value, label FROM options ORDER BY lower(label), label, value
+      if (!validId(id)) return null;
+      const [result] = await db.$queryRaw<{ label: string | null }[]>`
+        SELECT MIN(${merchantName}) AS label
+        FROM "Expense" expense
+        JOIN "Spending" expense_group ON expense_group.id = expense."expenseGroupId"
+        WHERE expense_group.id = ${id} AND expense_group."userId" = ${userId}
+          AND ${merchantKey} = ${merchant}
       `;
+      return result?.label ?? null;
     },
 
     async getExpenseHistoryAvailability(id: number, filters: ExpenseHistoryFilters) {

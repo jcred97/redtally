@@ -21,6 +21,21 @@ test("group query defaults and repeated or invalid filters are handled consisten
     paymentMethod: "invalid", bank: "assignment:0", merchant: "some store",
   }, today);
   assert.deepEqual(invalid, defaults);
+  for (const merchantSearch of [["Cafe", "Shop"], " ", "Cafe\0", "x".repeat(101)]) {
+    assert.deepEqual(parseExpenseGroupQuery({ merchantSearch }, today), defaults);
+  }
+});
+
+test("merchant search takes precedence over exact links and follows history navigation", () => {
+  const view = parseExpenseGroupQuery({ merchantSearch: "  100%_Shop ", merchant: "none" }, today);
+  assert.equal(view.filters.merchantSearch, "100%_Shop");
+  assert.equal(view.filters.merchant, undefined);
+  const links = expenseGroupLinks("id", view);
+  for (const href of [links.monthScopeHref, links.historyViewHref(true, 2)]) {
+    const { searchParams } = new URL(href, "https://example.test");
+    assert.equal(searchParams.get("merchantSearch"), "100%_Shop");
+    assert.equal(searchParams.has("merchant"), false);
+  }
 });
 
 test("day filters take precedence and through only applies within the chosen month", () => {
