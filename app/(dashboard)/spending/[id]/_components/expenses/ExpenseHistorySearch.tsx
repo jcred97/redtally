@@ -2,28 +2,28 @@
 
 import { useState } from "react";
 
-export default function MerchantFilter({
+export default function ExpenseHistorySearch({
   merchant,
   merchantLabel,
-  merchantSearch,
+  initialSearch,
   fieldClass,
 }: {
   merchant?: string;
   merchantLabel?: string;
-  merchantSearch?: string;
+  initialSearch?: string;
   fieldClass: string;
 }) {
-  const [search, setSearch] = useState(merchantSearch ?? merchantLabel ?? "");
+  const [search, setSearch] = useState(initialSearch ?? merchantLabel ?? "");
   const keepExactFilter = merchant !== undefined && search === merchantLabel;
 
   return (
     <div className="min-w-0 text-sm text-gray-300">
-      <label htmlFor="expense-filter-merchant">Merchant</label>
+      <label htmlFor="expense-filter-search">Search expenses</label>
       <input
-        id="expense-filter-merchant"
+        id="expense-filter-search"
         type="search"
-        name={keepExactFilter ? undefined : "merchantSearch"}
-        placeholder="Search merchants"
+        name={keepExactFilter ? undefined : "search"}
+        placeholder="Merchant or expense title"
         maxLength={100}
         value={search}
         onChange={(event) => setSearch(event.target.value)}

@@ -5,7 +5,7 @@ import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import Select from "@/app/components/forms/Select";
-import MerchantFilter from "./MerchantFilter";
+import ExpenseHistorySearch from "./ExpenseHistorySearch";
 
 type ExpenseHistoryFiltersProps = {
   groupPath: string;
@@ -19,7 +19,7 @@ type ExpenseHistoryFiltersProps = {
   bank?: string;
   merchant?: string;
   merchantLabel?: string;
-  merchantSearch?: string;
+  search?: string;
   monthScopeHref: string;
   clearFiltersHref: string;
   canClearFilters: boolean;
@@ -40,7 +40,7 @@ export default function ExpenseHistoryFilters({
   bank,
   merchant,
   merchantLabel,
-  merchantSearch,
+  search,
   monthScopeHref,
   clearFiltersHref,
   canClearFilters,
@@ -60,6 +60,12 @@ export default function ExpenseHistoryFilters({
       {month === undefined && <input type="hidden" name="allMonths" value="1" />}
       {through && <input type="hidden" name="through" value={through} />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
+      <ExpenseHistorySearch
+        merchant={merchant}
+        merchantLabel={merchantLabel}
+        initialSearch={search}
+        fieldClass={fieldClass}
+      />
       <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} />
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-category">Category</label>
@@ -102,12 +108,6 @@ export default function ExpenseHistoryFilters({
           ]}
         />
       </div>
-      <MerchantFilter
-        merchant={merchant}
-        merchantLabel={merchantLabel}
-        merchantSearch={merchantSearch}
-        fieldClass={fieldClass}
-      />
       <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {through && <span className="text-sm text-gray-400">Through {formatExpenseDate(through)}</span>}

@@ -41,7 +41,7 @@ export type ExpenseHistoryFilters = {
   paymentMethod?: PaymentMethod;
   bank?: { assignmentId: number } | { legacyKey: string };
   merchant?: string;
-  merchantSearch?: string;
+  search?: string;
 };
 
 export type ExpenseHistoryAvailability = "none" | "older" | "other";
@@ -101,7 +101,7 @@ export function parseExpenseHistoryMerchantFilter(value: unknown): string | unde
     : undefined;
 }
 
-export function parseExpenseHistoryMerchantSearch(value: unknown): string | undefined {
+export function parseExpenseHistorySearch(value: unknown): string | undefined {
   if (typeof value !== "string" || value.includes("\0")) return undefined;
   const search = value.trim();
   return search && search.length <= MAX_NAME_LENGTH ? search : undefined;
@@ -137,7 +137,7 @@ function copyName(name: string) {
   return (shortened || "Expense Group") + suffix;
 }
 
-function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMethod, bank, merchant, merchantSearch }: ExpenseHistoryFilters) {
+function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMethod, bank, merchant, search }: ExpenseHistoryFilters) {
   const selectedDay = parseExpenseDay(day);
   const selectedMonth = parseExpenseMonth(month);
   const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
@@ -162,16 +162,19 @@ function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMetho
       AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
   }
   const selectedMerchant = parseExpenseHistoryMerchantFilter(merchant);
-  const search = parseExpenseHistoryMerchantSearch(merchantSearch);
-  let merchantFilter = Prisma.empty;
-  if (search) {
-    merchantFilter = Prisma.sql`AND strpos(lower(${merchantName}), lower(${search})) > 0`;
+  const searchText = parseExpenseHistorySearch(search);
+  let textFilter = Prisma.empty;
+  if (searchText) {
+    textFilter = Prisma.sql`AND (
+      strpos(lower(title), lower(${searchText})) > 0
+      OR strpos(lower(${merchantName}), lower(${searchText})) > 0
+    )`;
   } else if (selectedMerchant === "none") {
-    merchantFilter = Prisma.sql`AND ${merchantName} IS NULL`;
+    textFilter = Prisma.sql`AND ${merchantName} IS NULL`;
   } else if (selectedMerchant) {
-    merchantFilter = Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`;
+    textFilter = Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`;
   }
-  return Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${merchantFilter}`;
+  return Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${textFilter}`;
 }
 
 // Identity is resolved per operation, never captured at startup or supplied by a browser.

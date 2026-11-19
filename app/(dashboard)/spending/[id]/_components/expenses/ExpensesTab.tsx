@@ -20,7 +20,7 @@ type ExpensesTabProps = {
 };
 
 export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
-  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, merchantSearch, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
+  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, search, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
   const { groupPath, expenseTab, categoriesTab, allMonthsHref } = links;
   const firstExpense = historyAvailability === "none";
   const thisMonthOnly = month === currentMonth && !day && !through && !hasOtherFilters;
@@ -43,7 +43,7 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
         bank={bankFilterValue}
         merchant={merchant}
         merchantLabel={merchantLabel}
-        merchantSearch={merchantSearch}
+        search={search}
         grouped={grouped}
         monthScopeHref={links.monthScopeHref}
         clearFiltersHref={groupPath + expenseTab}

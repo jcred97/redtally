@@ -357,15 +357,17 @@ test("a lost schedule response can be retried from the dialog and posts one expe
   expect(await expenseCount(title, data.group.id)).toBe(1);
 });
 
-test("merchant search filters history, pagination, and CSV export", async ({ page }) => {
+test("expense search filters history, pagination, and CSV export", async ({ page }) => {
   await page.goto(groupPath(data.merchants.publicId));
-  const search = page.getByRole("searchbox", { name: "Merchant", exact: true });
+  const form = page.getByRole("form", { name: "Expense history filters" });
+  const search = form.getByRole("searchbox", { name: "Search expenses", exact: true });
   const apply = page.getByRole("button", { name: "Apply filters", exact: true });
   await expect(page.getByRole("combobox", { name: "Merchant", exact: true })).toHaveCount(0);
+  await expect(form.locator("input:not([type=hidden])").first()).toHaveAttribute("type", "search");
 
   await search.fill("mErChAnT");
   await apply.click();
-  await expect(page).toHaveURL(/merchantSearch=mErChAnT/);
+  await expect(page).toHaveURL(/[?&]search=mErChAnT/);
   await page.getByRole("link", { name: "Next", exact: true }).click();
   await expect(page.getByText("Page 2 of 2", { exact: true })).toBeVisible();
   await expect(search).toHaveValue("mErChAnT");
@@ -374,9 +376,9 @@ test("merchant search filters history, pagination, and CSV export", async ({ pag
   expect(csv.match(/Merchant \d{2} purchase/g)).toHaveLength(30);
   expect(csv).not.toContain("Alpha Bakery");
 
-  await search.fill("beta c");
+  await search.fill("29 purchase");
   await search.press("Enter");
-  await expect(page.getByRole("cell", { name: /^Beta Cafe purchase/ })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /^Merchant 29 purchase/ })).toBeVisible();
   await expect(page.getByRole("cell", { name: /^Alpha Bakery purchase/ })).toHaveCount(0);
 
   await search.fill("does not exist");
@@ -386,13 +388,13 @@ test("merchant search filters history, pagination, and CSV export", async ({ pag
   await search.clear();
   await apply.click();
   await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
-  expect(new URL(page.url()).searchParams.get("merchantSearch")).toBeFalsy();
+  expect(new URL(page.url()).searchParams.get("search")).toBeFalsy();
 });
 
 test("an exact merchant link retains its filter until the text is edited", async ({ page }) => {
   const merchant = createHash("sha256").update("beta cafe").digest("hex");
   await page.goto(`${groupPath(data.merchants.publicId)}&merchant=${merchant}`);
-  const search = page.getByRole("searchbox", { name: "Merchant", exact: true });
+  const search = page.getByRole("searchbox", { name: "Search expenses", exact: true });
   const apply = page.getByRole("button", { name: "Apply filters", exact: true });
   await expect(search).toHaveValue("Beta Cafe");
   await apply.click();
@@ -400,9 +402,9 @@ test("an exact merchant link retains its filter until the text is edited", async
   await expect(page.getByRole("cell", { name: /^Beta Cafe purchase/ })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`[?&]merchant=${merchant}(&|$)`));
   await search.fill("bakery");
-  await expect(search).toHaveAttribute("name", "merchantSearch");
+  await expect(search).toHaveAttribute("name", "search");
   await apply.click();
-  await expect(page).toHaveURL(/merchantSearch=bakery/);
+  await expect(page).toHaveURL(/[?&]search=bakery/);
   await expect(page.getByRole("cell", { name: /^Alpha Bakery purchase/ })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("merchant")).toBe(false);
 });

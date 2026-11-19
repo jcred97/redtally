@@ -662,24 +662,27 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(missing?.expenses.map(({ merchant }) => merchant), [null]);
     });
 
-    await t.test("merchant text search matches case-insensitive literal substrings across pages", async () => {
+    await t.test("expense search matches literal substrings in merchants or titles across pages", async () => {
       const group = await alice.create("Searchable merchants");
       const category = await client.category.create({ data: { expenseGroupId: group.id, name: "Shopping" } });
       await client.expense.createMany({
         data: [...Array.from({ length: 40 }, (_, index) => `Merchant ${String(index).padStart(2, "0")}`), "100%_Shop", null]
           .map((merchant) => ({
-            expenseGroupId: group.id, categoryId: category.id, title: "Receipt", merchant,
+            expenseGroupId: group.id, categoryId: category.id, title: merchant === null ? "Merchant reimbursement" : "Receipt", merchant,
             amountCentavos: 100, date: new Date("2026-10-24T00:00:00Z"),
           })),
       });
-      const filter = { merchantSearch: " mErChAnT " };
+      const filter = { search: " mErChAnT " };
       const second = await alice.getExpensePageById(group.id, 2, filter, true);
-      assert.equal(second?.totalExpenses, 40);
-      assert.equal(second?.expenses.length, 15);
-      assert.deepEqual(second?.expenses[0].daySummary, { count: 40, totalCentavos: BigInt(4000) });
-      const literal = await alice.getExpensePageById(group.id, 1, { merchantSearch: "%_" });
+      assert.equal(second?.totalExpenses, 41);
+      assert.equal(second?.expenses.length, 16);
+      assert.deepEqual(second?.expenses[0].daySummary, { count: 41, totalCentavos: BigInt(4100) });
+      const titleOnly = await alice.getExpensePageById(group.id, 1, { search: "REIMBURSE" });
+      assert.deepEqual(titleOnly?.expenses.map(({ title, merchant }) => [title, merchant]), [["Merchant reimbursement", null]]);
+      assert.equal((await alice.getExpensePageById(group.id, 1, { ...filter, day: "2026-10-25" }))?.totalExpenses, 0);
+      const literal = await alice.getExpensePageById(group.id, 1, { search: "%_" });
       assert.deepEqual(literal?.expenses.map(({ merchant }) => merchant), ["100%_Shop"]);
-      assert.equal((await alice.getExpensePageById(group.id, 1, { merchantSearch: "no match" }))?.totalExpenses, 0);
+      assert.equal((await alice.getExpensePageById(group.id, 1, { search: "no match" }))?.totalExpenses, 0);
       assert.equal(await bob.getExpensePageById(group.id, 1, filter), null);
     });
 
