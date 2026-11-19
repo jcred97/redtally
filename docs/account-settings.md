@@ -11,7 +11,7 @@ Use a narrow left sidebar on desktop, with the selected section marked in RedTal
 | Section | What the person can do |
 | --- | --- |
 | **Profile** | View their name and email and choose a profile photo or use their initials. |
-| **Receipt scanning** | Choose an optional AI provider, enter a key, and select **Test and save**. After a successful test, show the provider and a masked key, with actions to replace the key or disconnect. |
+| **Receipt scanning** | Choose an optional AI provider, enter a key, and select **Test & Save**. After a successful test, show the provider and a masked key, with actions to replace the key or disconnect. |
 
 ## From a pasted receipt
 

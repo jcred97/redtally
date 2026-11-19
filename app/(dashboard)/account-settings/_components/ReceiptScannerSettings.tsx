@@ -96,8 +96,12 @@ export default function ReceiptScannerSettings({ initialConnection, onConnected,
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="submit" className="button-primary min-h-10 rounded-lg px-4 text-sm font-medium" disabled={!provider}>
-                {pending === "save" ? "Testing…" : "Test and save"}
+              <button
+                type="submit"
+                className="min-h-10 cursor-pointer rounded-lg bg-red-500 px-4 text-sm font-medium text-white transition-colors enabled:hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!provider}
+              >
+                {pending === "save" ? "Testing…" : "Test & Save"}
               </button>
               {(onCancel || replacing) && (
                 <button type="button" className="button-secondary min-h-10 rounded-lg px-4 text-sm" onClick={() => {

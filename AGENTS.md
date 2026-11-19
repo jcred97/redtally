@@ -20,6 +20,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Make every feature easy to find, understand, and use. Give common tasks a direct path with clear labels, sensible defaults, visible primary actions, and as few clicks or taps as practical.
 - Walk through the main workflow before finishing. Remove unnecessary screens and repeated inputs while keeping controls accessible and preserving necessary confirmations.
 - Use the Expenses filters as the visual standard for form controls. Reuse the components in `app/components/forms/` for text and search fields, single- and multiple-choice dropdowns, month/date/time pickers, checkboxes, radio buttons, and file pickers. Configure labels, options, values, and behavior in each feature. Place labels above full-width fields, match the 40 px minimum height, rounded borders, and compact padding, and align chevrons and picker icons at the trailing edge. Use consistent 16 px gaps between fields, stack fields on narrow screens, and keep keyboard focus indicators visible.
+- Style the main action in each form or dialog as a primary button. Use `bg-red-500`, `enabled:hover:bg-red-600`, `text-white`, and `transition-colors`. Use `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400` for keyboard focus and `disabled:cursor-not-allowed disabled:opacity-50` for disabled buttons.
+- Style supporting actions with the shared `button-secondary` utility in `app/globals.css`. It supplies the tinted background, red text, hover, focus, and disabled styles. For primary and secondary form buttons, use `min-h-10 rounded-lg px-4 text-sm font-medium` for consistent sizing.
 
 ## Repository structure
 
