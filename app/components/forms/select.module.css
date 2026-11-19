@@ -24,15 +24,7 @@
 .disclosure::-webkit-details-marker { display: none; }
 details[open] > .disclosure::after { transform: translateY(-50%) rotate(180deg); }
 
-.trigger:focus-visible,
-.disclosure:focus-visible,
-.trigger[aria-expanded="true"] {
-  outline: 2px solid var(--color-red-400);
-  outline-offset: 2px;
-}
-
 .trigger:disabled { cursor: not-allowed; }
-.trigger[aria-invalid="true"] { border-color: var(--color-red-400); }
 
 .visuallyHidden {
   position: absolute;
