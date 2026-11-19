@@ -125,7 +125,7 @@ The production domain is public and protected by application sign-in. Vercel Sta
 For future installations or releases that change authentication storage, coordinate the migration with the matching application version:
 
 1. Back up existing rows and inspect migration status and any RLS policies. Verify the runtime role owns the protected tables or has `BYPASSRLS`.
-2. Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in the intended Vercel environment. Production uses `https://redfunds.vercel.app`; Preview needs its own explicit origin/settings. Changing environment variables requires a new deployment.
+2. Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in the intended Vercel environment. Set the Production origin to `https://redtally.vercel.app` and configure a separate origin for Preview. Changing environment variables requires a new deployment.
 3. Restrict traffic during transitions where an older release lacks the required access controls or schema support; it must not serve newly private records.
 4. Apply committed migrations with `npx prisma migrate deploy`, generate the client, and deploy the matching code. This release is not activated by merely pushing the schema file.
 5. Verify anonymous redirects, two independent users, rejected cross-user IDs, sign-out/revocation, and preserved unclaimed legacy records. Any later assignment of legacy groups must target a specifically verified account ID, never the first account to sign up.
