@@ -120,6 +120,7 @@ async function main() {
       ...[...Array.from({ length: 30 }, (_, index) => `Merchant ${String(index).padStart(2, "0")}`), "Alpha Bakery", "Beta Cafe"].map((merchant) => ({
         expenseGroupId: merchants.id, categoryId: merchants.categories[0].id,
         title: `${merchant} purchase`, merchant, amountCentavos: 12345, date,
+        ...(merchant === "Beta Cafe" && { paymentMethod: "CASH" as const, legacyBankName: "Browser Test Bank" }),
       })),
       ...Array.from({ length: 35 }, (_, index) => ({
         expenseGroupId: exported.id, categoryId: exported.categories[0].id,

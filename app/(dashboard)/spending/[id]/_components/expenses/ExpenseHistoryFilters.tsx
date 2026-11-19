@@ -1,86 +1,168 @@
-import Form from "next/form";
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
-import type { PaymentMethod } from "@/generated/prisma/enums";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import Select from "@/app/components/forms/Select";
-import ExpenseHistorySearch from "./ExpenseHistorySearch";
+import { nextExpenseHistoryScope } from "../../_lib/expenses/scope";
 
 type ExpenseHistoryFiltersProps = {
   groupPath: string;
   filterQuery: string;
   categories: { id: number; name: string }[];
   banks: { value: string; label: string }[];
-  month?: string;
-  day?: string;
-  through?: string;
-  categoryId?: number;
-  paymentMethod?: PaymentMethod;
-  bank?: string;
-  merchant?: string;
   merchantLabel?: string;
-  search?: string;
+  currentMonth: string;
   monthScopeHref: string;
   clearFiltersHref: string;
   canClearFilters: boolean;
-  grouped: boolean;
 };
 
+const SEARCH_DELAY_MS = 300;
 const fieldClass = "mt-1 block min-h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
+
+type FilterField = "month" | "day" | "category" | "paymentMethod" | "bank";
 
 export default function ExpenseHistoryFilters({
   groupPath,
   filterQuery,
   categories,
   banks,
-  month,
-  day,
-  through,
-  categoryId,
-  paymentMethod,
-  bank,
-  merchant,
   merchantLabel,
-  search,
+  currentMonth,
   monthScopeHref,
   clearFiltersHref,
   canClearFilters,
-  grouped,
 }: ExpenseHistoryFiltersProps) {
-  const categoryUnavailable =
-    categoryId !== undefined && !categories.some((category) => category.id === categoryId);
-  const bankUnavailable = bank !== undefined && !banks.some(({ value }) => value === bank);
+  const router = useRouter();
+  const searchTimer = useRef<number | undefined>(undefined);
+  const [composing, setComposing] = useState(false);
+  const appliedParams = new URLSearchParams(filterQuery);
+  appliedParams.sort();
+  const appliedQuery = appliedParams.toString();
+  const appliedSearch = appliedParams.get("search") ?? merchantLabel ?? "";
+  const [filters, setFilters] = useState({ appliedQuery, requestedQuery: appliedQuery, search: appliedSearch });
+
+  if (filters.appliedQuery !== appliedQuery) {
+    setFilters({
+      appliedQuery,
+      requestedQuery: appliedQuery,
+      // A response can arrive after the user has continued typing.
+      search: filters.requestedQuery === appliedQuery ? filters.search : appliedSearch,
+    });
+  }
+
+  const params = new URLSearchParams(filters.requestedQuery);
+  const day = params.get("day") ?? "";
+  const month = day ? day.slice(0, 7) : params.get("month") ?? "";
+  const through = params.get("through");
+  const category = params.get("category") ?? "";
+  const paymentMethod = params.get("paymentMethod") ?? "";
+  const bank = params.get("bank") ?? "";
+  const categoryUnavailable = category && !categories.some(({ id }) => String(id) === category);
+  const bankUnavailable = bank && !banks.some(({ value }) => value === bank);
+  const scopeHref = filters.requestedQuery === appliedQuery
+    ? monthScopeHref
+    : `${groupPath}?${nextExpenseHistoryScope(params, currentMonth)}`;
+  const searchText = filters.search.trim();
+  const needsSearch = params.has("merchant")
+    ? filters.search !== merchantLabel
+    : searchText !== (params.get("search") ?? "");
+
+  function navigate(next: URLSearchParams, method: "push" | "replace") {
+    next.sort();
+    const requestedQuery = next.toString();
+    if (requestedQuery === filters.requestedQuery) return;
+    setFilters((current) => ({ ...current, requestedQuery }));
+    router[method](requestedQuery ? `${groupPath}?${requestedQuery}` : groupPath, { scroll: false });
+  }
+
+  function changeFilter(field: FilterField, value: string) {
+    const next = new URLSearchParams(filters.requestedQuery);
+    if (field === "month") {
+      if (value === month) return;
+      next.delete("day");
+      next.delete("through");
+      next.delete("allMonths");
+      if (value) next.set("month", value);
+      else {
+        next.delete("month");
+        next.set("allMonths", "1");
+      }
+    } else if (field === "day") {
+      if (value === day) return;
+      if (value) {
+        next.set("day", value);
+        next.delete("month");
+        next.delete("allMonths");
+        next.delete("through");
+      } else {
+        next.delete("day");
+        next.set("month", month);
+      }
+    } else if (value) next.set(field, value);
+    else next.delete(field);
+    navigate(next, "push");
+  }
+
+  const applySearch = useEffectEvent(() => {
+    const next = new URLSearchParams(filters.requestedQuery);
+    next.delete("merchant");
+    if (searchText) next.set("search", searchText);
+    else next.delete("search");
+    navigate(next, "replace");
+  });
+
+  useEffect(() => {
+    if (composing || !needsSearch) return;
+    const timer = window.setTimeout(() => applySearch(), SEARCH_DELAY_MS);
+    searchTimer.current = timer;
+    const cancel = () => window.clearTimeout(timer);
+    window.addEventListener("popstate", cancel);
+    return () => {
+      cancel();
+      window.removeEventListener("popstate", cancel);
+    };
+  }, [composing, filters.search, needsSearch]);
+
+  function cancelSearch() {
+    window.clearTimeout(searchTimer.current);
+  }
 
   return (
-    <Form
-      action={groupPath}
+    <form
       aria-label="Expense history filters"
-      prefetch={false}
+      onSubmit={(event) => event.preventDefault()}
       className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3"
     >
-      {month === undefined && <input type="hidden" name="allMonths" value="1" />}
-      {through && <input type="hidden" name="through" value={through} />}
-      {grouped && <input type="hidden" name="view" value="grouped" />}
-      <ExpenseHistorySearch
-        groupPath={groupPath}
-        filterQuery={filterQuery}
-        merchant={merchant}
-        merchantLabel={merchantLabel}
-        initialSearch={search}
-        fieldClass={fieldClass}
-      />
-      <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} />
+      <label className="min-w-0 text-sm text-gray-300">
+        Search expenses
+        <input
+          type="search"
+          name="search"
+          placeholder="Merchant or expense title"
+          maxLength={100}
+          value={filters.search}
+          onChange={({ target: { value } }) => setFilters((current) => ({ ...current, search: value }))}
+          onCompositionStart={() => setComposing(true)}
+          onCompositionEnd={() => setComposing(false)}
+          className={fieldClass}
+        />
+      </label>
+      <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} onChange={changeFilter} />
       <div className="min-w-0 text-sm text-gray-300">
         <label htmlFor="expense-filter-category">Category</label>
         <Select
           id="expense-filter-category"
-          name="category"
-          defaultValue={categoryId ?? ""}
+          value={category}
+          onChange={(value) => changeFilter("category", value)}
           className={fieldClass}
           options={[
             { value: "", label: "All categories" },
-            ...(categoryUnavailable ? [{ value: String(categoryId), label: "Unavailable category" }] : []),
+            ...(categoryUnavailable ? [{ value: category, label: "Unavailable category" }] : []),
             ...categories.map(({ id, name }) => ({ value: String(id), label: name })),
           ]}
         />
@@ -89,8 +171,8 @@ export default function ExpenseHistoryFilters({
         <label htmlFor="expense-filter-payment-method">Payment method</label>
         <Select
           id="expense-filter-payment-method"
-          name="paymentMethod"
-          defaultValue={paymentMethod ?? ""}
+          value={paymentMethod}
+          onChange={(value) => changeFilter("paymentMethod", value)}
           className={fieldClass}
           options={[
             { value: "", label: "All payment methods" },
@@ -102,8 +184,8 @@ export default function ExpenseHistoryFilters({
         <label htmlFor="expense-filter-bank">Bank</label>
         <Select
           id="expense-filter-bank"
-          name="bank"
-          defaultValue={bank ?? ""}
+          value={bank}
+          onChange={(value) => changeFilter("bank", value)}
           className={fieldClass}
           options={[
             { value: "", label: "All banks" },
@@ -112,25 +194,17 @@ export default function ExpenseHistoryFilters({
           ]}
         />
       </div>
-      <div className="col-span-full flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gray-800 pt-3">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {through && <span className="text-sm text-gray-400">Through {formatExpenseDate(through)}</span>}
-          <Link href={monthScopeHref} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
-            {day || through ? "Full month" : month === undefined ? "This month" : "All months"}
+      <div className="col-span-full flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-800 pt-3">
+        {through && <span className="text-sm text-gray-400">Through {formatExpenseDate(through)}</span>}
+        <Link href={scopeHref} onNavigate={cancelSearch} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+          {day || through ? "Full month" : month ? "All months" : "This month"}
+        </Link>
+        {canClearFilters && (
+          <Link href={clearFiltersHref} onNavigate={cancelSearch} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+            Clear filters
           </Link>
-          {canClearFilters && (
-            <Link href={clearFiltersHref} data-clear-filters className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
-              Clear filters
-            </Link>
-          )}
-        </div>
-        <button
-          type="submit"
-          className="button-secondary ml-auto h-10 whitespace-nowrap rounded-lg px-4 text-sm font-medium"
-        >
-          Apply filters
-        </button>
+        )}
       </div>
-    </Form>
+    </form>
   );
 }

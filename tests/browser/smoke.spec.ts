@@ -361,15 +361,8 @@ test("live expense search debounces changes and filters history, pagination, and
   await page.goto(groupPath(data.merchants.publicId));
   const form = page.getByRole("form", { name: "Expense history filters" });
   const search = form.getByRole("searchbox", { name: "Search expenses", exact: true });
-  const apply = page.getByRole("button", { name: "Apply filters", exact: true });
-  await expect(page.getByRole("combobox", { name: "Merchant", exact: true })).toHaveCount(0);
+  await expect(form.getByRole("button", { name: "Apply filters", exact: true })).toHaveCount(0);
   await expect(form.locator("input:not([type=hidden])").first()).toHaveAttribute("type", "search");
-
-  await form.getByRole("combobox", { name: "Category", exact: true }).click();
-  await page.getByRole("option", { name: "Shopping", exact: true }).click();
-  await apply.click();
-  await expect(page).toHaveURL(/[?&]category=\d+/);
-  const category = new URL(page.url()).searchParams.get("category");
 
   const searchTerms = new Set<string>();
   page.on("request", (request) => {
@@ -382,13 +375,19 @@ test("live expense search debounces changes and filters history, pagination, and
   await search.fill("mEr");
   await page.clock.runFor(200);
   await search.fill("mErChAnT");
+  const category = form.getByRole("combobox", { name: "Category", exact: true });
+  await category.press("End");
+  await category.press("Enter");
+  await expect(page).toHaveURL(/[?&]category=\d+/);
+  const categoryId = new URL(page.url()).searchParams.get("category");
   await page.clock.runFor(299);
   expect(searchTerms.size).toBe(0);
+  await search.focus();
   await page.clock.runFor(1);
   await page.clock.resume();
   await expect(page).toHaveURL(/[?&]search=mErChAnT/);
   expect([...searchTerms]).toEqual(["mErChAnT"]);
-  expect(new URL(page.url()).searchParams.get("category")).toBe(category);
+  expect(new URL(page.url()).searchParams.get("category")).toBe(categoryId);
   await expect(search).toBeFocused();
   await page.getByRole("link", { name: "Next", exact: true }).click();
   await expect(page.getByText("Page 2 of 2", { exact: true })).toBeVisible();
@@ -398,14 +397,10 @@ test("live expense search debounces changes and filters history, pagination, and
   expect(csv.match(/Merchant \d{2} purchase/g)).toHaveLength(30);
   expect(csv).not.toContain("Alpha Bakery");
 
-  const day = form.locator('input[name="day"]');
-  await day.fill("2026-11-17");
   await search.fill("29 purchase");
   await expect(page.getByRole("cell", { name: /^Merchant 29 purchase/ })).toBeVisible();
   await expect(page.getByRole("cell", { name: /^Alpha Bakery purchase/ })).toHaveCount(0);
   expect(new URL(page.url()).searchParams.has("page")).toBe(false);
-  expect(new URL(page.url()).searchParams.has("day")).toBe(false);
-  await expect(day).toHaveValue("2026-11-17");
   await expect(search).toBeFocused();
 
   await search.fill("does not exist");
@@ -415,8 +410,21 @@ test("live expense search debounces changes and filters history, pagination, and
   await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("search")).toBe(false);
 
-  await apply.click();
+  const day = form.locator('input[name="day"]');
+  const month = form.locator('input[name="month"]');
+  await day.fill("2026-11-17");
   await expect(page).toHaveURL(/[?&]day=2026-11-17/);
+  await expect(page.getByText("No expenses match these filters")).toBeVisible();
+  await expect(month).toHaveValue("2026-11");
+  await day.clear();
+  await expect(page).toHaveURL(/[?&]month=2026-11/);
+  await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
+  await day.fill("2026-11-18");
+  await expect(page).toHaveURL(/[?&]day=2026-11-18/);
+  await month.fill("2026-10");
+  await expect(page).toHaveURL(/[?&]month=2026-10/);
+  expect(new URL(page.url()).searchParams.has("day")).toBe(false);
+  await expect(day).toHaveValue("");
   await expect(page.getByText("No expenses match these filters")).toBeVisible();
 });
 
@@ -424,10 +432,10 @@ test("an exact merchant link retains its filter until the text is edited", async
   const merchant = createHash("sha256").update("beta cafe").digest("hex");
   await page.goto(`${groupPath(data.merchants.publicId)}&merchant=${merchant}`);
   const search = page.getByRole("searchbox", { name: "Search expenses", exact: true });
-  const apply = page.getByRole("button", { name: "Apply filters", exact: true });
   await expect(search).toHaveValue("Beta Cafe");
-  await apply.click();
-  await expect.poll(() => new URL(page.url()).searchParams.has("category")).toBe(true);
+  await page.getByRole("combobox", { name: "Category", exact: true }).click();
+  await page.getByRole("option", { name: "Shopping", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]category=\d+/);
   await expect(page.getByRole("cell", { name: /^Beta Cafe purchase/ })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`[?&]merchant=${merchant}(&|$)`));
   await search.fill("bakery");
@@ -435,6 +443,33 @@ test("an exact merchant link retains its filter until the text is edited", async
   await expect(page).toHaveURL(/[?&]search=bakery/);
   await expect(page.getByRole("cell", { name: /^Alpha Bakery purchase/ })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("merchant")).toBe(false);
+});
+
+test("expense payment and bank filters apply immediately and can be cleared", async ({ page }) => {
+  await page.goto(groupPath(data.merchants.publicId));
+  const form = page.getByRole("form", { name: "Expense history filters" });
+  const payment = form.getByRole("combobox", { name: "Payment method", exact: true });
+  const bank = form.getByRole("combobox", { name: "Bank", exact: true });
+  const alpha = page.getByRole("cell", { name: /^Alpha Bakery purchase/ });
+
+  await payment.click();
+  await form.getByRole("option", { name: "Cash", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]paymentMethod=CASH/);
+  await expect(alpha).toHaveCount(0);
+  await expect(payment).toBeFocused();
+
+  await bank.click();
+  await form.getByRole("option", { name: "Browser Test Bank (recorded name)", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]bank=legacy%3A[a-f0-9]{64}/);
+  await payment.click();
+  await form.getByRole("option", { name: "All payment methods", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.has("paymentMethod")).toBe(false);
+  await expect(alpha).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: /^Beta Cafe purchase/ })).toBeVisible();
+
+  await form.getByRole("link", { name: "Clear filters", exact: true }).click();
+  await expect(bank).toHaveText("All banks");
+  expect(new URL(page.url()).searchParams.has("bank")).toBe(false);
 });
 
 test("CSV merchant mapping survives an uncertain save and an idempotent retry", async ({ page }) => {

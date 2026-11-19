@@ -20,7 +20,7 @@ type ExpensesTabProps = {
 };
 
 export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
-  const { day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, search, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
+  const { day, month, through, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
   const { groupPath, expenseTab, categoriesTab, allMonthsHref } = links;
   const firstExpense = historyAvailability === "none";
   const thisMonthOnly = month === currentMonth && !day && !through && !hasOtherFilters;
@@ -31,21 +31,13 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
   return (
     <>
       <ExpenseHistoryFilters
-        key={JSON.stringify([expenseGroupId, day, month, through, categoryId, paymentMethod, bankFilterValue, grouped])}
+        key={expenseGroupId}
         groupPath={groupPath}
         filterQuery={filterQuery}
         categories={categories}
         banks={historyBankOptions}
-        month={month}
-        day={day}
-        through={through}
-        categoryId={categoryId}
-        paymentMethod={paymentMethod}
-        bank={bankFilterValue}
-        merchant={merchant}
         merchantLabel={merchantLabel}
-        search={search}
-        grouped={grouped}
+        currentMonth={currentMonth}
         monthScopeHref={links.monthScopeHref}
         clearFiltersHref={groupPath + expenseTab}
         canClearFilters={day !== undefined || through !== undefined || month !== currentMonth || hasOtherFilters}

@@ -1,4 +1,5 @@
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
+import { nextExpenseHistoryScope } from "./expenses/scope";
 import {
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryMerchantFilter,
@@ -58,22 +59,15 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   if (search !== undefined) filterParams.set("search", search);
   const hasOtherFilters = filterParams.size > 0;
   const hasFilters = month !== undefined || hasOtherFilters;
-  const monthScopeParams = new URLSearchParams(filterParams);
   if (day) {
     filterParams.set("day", day);
-    monthScopeParams.set("month", day.slice(0, 7));
   } else if (month === undefined) {
     filterParams.set("allMonths", "1");
-    monthScopeParams.set("month", currentMonth);
   } else {
     filterParams.set("month", month);
-    if (through) {
-      filterParams.set("through", through);
-      monthScopeParams.set("month", month);
-    } else {
-      monthScopeParams.set("allMonths", "1");
-    }
+    if (through) filterParams.set("through", through);
   }
+  const monthScopeParams = nextExpenseHistoryScope(filterParams, currentMonth);
   if (grouped) {
     filterParams.set("view", "grouped");
     monthScopeParams.set("view", "grouped");
