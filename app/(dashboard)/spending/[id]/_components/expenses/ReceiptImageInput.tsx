@@ -190,7 +190,9 @@ export default function ReceiptImageInput({
 
   const currentAiResult = showAi ? aiResult : null;
   const suggestions = currentAiResult ? currentAiResult.suggestions : localSuggestions;
-  const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
+  const visibleFields = fields.filter(({ field }) => Boolean(suggestions?.[field]));
+  const nameCount = Number(Boolean(suggestions?.title)) + Number(Boolean(suggestions?.merchant));
+  const detailCount = visibleFields.length - nameCount;
   const imageButtonClass = `${buttonClass} min-h-10 max-sm:px-2 max-sm:text-[13px]`;
 
   return (
@@ -206,11 +208,6 @@ export default function ReceiptImageInput({
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {preview && (
-          <a href={preview.url} target="_blank" rel="noreferrer" className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-gray-950 focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
-            <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className="size-full object-contain" />
-          </a>
-        )}
         <button type="button" className={imageButtonClass} disabled={status === "clipboard"} onClick={() => void scanImage(readClipboardImage, true)}>
           Paste Image
         </button>
@@ -219,12 +216,17 @@ export default function ReceiptImageInput({
         </button>
         <FileInput ref={picker} accept={receiptImageTypes.join(",")} hidden onChange={chooseImage} />
       </div>
+      {preview && (
+        <a href={preview.url} target="_blank" rel="noreferrer" className="flex justify-center overflow-hidden rounded-lg bg-gray-950 focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
+          <Image src={preview.url} alt="Receipt image preview" width={preview.width} height={preview.height} unoptimized className="h-auto max-h-36 w-auto max-w-full object-contain sm:max-h-44" />
+        </a>
+      )}
       {!preview && <p className="text-xs text-gray-400">PNG, JPEG, or WebP up to 8 MB. Read on this device.</p>}
       {error && !currentAiResult && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {status && (
         <p role="status" className="text-sm text-gray-300">{status === "clipboard" ? "Waiting for clipboard…" : "Reading receipt…"}</p>
       )}
-      {(hasSuggestions || aiResult) && (
+      {(visibleFields.length > 0 || aiResult) && (
         <div className="flex flex-wrap items-baseline justify-between gap-x-2">
           <p role="status" className="text-xs font-medium text-gray-300">
             {currentAiResult ? `Suggestions from ${providers[currentAiResult.provider]}` : "On-device suggestions"}
@@ -237,16 +239,19 @@ export default function ReceiptImageInput({
           )}
         </div>
       )}
-      {suggestions && (hasSuggestions ? (
+      {suggestions && (visibleFields.length > 0 ? (
         <>
-          <ul className="grid grid-cols-2 gap-2">
-            {fields.map(({ field, label, format }) => {
+          <ul className="@container grid grid-cols-6 gap-2">
+            {visibleFields.map(({ field, label, format }) => {
               const value = suggestions[field];
               if (!value) return null;
               const valueId = `${headingId}-${field}`;
+              const isName = field === "title" || field === "merchant";
+              const span = isName && nameCount === 1 ? "col-span-full"
+                : !isName && detailCount === 3 ? "col-span-3 @min-[19rem]:col-span-2" : "col-span-3";
               return (
-                <li key={field} className="min-w-0 last:odd:col-span-full">
-                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} grid h-full min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] content-start gap-x-2 py-2 text-left leading-tight`} onClick={() => {
+                <li key={field} className={`min-w-0 ${span}`}>
+                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} grid h-full min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] content-start gap-x-1 py-2 text-left leading-tight`} onClick={() => {
                     onApply(field, value);
                     setApplied(`Applied suggested ${label}.`);
                   }}>
