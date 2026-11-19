@@ -179,14 +179,31 @@ export function createExpenseAccess(
 
       try {
         return await db.$transaction(async (tx) => {
-          // Claim the submission before inserting the expense. A failed write releases the claim.
-          await tx.expenseSubmission.create({
-            data: {
-              id: submissionKey.id,
-              payloadHash,
-              expenseGroup: { connect: { id: expenseGroupId, userId } },
-            },
+          const [group] = await tx.$queryRaw<{ id: number }[]>`
+            SELECT id FROM "Spending" WHERE id = ${expenseGroupId} AND "userId" = ${userId} FOR SHARE
+          `;
+          if (!group) throw new TypeError("Category not found in this expense group");
+
+          // A competing retry waits for the first transaction. A failed write releases the claim.
+          const claim = await tx.expenseSubmission.createMany({
+            data: { ...submissionKey, payloadHash },
+            skipDuplicates: true,
           });
+          if (claim.count === 0) {
+            const submission = await tx.expenseSubmission.findUniqueOrThrow({
+              where: { expenseGroupId_id: submissionKey },
+              include: { expense: true },
+            });
+            if (submission.payloadHash !== payloadHash) {
+              throw new TypeError(
+                "This draft was already saved with different details. Close it and review the saved expense.",
+              );
+            }
+            if (!submission.expense) {
+              throw new TypeError("This expense was already saved and has since been deleted.");
+            }
+            return submission.expense;
+          }
 
           if (payment) await validateBankSelection(tx, expenseGroupId, payment);
 
@@ -210,39 +227,12 @@ export function createExpenseAccess(
               submission: { connect: { expenseGroupId_id: submissionKey } },
             },
           });
-        });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
       } catch (error) {
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-          throw error;
-        }
-
-        if (error.code === "P2025") {
+        if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
           throw new TypeError("Category not found in this expense group");
         }
-
-        if (error.code !== "P2002") {
-          throw error;
-        }
-
-        const submission = await db.expenseSubmission.findUnique({
-          where: { expenseGroupId_id: submissionKey, expenseGroup: { userId } },
-          include: { expense: true },
-        });
-        if (!submission) {
-          throw error;
-        }
-
-        if (submission.payloadHash !== payloadHash) {
-          throw new TypeError(
-            "This draft was already saved with different details. Close it and review the saved expense."
-          );
-        }
-
-        if (!submission.expense) {
-          throw new TypeError("This expense was already saved and has since been deleted.");
-        }
-
-        return submission.expense;
+        throw error;
       }
     },
 
