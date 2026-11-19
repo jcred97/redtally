@@ -357,7 +357,7 @@ test("a lost schedule response can be retried from the dialog and posts one expe
   expect(await expenseCount(title, data.group.id)).toBe(1);
 });
 
-test("expense search filters history, pagination, and CSV export", async ({ page }) => {
+test("live expense search debounces changes and filters history, pagination, and CSV export", async ({ page }) => {
   await page.goto(groupPath(data.merchants.publicId));
   const form = page.getByRole("form", { name: "Expense history filters" });
   const search = form.getByRole("searchbox", { name: "Search expenses", exact: true });
@@ -365,9 +365,31 @@ test("expense search filters history, pagination, and CSV export", async ({ page
   await expect(page.getByRole("combobox", { name: "Merchant", exact: true })).toHaveCount(0);
   await expect(form.locator("input:not([type=hidden])").first()).toHaveAttribute("type", "search");
 
-  await search.fill("mErChAnT");
+  await form.getByRole("combobox", { name: "Category", exact: true }).click();
+  await page.getByRole("option", { name: "Shopping", exact: true }).click();
   await apply.click();
+  await expect(page).toHaveURL(/[?&]category=\d+/);
+  const category = new URL(page.url()).searchParams.get("category");
+
+  const searchTerms = new Set<string>();
+  page.on("request", (request) => {
+    const term = new URL(request.url()).searchParams.get("search");
+    if (term) searchTerms.add(term);
+  });
+  const clockStart = Date.now();
+  await page.clock.install({ time: clockStart });
+  await page.clock.pauseAt(clockStart + 1_000);
+  await search.fill("mEr");
+  await page.clock.runFor(200);
+  await search.fill("mErChAnT");
+  await page.clock.runFor(299);
+  expect(searchTerms.size).toBe(0);
+  await page.clock.runFor(1);
+  await page.clock.resume();
   await expect(page).toHaveURL(/[?&]search=mErChAnT/);
+  expect([...searchTerms]).toEqual(["mErChAnT"]);
+  expect(new URL(page.url()).searchParams.get("category")).toBe(category);
+  await expect(search).toBeFocused();
   await page.getByRole("link", { name: "Next", exact: true }).click();
   await expect(page.getByText("Page 2 of 2", { exact: true })).toBeVisible();
   await expect(search).toHaveValue("mErChAnT");
@@ -376,19 +398,26 @@ test("expense search filters history, pagination, and CSV export", async ({ page
   expect(csv.match(/Merchant \d{2} purchase/g)).toHaveLength(30);
   expect(csv).not.toContain("Alpha Bakery");
 
+  const day = form.locator('input[name="day"]');
+  await day.fill("2026-11-17");
   await search.fill("29 purchase");
-  await search.press("Enter");
   await expect(page.getByRole("cell", { name: /^Merchant 29 purchase/ })).toBeVisible();
   await expect(page.getByRole("cell", { name: /^Alpha Bakery purchase/ })).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.has("page")).toBe(false);
+  expect(new URL(page.url()).searchParams.has("day")).toBe(false);
+  await expect(day).toHaveValue("2026-11-17");
+  await expect(search).toBeFocused();
 
   await search.fill("does not exist");
-  await apply.click();
   await expect(page.getByText("No expenses match these filters")).toBeVisible();
 
   await search.clear();
-  await apply.click();
   await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
-  expect(new URL(page.url()).searchParams.get("search")).toBeFalsy();
+  expect(new URL(page.url()).searchParams.has("search")).toBe(false);
+
+  await apply.click();
+  await expect(page).toHaveURL(/[?&]day=2026-11-17/);
+  await expect(page.getByText("No expenses match these filters")).toBeVisible();
 });
 
 test("an exact merchant link retains its filter until the text is edited", async ({ page }) => {
@@ -403,7 +432,6 @@ test("an exact merchant link retains its filter until the text is edited", async
   await expect(page).toHaveURL(new RegExp(`[?&]merchant=${merchant}(&|$)`));
   await search.fill("bakery");
   await expect(search).toHaveAttribute("name", "search");
-  await apply.click();
   await expect(page).toHaveURL(/[?&]search=bakery/);
   await expect(page.getByRole("cell", { name: /^Alpha Bakery purchase/ })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("merchant")).toBe(false);

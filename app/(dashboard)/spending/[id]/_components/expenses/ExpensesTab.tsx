@@ -31,8 +31,9 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
   return (
     <>
       <ExpenseHistoryFilters
-        key={`${expenseGroupId}:${filterQuery}:${expensePage.page}`}
+        key={JSON.stringify([expenseGroupId, day, month, through, categoryId, paymentMethod, bankFilterValue, grouped])}
         groupPath={groupPath}
+        filterQuery={filterQuery}
         categories={categories}
         banks={historyBankOptions}
         month={month}

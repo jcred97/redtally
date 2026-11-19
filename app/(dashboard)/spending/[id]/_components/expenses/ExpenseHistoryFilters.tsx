@@ -9,6 +9,7 @@ import ExpenseHistorySearch from "./ExpenseHistorySearch";
 
 type ExpenseHistoryFiltersProps = {
   groupPath: string;
+  filterQuery: string;
   categories: { id: number; name: string }[];
   banks: { value: string; label: string }[];
   month?: string;
@@ -30,6 +31,7 @@ const fieldClass = "mt-1 block min-h-10 w-full min-w-0 rounded-lg border border-
 
 export default function ExpenseHistoryFilters({
   groupPath,
+  filterQuery,
   categories,
   banks,
   month,
@@ -61,6 +63,8 @@ export default function ExpenseHistoryFilters({
       {through && <input type="hidden" name="through" value={through} />}
       {grouped && <input type="hidden" name="view" value="grouped" />}
       <ExpenseHistorySearch
+        groupPath={groupPath}
+        filterQuery={filterQuery}
         merchant={merchant}
         merchantLabel={merchantLabel}
         initialSearch={search}
@@ -115,7 +119,7 @@ export default function ExpenseHistoryFilters({
             {day || through ? "Full month" : month === undefined ? "This month" : "All months"}
           </Link>
           {canClearFilters && (
-            <Link href={clearFiltersHref} className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
+            <Link href={clearFiltersHref} data-clear-filters className="text-sm text-gray-300 underline underline-offset-4 hover:text-white">
               Clear filters
             </Link>
           )}
