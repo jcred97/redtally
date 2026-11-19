@@ -191,13 +191,20 @@ export default function ReceiptImageInput({
   const currentAiResult = showAi ? aiResult : null;
   const suggestions = currentAiResult ? currentAiResult.suggestions : localSuggestions;
   const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
-  const imageButtonClass = `${buttonClass} min-h-10`;
+  const imageButtonClass = `${buttonClass} min-h-10 max-sm:px-2 max-sm:text-[13px]`;
 
   return (
     <section ref={section} aria-labelledby={headingId} className="flex min-w-0 flex-col gap-2 rounded-lg border border-gray-800 p-2 sm:gap-3 sm:p-3">
-      <h3 id={headingId} className="text-sm font-medium text-gray-200">
-        Receipt image{!preview && <span className="text-xs font-normal text-gray-400"> (optional)</span>}
-      </h3>
+      <div className="flex min-h-10 items-center justify-between gap-2">
+        <h3 id={headingId} className="text-sm font-medium text-gray-200">
+          Receipt image{!preview && <span className="text-xs font-normal text-gray-400"> (optional)</span>}
+        </h3>
+        {preview && (
+          <button type="button" aria-label="Remove image" className="min-h-10 shrink-0 cursor-pointer rounded pl-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400" onClick={reset}>
+            Remove
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {preview && (
           <a href={preview.url} target="_blank" rel="noreferrer" className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-gray-950 focus-visible:outline-2 focus-visible:outline-red-400" aria-label="Open full-size receipt image in a new tab" title="Open full-size receipt image">
@@ -211,11 +218,6 @@ export default function ReceiptImageInput({
           Choose Image
         </button>
         <FileInput ref={picker} accept={receiptImageTypes.join(",")} hidden onChange={chooseImage} />
-        {preview && (
-          <button type="button" aria-label="Remove image" className="min-h-10 cursor-pointer rounded px-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400" onClick={reset}>
-            Remove
-          </button>
-        )}
       </div>
       {!preview && <p className="text-xs text-gray-400">PNG, JPEG, or WebP up to 8 MB. Read on this device.</p>}
       {error && !currentAiResult && <p role="alert" className="text-sm text-red-400">{error}</p>}
