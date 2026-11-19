@@ -683,6 +683,10 @@ test("receipt OCR loads the real local worker, applies suggestions, and cancels 
   });
   const image = { name: "synthetic-receipt.png", mimeType: "image/png", buffer: Buffer.from(receipt, "base64") };
   const assets = new Set<string>();
+  const aiScans: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/receipt-scan") aiScans.push(request.url());
+  });
   page.on("response", (response) => {
     if (response.url().includes("/receipt-ocr/") && response.ok()) assets.add(new URL(response.url()).pathname);
   });
@@ -692,6 +696,12 @@ test("receipt OCR loads the real local worker, applies suggestions, and cancels 
   await expect(dialog.getByRole("button", { name: "Use amount", exact: true })).toBeVisible({ timeout: 45_000 });
   expect([...assets].some((asset) => asset.endsWith("worker.min.js"))).toBe(true);
   expect([...assets].some((asset) => asset.includes(".wasm"))).toBe(true);
+  await dialog.getByRole("button", { name: "Set up AI scanning" }).click();
+  const setup = page.getByRole("dialog", { name: "Receipt scanning settings" });
+  await expect(setup).toBeVisible();
+  await setup.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(setup).not.toBeVisible();
+  await expect(dialog.getByRole("img", { name: "Receipt image preview" })).toBeVisible();
   await expect(dialog.getByLabel("Title", { exact: true })).toHaveValue("Manual title stays until applied");
   await dialog.getByRole("button", { name: "Use merchant", exact: true }).click();
   await dialog.getByRole("button", { name: "Use amount", exact: true }).click();
@@ -701,6 +711,7 @@ test("receipt OCR loads the real local worker, applies suggestions, and cancels 
   await expect(dialog.getByLabel("Amount (PHP)", { exact: true })).toHaveValue("150.75");
   await expect(dialog.getByLabel("Date", { exact: true })).toHaveValue("2026-11-18");
   await expect(dialog.getByLabel("Time (Manila, optional)", { exact: true })).toHaveValue("14:30");
+  expect(aiScans).toHaveLength(0);
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const workerReady = deferred();

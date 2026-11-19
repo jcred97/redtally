@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { authClient } from "@/app/lib/auth/client";
 import LoadingScreen from "@/app/components/feedback/LoadingScreen";
 import styles from "@/app/components/menus/action-menu.module.css";
 import { useActionMenuKeyboard } from "@/app/components/menus/useActionMenuKeyboard";
+import AccountAvatar from "./AccountAvatar";
 
-export default function AccountMenu({ name, email }: { name: string; email: string }) {
+export default function AccountMenu({ name, email, image }: { name: string; email: string; image?: string | null }) {
   const router = useRouter();
   const panelId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -23,11 +25,6 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
   const handleMenuKey = useActionMenuKeyboard({ open, setOpen: changeOpen, triggerRef, panelRef });
 
   const displayName = name.trim();
-  const nameParts = displayName.split(/\s+/);
-  const initials = [nameParts[0] || email, nameParts.length > 1 ? nameParts.at(-1) : ""]
-    .map((part) => Array.from(part ?? "")[0])
-    .join("")
-    .toUpperCase();
 
   useEffect(() => {
     if (!open || pending) return;
@@ -100,9 +97,9 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => changeOpen(!open)}
-          className={`${styles.trigger} flex size-10 cursor-pointer items-center justify-center rounded-full bg-red-600 text-sm font-semibold text-white transition-colors hover:bg-red-500`}
+          className={`${styles.trigger} flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-red-600 text-sm font-semibold text-white transition-colors hover:bg-red-500`}
         >
-          {initials}
+          <AccountAvatar name={name} email={email} image={image} />
         </button>
 
         <div
@@ -122,6 +119,13 @@ export default function AccountMenu({ name, email }: { name: string; email: stri
             )}
           </div>
           <div className="p-1">
+            <Link
+              href="/account-settings"
+              onClick={() => changeOpen(false)}
+              className={`${styles.item} block px-3 py-2 text-sm text-gray-300`}
+            >
+              Account settings
+            </Link>
             <button
               ref={signOutRef}
               type="button"

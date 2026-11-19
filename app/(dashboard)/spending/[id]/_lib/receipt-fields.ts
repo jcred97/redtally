@@ -1,7 +1,6 @@
 import { parseExpenseDay, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoInput, parsePesoAmount } from "@/app/lib/expenses/money";
-
-export type ReceiptSuggestions = { title?: string; merchant?: string; amount?: string; date?: string; time?: string };
+import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 
 const titleLabel = /^(?:(?:expense|transaction|payment|purchase) (?:title|description)(?=$|[\s:=])|title(?=$|\s*[:=])|description(?=\s*[:=]))/i;
 const merchantLabel = /^(?:merchant(?: name)?|payee(?: name)?|vendor(?: name)?|store(?: name)?|biller(?: name)?|paid to)(?=$|[\s:=])/i;

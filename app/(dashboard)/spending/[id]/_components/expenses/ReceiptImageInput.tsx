@@ -3,11 +3,10 @@ import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } fro
 import FileInput from "@/app/components/forms/FileInput";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
-import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
+import { maxReceiptImagePixels, providers, receiptImageTypes, type ReceiptProvider, type ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
+import ReceiptAiControls from "./ReceiptAiControls";
 
-const imageTypes = ["image/png", "image/jpeg", "image/webp"];
 const maxImageBytes = 8 * 1024 * 1024;
-const maxImagePixels = 16_000_000;
 const fields = [
   { field: "title", label: "title", format: (value: string) => value },
   { field: "merchant", label: "merchant", format: (value: string) => value },
@@ -25,7 +24,7 @@ const fields = [
 
 const buttonClass = "button-secondary shrink-0 rounded-lg px-2.5 text-sm font-medium";
 
-type Preview = { url: string; width: number; height: number };
+type Preview = { url: string; width: number; height: number; image: Blob };
 
 async function readClipboardImage(): Promise<Blob> {
   if (!navigator.clipboard?.read) {
@@ -40,7 +39,7 @@ async function readClipboardImage(): Promise<Blob> {
   }
 
   for (const item of items) {
-    const type = imageTypes.find((format) => item.types.includes(format));
+    const type = receiptImageTypes.find((format) => item.types.includes(format));
     if (type) return item.getType(type);
   }
   throw new Error("Copy a PNG, JPEG, or WebP image first, or choose a saved image.");
@@ -48,12 +47,12 @@ async function readClipboardImage(): Promise<Blob> {
 
 function pastedImage(data: DataTransfer): File | undefined {
   for (const item of data.items) {
-    if (item.kind === "file" && imageTypes.includes(item.type)) {
+    if (item.kind === "file" && receiptImageTypes.includes(item.type)) {
       const image = item.getAsFile();
       if (image) return image;
     }
   }
-  return Array.from(data.files).find(({ type }) => imageTypes.includes(type));
+  return Array.from(data.files).find(({ type }) => receiptImageTypes.includes(type));
 }
 
 function toPng(image: HTMLImageElement, width: number, height: number): Promise<Blob> {
@@ -86,7 +85,9 @@ export default function ReceiptImageInput({
   const operation = useRef<AbortController | null>(null);
   const imageUrl = useRef<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [suggestions, setSuggestions] = useState<ReceiptSuggestions | null>(null);
+  const [localSuggestions, setLocalSuggestions] = useState<ReceiptSuggestions | null>(null);
+  const [aiResult, setAiResult] = useState<{ provider: ReceiptProvider; suggestions: ReceiptSuggestions } | null>(null);
+  const [showAi, setShowAi] = useState(false);
   const [status, setStatus] = useState<"clipboard" | "reading" | null>(null);
   const [error, setError] = useState("");
   const [applied, setApplied] = useState("");
@@ -103,7 +104,9 @@ export default function ReceiptImageInput({
   const reset = useCallback(() => {
     releaseImage();
     setPreview(null);
-    setSuggestions(null);
+    setLocalSuggestions(null);
+    setAiResult(null);
+    setShowAi(false);
     setStatus(null);
     setError("");
     setApplied("");
@@ -119,7 +122,7 @@ export default function ReceiptImageInput({
     try {
       const blob = await getImage();
       if (signal.aborted) return;
-      if (!imageTypes.includes(blob.type) || blob.size === 0) {
+      if (!receiptImageTypes.includes(blob.type) || blob.size === 0) {
         throw new Error("Choose a PNG, JPEG, or WebP image.");
       }
       if (blob.size > maxImageBytes) throw new Error("Choose an image up to 8 MB.");
@@ -133,10 +136,10 @@ export default function ReceiptImageInput({
       if (signal.aborted) return;
 
       const { naturalWidth: width, naturalHeight: height } = image;
-      if (!width || !height || width * height > maxImagePixels) {
+      if (!width || !height || width * height > maxReceiptImagePixels) {
         throw new Error("Choose an image up to 16 megapixels, or crop it to the receipt.");
       }
-      setPreview({ url, width, height });
+      setPreview({ url, width, height, image: blob });
 
       try {
         const [{ readReceiptText }, { suggestReceiptFields }] = await Promise.all([
@@ -148,7 +151,7 @@ export default function ReceiptImageInput({
         const ocrImage = blob.type === "image/webp" ? await toPng(image, width, height) : blob;
         if (signal.aborted) return;
         const text = await readReceiptText(ocrImage, signal);
-        if (!signal.aborted) setSuggestions(suggestReceiptFields(text));
+        if (!signal.aborted) setLocalSuggestions(suggestReceiptFields(text));
       } catch {
         if (!signal.aborted) setError("The receipt could not be read. Enter the expense details below or try another image.");
       }
@@ -185,6 +188,8 @@ export default function ReceiptImageInput({
     if (image) void scanImage(() => image);
   }
 
+  const currentAiResult = showAi ? aiResult : null;
+  const suggestions = currentAiResult ? currentAiResult.suggestions : localSuggestions;
   const hasSuggestions = suggestions !== null && fields.some(({ field }) => Boolean(suggestions[field]));
   const hasBothNames = Boolean(suggestions?.title && suggestions?.merchant);
   const imageButtonClass = `${buttonClass} min-h-9 ${preview ? "max-sm:min-h-8" : ""}`;
@@ -207,7 +212,7 @@ export default function ReceiptImageInput({
           <button type="button" className={imageButtonClass} onClick={() => picker.current?.click()}>
             Choose image
           </button>
-          <FileInput ref={picker} accept={imageTypes.join(",")} hidden onChange={chooseImage} />
+          <FileInput ref={picker} accept={receiptImageTypes.join(",")} hidden onChange={chooseImage} />
           {preview && (
             <button type="button" aria-label="Remove image" className="min-h-8 cursor-pointer px-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 sm:min-h-9" onClick={reset}>
               Remove
@@ -216,9 +221,22 @@ export default function ReceiptImageInput({
         </div>
       </div>
       {!preview && <p className="text-xs text-gray-400">PNG, JPEG, or WebP up to 8 MB. Read on this device.</p>}
-      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
+      {error && !currentAiResult && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {status && (
         <p role="status" className="text-sm text-gray-300">{status === "clipboard" ? "Waiting for clipboard…" : "Reading receipt…"}</p>
+      )}
+      {(hasSuggestions || aiResult) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-2">
+          <p role="status" className="text-xs font-medium text-gray-300">
+            {currentAiResult ? `Suggestions from ${providers[currentAiResult.provider]}` : "On-device suggestions"}
+          </p>
+          {aiResult && localSuggestions && fields.some(({ field }) => Boolean(localSuggestions[field])) && (
+            <button type="button" className="min-h-8 cursor-pointer rounded px-1 text-xs text-gray-300 underline focus-visible:outline-2 focus-visible:outline-red-400"
+              onClick={() => { setShowAi(!showAi); setApplied(""); }}>
+              {showAi ? "Show on-device suggestions" : `Show ${providers[aiResult.provider]} suggestions`}
+            </button>
+          )}
+        </div>
       )}
       {suggestions && (hasSuggestions ? (
         <>
@@ -249,6 +267,13 @@ export default function ReceiptImageInput({
       ) : (
         <p role="status" className="text-sm text-gray-300">No clear expense details were found. Enter them manually or try another image.</p>
       ))}
+      {preview && (
+        <ReceiptAiControls key={preview.url} image={preview.image} onSuggestions={(provider, result) => {
+          setAiResult({ provider, suggestions: result });
+          setShowAi(true);
+          setApplied("");
+        }} />
+      )}
     </section>
   );
 }

@@ -15,7 +15,7 @@ import { expenseTimeInput, getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoInput } from "@/app/lib/expenses/money";
 import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
-import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
+import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
 
 export type EditableExpense = {

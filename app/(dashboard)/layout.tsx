@@ -31,7 +31,7 @@ export default async function DashboardLayout({
             />
           </Link>
           <DashboardNavigation />
-          <AccountMenu name={user.name} email={user.email} />
+          <AccountMenu name={user.name} email={user.email} image={user.image} />
         </div>
       </header>
       {children}

@@ -212,8 +212,17 @@ model User {
   sessions      Session[]
   accounts      Account[]
   expenseGroups ExpenseGroup[]
+  receiptScanner ReceiptScanner?
 
   @@map("user")
+}
+
+model ReceiptScanner {
+  userId       String @id
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String
+  encryptedKey String
+  keySuffix    String
 }
 
 model Session {

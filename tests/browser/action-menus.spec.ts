@@ -47,6 +47,7 @@ test("settings menu supports keyboard navigation and restores focus after a dial
 
 test("account menu supports arrows, Escape, and Tab without activating sign-out", async ({ page }) => {
   const account = page.getByRole("button", { name: "Account menu", exact: true });
+  const settings = page.getByRole("link", { name: "Account settings", exact: true });
   const signOut = page.getByRole("button", { name: "Sign out", exact: true });
 
   await account.press("ArrowUp");
@@ -57,6 +58,8 @@ test("account menu supports arrows, Escape, and Tab without activating sign-out"
 
   await page.keyboard.press("Enter");
   await expect(account).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Tab");
+  await expect(settings).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(signOut).toBeFocused();
   await page.keyboard.press("Tab");
