@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import Radio from "@/app/components/forms/Radio";
 
 const formats = [
   { value: "csv", label: "CSV (.csv)", description: "A simple file for spreadsheets and importing into other apps." },
@@ -58,13 +59,12 @@ export default function ExportExpensesButton({ exportHref }: { exportHref: strin
             key={option.value}
             className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${format === option.value ? "border-red-400 bg-red-500/10" : "border-gray-700 hover:border-gray-500"}`}
           >
-            <input
-              type="radio"
+            <Radio
               name="format"
               value={option.value}
               checked={format === option.value}
               onChange={() => setFormat(option.value)}
-              className="mt-1 accent-red-500"
+              className="mt-1"
             />
             <span>
               <span className="block text-sm font-medium text-white">{option.label}</span>

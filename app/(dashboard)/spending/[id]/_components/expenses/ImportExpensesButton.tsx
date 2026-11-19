@@ -2,7 +2,10 @@
 
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import Checkbox from "@/app/components/forms/Checkbox";
+import FileInput from "@/app/components/forms/FileInput";
 import Select from "@/app/components/forms/Select";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import {
   previewExpenseImport,
   saveExpenseImport,
@@ -42,8 +45,6 @@ type Preview = {
 };
 
 const emptyMapping: ColumnMapping = { date: "", title: "", amount: "", merchant: "" };
-const selectClass =
-  "mt-1.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white outline-none focus:border-red-400 disabled:opacity-60";
 
 function guessColumns(headers: string[]): ColumnMapping {
   const names = headers.map((header) => header.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim());
@@ -258,14 +259,12 @@ export default function ImportExpensesButton({
         submitAction={submit}
       >
         <div>
-          <label htmlFor={`${fieldId}-file`} className="block text-sm text-gray-300">Expense file</label>
-          <input
+          <label htmlFor={`${fieldId}-file`} className={fieldLabelClass}>Expense file</label>
+          <FileInput
             id={`${fieldId}-file`}
-            type="file"
             accept=".csv,.tsv,.xlsx,.pdf,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"
             aria-describedby={`${fieldId}-file-hint`}
             onChange={changeFile}
-            className="mt-1.5 w-full min-w-0 cursor-pointer text-sm text-gray-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-gray-700 file:bg-gray-800 file:px-3 file:py-2 file:text-white hover:file:bg-gray-700"
           />
           <p id={`${fieldId}-file-hint`} className="mt-2 text-xs text-gray-400">
             CSV, TSV, Excel (.xlsx), or a PDF bank statement with selectable text. Up to {MAX_IMPORT_ROWS} rows per import.
@@ -276,12 +275,11 @@ export default function ImportExpensesButton({
 
         {sheets.length > 1 && (
           <div>
-            <label htmlFor={`${fieldId}-worksheet`} className="block text-sm text-gray-300">Worksheet</label>
+            <label htmlFor={`${fieldId}-worksheet`} className={fieldLabelClass}>Worksheet</label>
             <Select
               id={`${fieldId}-worksheet`}
               value={sheetIndex}
               onChange={(value) => changeSheet(Number(value))}
-              className={selectClass}
               options={sheets.map(({ name }, index) => ({ value: String(index), label: name }))}
             />
           </div>
@@ -311,10 +309,10 @@ export default function ImportExpensesButton({
                 )}
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {fields.map(({ key, label }) => (
                   <div key={key} className="min-w-0">
-                    <label htmlFor={`${fieldId}-${key}`} className="block text-sm text-gray-300">{label} column</label>
+                    <label htmlFor={`${fieldId}-${key}`} className={fieldLabelClass}>{label} column</label>
                     <Select
                       id={`${fieldId}-${key}`}
                       value={columns[key]}
@@ -322,7 +320,6 @@ export default function ImportExpensesButton({
                         setColumns({ ...columns, [key]: value });
                         clearPreview();
                       }}
-                      className={selectClass}
                       options={[
                         { value: "", label: key === "merchant" ? "No merchant column" : "Choose a column" },
                         ...columnOptions,
@@ -335,9 +332,9 @@ export default function ImportExpensesButton({
             {hasMapping && !distinctColumns && (
               <p role="alert" className="text-sm text-red-400">Choose a different column for each expense field.</p>
             )}
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="min-w-0">
-                <label htmlFor={`${fieldId}-date-format`} className="block text-sm text-gray-300">Date format</label>
+                <label htmlFor={`${fieldId}-date-format`} className={fieldLabelClass}>Date format</label>
                 <Select
                   id={`${fieldId}-date-format`}
                   value={dateOrder}
@@ -345,7 +342,6 @@ export default function ImportExpensesButton({
                     setDateOrder(value as DateOrder);
                     clearPreview();
                   }}
-                  className={selectClass}
                   options={[
                     { value: "", label: "Automatic (flag ambiguous dates)" },
                     { value: "mdy", label: "Month / day / year" },
@@ -354,7 +350,7 @@ export default function ImportExpensesButton({
                 />
               </div>
               <div className="min-w-0">
-                <label htmlFor={`${fieldId}-category`} className="block text-sm text-gray-300">Category for selected expenses</label>
+                <label htmlFor={`${fieldId}-category`} className={fieldLabelClass}>Category for selected expenses</label>
                 <Select
                   id={`${fieldId}-category`}
                   value={categoryId}
@@ -362,7 +358,6 @@ export default function ImportExpensesButton({
                     setCategoryId(value);
                     setError("");
                   }}
-                  className={selectClass}
                   options={[
                     { value: "", label: "Choose a category" },
                     ...categories.map(({ id, name }) => ({ value: String(id), label: name })),
@@ -401,13 +396,11 @@ export default function ImportExpensesButton({
                   {preview.rows.map((row) => (
                     <tr key={row.rowNumber}>
                       <td className="p-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           aria-label={`Import row ${row.rowNumber}`}
                           disabled={"error" in row}
                           checked={selected.has(row.rowNumber)}
                           onChange={(event) => selectRow(row.rowNumber, event.target.checked)}
-                          className="size-4 accent-red-500"
                         />
                       </td>
                       <td className="p-2 text-gray-400">{pdf ? row.sourcePage : row.rowNumber}</td>

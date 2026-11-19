@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentPropsWithRef } from "react";
+import { fieldClass } from "./field-styles";
 import styles from "./fields.module.css";
 
 type DateInputProps = Omit<ComponentPropsWithRef<"input">, "type"> & {
@@ -17,7 +18,7 @@ export default function DateInput({
     <input
       {...props}
       type={type}
-      className={`${styles.dateInput} ${className}`}
+      className={`${fieldClass} ${styles.dateInput} ${className}`}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;

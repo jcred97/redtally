@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react";
+import FileInput from "@/app/components/forms/FileInput";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
 import type { ReceiptSuggestions } from "../../_lib/receipt-fields";
@@ -206,7 +207,7 @@ export default function ReceiptImageInput({
           <button type="button" className={imageButtonClass} onClick={() => picker.current?.click()}>
             Choose image
           </button>
-          <input ref={picker} type="file" accept={imageTypes.join(",")} hidden onChange={chooseImage} />
+          <FileInput ref={picker} accept={imageTypes.join(",")} hidden onChange={chooseImage} />
           {preview && (
             <button type="button" aria-label="Remove image" className="min-h-8 cursor-pointer px-1 text-sm text-gray-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-red-400 sm:min-h-9" onClick={reset}>
               Remove

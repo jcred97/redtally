@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import Select from "@/app/components/forms/Select";
-import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 
 type DashboardQuickEntryProps = {
   groups: { publicId: string; name: string }[];
@@ -25,7 +25,6 @@ export default function DashboardQuickEntry({ groups, entryId, pending, onGroupC
             value={entryId}
             onChange={onGroupChange}
             options={groups.map(({ publicId, name }) => ({ value: publicId, label: name }))}
-            className={fieldClass}
           />
         </div>
       ) : (

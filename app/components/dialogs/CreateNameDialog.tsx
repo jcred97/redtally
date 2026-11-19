@@ -2,6 +2,8 @@
 
 import { useId, useState, type ReactNode } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 
 type CreateNameDialogProps = {
   triggerLabel: ReactNode;
@@ -31,19 +33,17 @@ export default function CreateNameDialog({
       onOpenAction={() => setName("")}
     >
       <div>
-        <label htmlFor={inputId} className="block text-sm text-gray-400 mb-2">
+        <label htmlFor={inputId} className={fieldLabelClass}>
           Name
         </label>
-        <input
+        <TextInput
           id={inputId}
           name="name"
-          type="text"
           value={name}
           onChange={(event) => setName(event.target.value)}
           required
           maxLength={100}
           placeholder={placeholder}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-red-400 transition-colors"
         />
       </div>
     </FormDialog>

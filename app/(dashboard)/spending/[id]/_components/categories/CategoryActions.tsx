@@ -2,6 +2,8 @@
 
 import { useId } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import {
   deleteCategory,
   updateCategory,
@@ -50,17 +52,15 @@ export default function CategoryActions({
         submitAction={rename}
       >
         <div>
-          <label htmlFor={nameId} className="mb-2 block text-sm text-gray-400">
+          <label htmlFor={nameId} className={fieldLabelClass}>
             Name
           </label>
-          <input
+          <TextInput
             id={nameId}
             name="name"
-            type="text"
             defaultValue={category.name}
             required
             maxLength={100}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white transition-colors focus:border-red-400 focus:outline-none"
           />
         </div>
       </FormDialog>

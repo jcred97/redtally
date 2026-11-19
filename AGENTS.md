@@ -19,7 +19,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Make every feature easy to find, understand, and use. Give common tasks a direct path with clear labels, sensible defaults, visible primary actions, and as few clicks or taps as practical.
 - Walk through the main workflow before finishing. Remove unnecessary screens and repeated inputs while keeping controls accessible and preserving necessary confirmations.
-- Use the Expenses filters as the visual standard for form controls. Reuse the shared `Select`, `DateInput`, and field styles for dropdowns, month/date/time pickers, and text inputs. Place labels above full-width fields, match the 40 px minimum height, rounded borders, and compact padding, and align chevrons and picker icons at the trailing edge. Use consistent 16 px gaps between fields, stack fields on narrow screens, and keep keyboard focus indicators visible.
+- Use the Expenses filters as the visual standard for form controls. Reuse the components in `app/components/forms/` for text and search fields, single- and multiple-choice dropdowns, month/date/time pickers, checkboxes, radio buttons, and file pickers. Configure labels, options, values, and behavior in each feature. Place labels above full-width fields, match the 40 px minimum height, rounded borders, and compact padding, and align chevrons and picker icons at the trailing edge. Use consistent 16 px gaps between fields, stack fields on narrow screens, and keep keyboard focus indicators visible.
 
 ## Repository structure
 

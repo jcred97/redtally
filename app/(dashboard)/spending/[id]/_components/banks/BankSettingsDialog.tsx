@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { BankCatalogEntry } from "@/app/(dashboard)/_lib/banks/access";
 import { saveBankAssignment } from "@/app/(dashboard)/_lib/banks/mutations";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import Checkbox from "@/app/components/forms/Checkbox";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import BankLogo from "./BankLogo";
 
 const paymentMethods = [
@@ -12,9 +14,6 @@ const paymentMethods = [
   { name: "supportedBankTransfer", label: "Bank transfer" },
   { name: "supportedBankPayment", label: "Bank payment" },
 ] as const;
-
-const checkboxClass =
-  "size-4 shrink-0 accent-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400";
 
 export default function BankSettingsDialog({
   expenseGroupId,
@@ -59,27 +58,23 @@ export default function BankSettingsDialog({
       failureMessage="Unable to save bank settings. Please try again."
       submitAction={save}
     >
-      <label className="flex min-h-11 items-center gap-3 rounded-lg border border-gray-700 px-3 py-2 text-sm font-medium has-disabled:opacity-60">
-        <input
-          type="checkbox"
+      <label className={`flex min-h-10 items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 has-disabled:opacity-60 ${fieldLabelClass}`}>
+        <Checkbox
           name="active"
           checked={enabled}
           disabled={!bank.active && !savedEnabled}
           onChange={(event) => setEnabled(event.target.checked)}
-          className={checkboxClass}
         />
         Enable for this expense group
       </label>
 
       <fieldset disabled={!enabled || !bank.active} className="disabled:opacity-60">
-        <legend className="mb-1 text-sm font-medium">Payment methods</legend>
+        <legend className={`mb-1 ${fieldLabelClass}`}>Payment methods</legend>
         {paymentMethods.map(({ name, label }) => (
-          <label key={name} className="flex min-h-11 items-center gap-3 text-sm text-gray-200">
-            <input
-              type="checkbox"
+          <label key={name} className={`flex min-h-10 items-center gap-3 ${fieldLabelClass}`}>
+            <Checkbox
               name={name}
               defaultChecked={bank.assignment?.[name] ?? false}
-              className={checkboxClass}
             />
             {label}
           </label>

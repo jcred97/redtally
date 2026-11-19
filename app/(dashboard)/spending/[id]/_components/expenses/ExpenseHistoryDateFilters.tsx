@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import DateInput from "@/app/components/forms/DateInput";
-import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 
 export default function ExpenseHistoryDateFilters({
@@ -38,7 +38,6 @@ export default function ExpenseHistoryDateFilters({
           max="9999-12"
           pattern="[0-9]{4}-(0[1-9]|1[0-2])"
           placeholder="YYYY-MM"
-          className={fieldClass}
           onChange={({ currentTarget: { value, validity } }) => {
             if (validity.valid && (!value || parseExpenseMonth(value))) onChange("month", value);
           }}
@@ -53,7 +52,6 @@ export default function ExpenseHistoryDateFilters({
           defaultValue={day}
           min="0001-01-01"
           max="9999-12-31"
-          className={fieldClass}
           onChange={({ currentTarget: { value, validity } }) => {
             if (validity.valid && (!value || parseExpenseDay(value))) onChange("day", value);
           }}

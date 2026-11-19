@@ -10,6 +10,8 @@ import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-exp
 import { changeRecurringExpense } from "@/app/(dashboard)/_lib/recurring-expenses/mutations";
 import Select from "@/app/components/forms/Select";
 import DateInput from "@/app/components/forms/DateInput";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 
 export type RecurringExpenseOptions = {
   expenseGroupId: number;
@@ -17,8 +19,6 @@ export type RecurringExpenseOptions = {
   banks: ExpenseBankOption[];
   today: string;
 };
-
-const inputClass = "mt-1.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60";
 
 export default function RecurringExpenseDialog({
   expenseGroupId, categories, banks, today, rule,
@@ -61,53 +61,51 @@ export default function RecurringExpenseDialog({
         return changeRecurringExpense(expenseGroupId, rule?.id ?? null, rule ? "edit" : "create", data);
       }}
     >
-      <label className="block text-sm text-gray-300">
+      <label className={`block ${fieldLabelClass}`}>
         Title
-        <input name="title" required maxLength={100} defaultValue={rule?.title} className={inputClass} />
+        <TextInput name="title" required maxLength={100} defaultValue={rule?.title} />
       </label>
-      <label className="block text-sm text-gray-300">
+      <label className={`block ${fieldLabelClass}`}>
         Amount (PHP)
-        <input name="amount" type="text" inputMode="decimal" required maxLength={20}
-          defaultValue={rule ? formatPesoInput(rule.amountCentavos) : undefined} className={inputClass} />
+        <TextInput name="amount" inputMode="decimal" required maxLength={20}
+          defaultValue={rule ? formatPesoInput(rule.amountCentavos) : undefined} />
       </label>
-      <div className="text-sm text-gray-300">
+      <div className={fieldLabelClass}>
         <label htmlFor={`${fieldId}-category`}>Category</label>
-        <Select id={`${fieldId}-category`} name="categoryId" required defaultValue={rule?.categoryId ?? ""} className={inputClass}
+        <Select id={`${fieldId}-category`} name="categoryId" required defaultValue={rule?.categoryId ?? ""}
           options={[
             { value: "", label: "Select a category" },
             ...categories.map((category) => ({ value: String(category.id), label: category.name })),
           ]} />
       </div>
-      <div className="text-sm text-gray-300">
+      <div className={fieldLabelClass}>
         <label htmlFor={`${fieldId}-frequency`}>Frequency</label>
-        <Select id={`${fieldId}-frequency`} name="frequency" defaultValue={rule?.frequency ?? "MONTHLY"} className={inputClass}
+        <Select id={`${fieldId}-frequency`} name="frequency" defaultValue={rule?.frequency ?? "MONTHLY"}
           options={recurrenceFrequencies.map((value) => ({ value, label: recurrenceFrequencyLabels[value] }))} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block min-w-0 text-sm text-gray-300">
+        <label className={fieldLabelClass}>
           Start date
-          <DateInput name="startDate" required defaultValue={rule?.startDate.toISOString().slice(0, 10) ?? today}
-            className={inputClass} />
+          <DateInput name="startDate" required defaultValue={rule?.startDate.toISOString().slice(0, 10) ?? today} />
         </label>
-        <label className="block min-w-0 text-sm text-gray-300">
+        <label className={fieldLabelClass}>
           End date (optional)
-          <DateInput name="endDate" defaultValue={rule?.endDate?.toISOString().slice(0, 10)}
-            className={inputClass} />
+          <DateInput name="endDate" defaultValue={rule?.endDate?.toISOString().slice(0, 10)} />
         </label>
       </div>
-      <div className="text-sm text-gray-300">
+      <div className={fieldLabelClass}>
         <label htmlFor={`${fieldId}-payment-method`}>Payment method</label>
         <Select id={`${fieldId}-payment-method`} name="paymentMethod" value={method}
-          onChange={(value) => changeMethod(value as PaymentMethod | "")} className={inputClass}
+          onChange={(value) => changeMethod(value as PaymentMethod | "")}
           options={[
             { value: "", label: "No payment method" },
             ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
           ]} />
       </div>
       {(eligibleBanks.length > 0 || unavailableBank) && (
-        <div className="text-sm text-gray-300">
+        <div className={fieldLabelClass}>
           <label htmlFor={bankFieldId}>Bank (optional)</label>
-          <Select id={bankFieldId} name="bankAssignmentId" value={bankId} onChange={setBankId} className={inputClass}
+          <Select id={bankFieldId} name="bankAssignmentId" value={bankId} onChange={setBankId}
             aria-describedby={unavailableBank ? `${bankFieldId}-help` : undefined}
             options={[
               { value: "", label: "No bank" },

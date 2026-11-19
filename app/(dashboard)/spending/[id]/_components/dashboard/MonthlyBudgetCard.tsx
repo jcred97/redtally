@@ -2,6 +2,8 @@
 
 import { useId } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import { removeMonthlyBudget, saveMonthlyBudget } from "../../_lib/dashboard/mutations";
 import { parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount, formatPesoInput } from "@/app/lib/expenses/money";
@@ -50,9 +52,9 @@ export default function MonthlyBudgetCard({
             onOpenAction={() => {}}
             submitAction={(formData) => saveMonthlyBudget(expenseGroupId, month, formData)}
           >
-            <label className="block text-sm font-medium text-gray-300">
+            <label className={`block ${fieldLabelClass}`}>
               Monthly target (₱)
-              <input
+              <TextInput
                 name="amount"
                 inputMode="decimal"
                 defaultValue={budgetCentavos === null ? "" : formatPesoInput(budgetCentavos)}
@@ -60,7 +62,6 @@ export default function MonthlyBudgetCard({
                 maxLength={11}
                 required
                 autoFocus
-                className="mt-1.5 block min-h-11 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 text-base text-white focus-visible:outline-2 focus-visible:outline-red-400"
               />
             </label>
           </FormDialog>

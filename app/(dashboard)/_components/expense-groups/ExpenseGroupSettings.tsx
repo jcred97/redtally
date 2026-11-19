@@ -9,6 +9,8 @@ import {
 } from "@/app/(dashboard)/_lib/expense-groups/mutations";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import Select from "@/app/components/forms/Select";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import styles from "@/app/components/menus/action-menu.module.css";
 import { useActionMenuKeyboard } from "@/app/components/menus/useActionMenuKeyboard";
 
@@ -144,15 +146,14 @@ export default function ExpenseGroupSettings({
           failureMessage="Unable to rename the expense group. Please try again."
           submitAction={(formData) => renameExpenseGroup(group.id, formData)}
         >
-          <label htmlFor={nameId} className="block text-sm text-gray-300">
+          <label htmlFor={nameId} className={`block ${fieldLabelClass}`}>
             Name
-            <input
+            <TextInput
               id={nameId}
               name="name"
               defaultValue={group.name}
               required
               maxLength={100}
-              className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-white focus:border-red-400 focus:outline-none"
             />
           </label>
         </FormDialog>
@@ -234,7 +235,7 @@ export default function ExpenseGroupSettings({
               <SettingsIcon name="close" />
             </button>
           </div>
-          <label htmlFor={`${currencyId}-field`} className="mt-6 block text-sm font-medium text-gray-300">
+          <label htmlFor={`${currencyId}-field`} className={`mt-6 block ${fieldLabelClass}`}>
             Expense Group Currency
           </label>
           <Select
@@ -243,7 +244,6 @@ export default function ExpenseGroupSettings({
             options={[{ value: "PHP", label: "PHP – Philippine peso" }]}
             disabled
             aria-describedby={`${currencyId}-status`}
-            className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-gray-300 disabled:cursor-not-allowed disabled:opacity-70"
           />
           <p id={`${currencyId}-status`} className="mt-3 text-sm text-gray-400">
             Currency changes are still in development.

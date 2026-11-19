@@ -1,6 +1,8 @@
 "use client";
 
 import FormDialog from "@/app/components/dialogs/FormDialog";
+import Checkbox from "@/app/components/forms/Checkbox";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import { formatExpenseDate } from "@/app/lib/expenses/date";
 import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-expenses/access";
 import { changeRecurringExpense } from "@/app/(dashboard)/_lib/recurring-expenses/mutations";
@@ -31,8 +33,8 @@ export default function RecurringExpenseActions({ rule, today }: { rule: Recurri
         >
           <p className="wrap-anywhere font-medium">{rule.title}</p>
           {canBackfill && (
-            <label className="flex items-start gap-2.5 text-sm text-gray-300">
-              <input name="backfill" type="checkbox" className="mt-0.5 size-4 shrink-0 accent-red-500" />
+            <label className={`flex items-start gap-2.5 ${fieldLabelClass}`}>
+              <Checkbox name="backfill" className="mt-0.5" />
               Include missed dates starting {formatExpenseDate(rule.nextDueDate)}
             </label>
           )}

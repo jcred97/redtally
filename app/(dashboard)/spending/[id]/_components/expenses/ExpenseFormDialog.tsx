@@ -5,6 +5,8 @@ import FormDialog from "@/app/components/dialogs/FormDialog";
 import menuStyles from "@/app/components/menus/action-menu.module.css";
 import DateInput from "@/app/components/forms/DateInput";
 import Select from "@/app/components/forms/Select";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import {
   createExpense,
   updateExpense,
@@ -154,12 +156,6 @@ export default function ExpenseFormDialog({
     return createExpense(null, formData);
   }
 
-  const inputClass = `mt-0.5 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-2.5 text-white outline-none focus:border-red-400 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 ${expense ? "min-h-10 py-1.5 sm:mt-1 sm:py-2" : "min-h-8 py-1 leading-5 sm:min-h-[34px] [@media(min-height:720px)]:min-h-10 [@media(min-height:720px)]:py-2"}`;
-  const labelClass = `block leading-tight text-gray-400 ${expense ? "text-sm" : "text-xs [@media(min-height:720px)]:text-sm"}`;
-  const paymentRowClass = expense
-    ? "col-span-2 grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-2.5 max-[365px]:block sm:block"
-    : "min-w-0";
-
   return (
     <div>
       <FormDialog
@@ -180,11 +176,11 @@ export default function ExpenseFormDialog({
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
-        <div className={`grid items-start gap-2 md:gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
-          <div className={`grid ${expense ? "grid-cols-2 gap-x-2.5 gap-y-1.5 sm:gap-x-3 sm:gap-y-3" : "min-w-0 gap-y-0.5 sm:gap-y-1 [@media(min-height:720px)]:gap-y-2"}`}>
-            <div className={expense ? "col-span-2 min-w-0" : "min-w-0"}>
-              <label htmlFor={`${fieldId}-title`} className={labelClass}>Title</label>
-              <input
+        <div className={`grid items-start gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
+          <div className={`grid min-w-0 gap-4 ${expense ? "sm:grid-cols-2" : ""}`}>
+            <div className="col-span-full min-w-0">
+              <label htmlFor={`${fieldId}-title`} className={fieldLabelClass}>Title</label>
+              <TextInput
                 id={`${fieldId}-title`}
                 name="title"
                 type="text"
@@ -193,15 +189,14 @@ export default function ExpenseFormDialog({
                 required
                 maxLength={100}
                 placeholder="e.g. Lunch"
-                className={inputClass}
               />
             </div>
 
-            <div className={expense ? "col-span-2 min-w-0" : "min-w-0"}>
-              <label htmlFor={`${fieldId}-merchant`} className={labelClass}>
+            <div className="col-span-full min-w-0">
+              <label htmlFor={`${fieldId}-merchant`} className={fieldLabelClass}>
                 Merchant <span className="text-xs">(optional)</span>
               </label>
-              <input
+              <TextInput
                 id={`${fieldId}-merchant`}
                 name="merchant"
                 type="text"
@@ -209,13 +204,12 @@ export default function ExpenseFormDialog({
                 onChange={(event) => setMerchant(event.target.value)}
                 maxLength={100}
                 placeholder="e.g. Grab"
-                className={inputClass}
               />
             </div>
 
             <div className="min-w-0">
-              <label htmlFor={`${fieldId}-amount`} className={labelClass}>Amount (PHP)</label>
-              <input
+              <label htmlFor={`${fieldId}-amount`} className={fieldLabelClass}>Amount (PHP)</label>
+              <TextInput
                 id={`${fieldId}-amount`}
                 name="amount"
                 type="text"
@@ -226,19 +220,17 @@ export default function ExpenseFormDialog({
                 maxLength={20}
                 placeholder="150.75"
                 aria-describedby={`${fieldId}-amount-help`}
-                className={inputClass}
               />
               <p id={`${fieldId}-amount-help`} className={`sr-only mt-1 text-xs text-gray-400 ${expense ? "md:not-sr-only" : "md:[@media(min-height:720px)]:not-sr-only"}`}>Up to two decimal places.</p>
             </div>
             <div className="min-w-0">
-              <label htmlFor={`${fieldId}-category`} className={labelClass}>Category</label>
+              <label htmlFor={`${fieldId}-category`} className={fieldLabelClass}>Category</label>
               <Select
                 id={`${fieldId}-category`}
                 name="categoryId"
                 value={categoryId}
                 onChange={setCategoryId}
                 required
-                className={inputClass}
                 options={[
                   { value: "", label: "Select a category" },
                   ...categories.map((category) => ({ value: String(category.id), label: category.name })),
@@ -247,7 +239,7 @@ export default function ExpenseFormDialog({
             </div>
 
             <div className="min-w-0">
-              <label htmlFor={`${fieldId}-date`} className={labelClass}>Date</label>
+              <label htmlFor={`${fieldId}-date`} className={fieldLabelClass}>Date</label>
               <DateInput
                 id={`${fieldId}-date`}
                 name="date"
@@ -255,11 +247,10 @@ export default function ExpenseFormDialog({
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
                 required
-                className={inputClass}
               />
             </div>
             <div className="min-w-0">
-              <label htmlFor={`${fieldId}-time`} className={labelClass}>
+              <label htmlFor={`${fieldId}-time`} className={fieldLabelClass}>
                 Time <span className="text-xs">(Manila, optional)</span>
               </label>
               <DateInput
@@ -268,31 +259,26 @@ export default function ExpenseFormDialog({
                 type="time"
                 value={time}
                 onChange={(event) => setTime(event.target.value)}
-                className={inputClass}
               />
             </div>
 
-            <div className={paymentRowClass}>
-              <label htmlFor={`${fieldId}-payment-method`} className={labelClass}>Payment method</label>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-payment-method`} className={fieldLabelClass}>Payment method</label>
               <Select
                 id={`${fieldId}-payment-method`}
                 name="paymentMethod"
                 value={paymentMethod}
                 onChange={(value) => changePaymentMethod(value as PaymentMethod | "")}
-                className={inputClass}
                 options={[
                   { value: "", label: "No payment method" },
                   ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
                 ]}
               />
             </div>
-            <div className={paymentRowClass}>
-              <div className={expense ? undefined : "flex flex-wrap items-baseline justify-between gap-x-2"}>
-                <label htmlFor={`${fieldId}-bank`} className={labelClass}>
-                  Bank <span className="text-xs">(optional)</span>
-                </label>
-                {!expense && bankHelp && <p id={`${fieldId}-bank-help`} className="text-xs leading-tight text-gray-400">{bankHelp}</p>}
-              </div>
+            <div className="min-w-0">
+              <label htmlFor={`${fieldId}-bank`} className={fieldLabelClass}>
+                Bank <span className="text-xs">(optional)</span>
+              </label>
               <Select
                 id={`${fieldId}-bank`}
                 name="bankAssignmentId"
@@ -300,17 +286,16 @@ export default function ExpenseFormDialog({
                 onChange={setBankAssignmentId}
                 disabled={!canSelectBank}
                 aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
-                className={inputClass}
                 options={[
                   { value: "", label: "No bank" },
                   ...(showUnavailableBank ? [{ value: bankAssignmentId, label: bankLabel, disabled: true }] : []),
                   ...eligibleBanks.map((bank) => ({ value: String(bank.id), label: bank.name })),
                 ]}
               />
-              {expense && bankHelp && <p id={`${fieldId}-bank-help`} className="col-start-2 mt-1 text-xs text-gray-400">{bankHelp}</p>}
+              {bankHelp && <p id={`${fieldId}-bank-help`} className="mt-1 text-xs text-gray-400">{bankHelp}</p>}
             </div>
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
-              <p className="col-span-2 wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
+              <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
           </div>
 

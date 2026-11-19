@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { fieldClass } from "./field-styles";
 import styles from "./select.module.css";
 
 type SelectOption = { value: string; label: string; disabled?: boolean };
@@ -179,7 +180,7 @@ export default function Select({
         aria-activedescendant={open && activeOption ? `${listId}-${active}` : undefined}
         aria-required={required || undefined} aria-invalid={showError || undefined}
         aria-describedby={showError ? [describedBy, errorId].filter(Boolean).join(" ") : describedBy}
-        disabled={disabled} className={`${styles.trigger} ${className}`}
+        disabled={disabled} className={`${fieldClass} ${styles.trigger} ${className}`}
         onClick={() => open ? setOpen(false) : openMenu()}
         onKeyDown={handleKeyDown} onBlur={() => setOpen(false)}>
         {options[selected]?.label ?? ""}

@@ -7,7 +7,8 @@ import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import Select from "@/app/components/forms/Select";
-import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import { nextExpenseHistoryScope } from "../../_lib/expenses/scope";
 
 type ExpenseHistoryFiltersProps = {
@@ -140,7 +141,7 @@ export default function ExpenseHistoryFilters({
     >
       <label className={fieldLabelClass}>
         Search expenses
-        <input
+        <TextInput
           type="search"
           name="search"
           placeholder="Merchant or expense title"
@@ -149,7 +150,6 @@ export default function ExpenseHistoryFilters({
           onChange={({ target: { value } }) => setFilters((current) => ({ ...current, search: value }))}
           onCompositionStart={() => setComposing(true)}
           onCompositionEnd={() => setComposing(false)}
-          className={fieldClass}
         />
       </label>
       <ExpenseHistoryDateFilters month={month} day={day} onChange={changeFilter} />
@@ -159,7 +159,6 @@ export default function ExpenseHistoryFilters({
           id="expense-filter-category"
           value={category}
           onChange={(value) => changeFilter("category", value)}
-          className={fieldClass}
           options={[
             { value: "", label: "All categories" },
             ...(categoryUnavailable ? [{ value: category, label: "Unavailable category" }] : []),
@@ -173,7 +172,6 @@ export default function ExpenseHistoryFilters({
           id="expense-filter-payment-method"
           value={paymentMethod}
           onChange={(value) => changeFilter("paymentMethod", value)}
-          className={fieldClass}
           options={[
             { value: "", label: "All payment methods" },
             ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
@@ -186,7 +184,6 @@ export default function ExpenseHistoryFilters({
           id="expense-filter-bank"
           value={bank}
           onChange={(value) => changeFilter("bank", value)}
-          className={fieldClass}
           options={[
             { value: "", label: "All banks" },
             ...(bankUnavailable ? [{ value: bank, label: "Unavailable bank" }] : []),

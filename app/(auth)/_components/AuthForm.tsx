@@ -11,6 +11,8 @@ import {
 } from "react";
 import { authClient } from "@/app/lib/auth/client";
 import LoadingScreen from "@/app/components/feedback/LoadingScreen";
+import TextInput from "@/app/components/forms/TextInput";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 
 export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const router = useRouter();
@@ -95,9 +97,6 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     }
   }
 
-  const inputClass =
-    "mt-2 w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-3 text-white outline-none focus:border-red-400 focus:ring-2 focus:ring-red-500/30 disabled:opacity-60";
-
   let loadingMessage: string;
 
   if (redirecting) {
@@ -138,43 +137,41 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5" aria-busy={pending}>
-            <fieldset disabled={pending} className="space-y-5">
+            <fieldset disabled={pending} className="space-y-4">
               {signingUp && (
                 <div>
-                  <label htmlFor="name" className="text-sm font-medium">
+                  <label htmlFor="name" className={fieldLabelClass}>
                     Name
                   </label>
-                  <input
+                  <TextInput
                     id="name"
                     name="name"
                     autoComplete="name"
                     required
                     maxLength={100}
-                    className={inputClass}
                   />
                 </div>
               )}
 
               <div>
-                <label htmlFor="email" className="text-sm font-medium">
+                <label htmlFor="email" className={fieldLabelClass}>
                   Email
                 </label>
-                <input
+                <TextInput
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
                   required
                   maxLength={254}
-                  className={inputClass}
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="text-sm font-medium">
+                <label htmlFor="password" className={fieldLabelClass}>
                   Password
                 </label>
-                <input
+                <TextInput
                   id="password"
                   name="password"
                   type="password"
@@ -183,7 +180,6 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
                   minLength={signingUp ? 12 : undefined}
                   maxLength={128}
                   aria-describedby={signingUp ? "password-help" : undefined}
-                  className={inputClass}
                 />
                 {signingUp && (
                   <p id="password-help" className="mt-2 text-xs text-gray-400">
@@ -194,10 +190,10 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 
               {signingUp && (
                 <div>
-                  <label htmlFor="confirm-password" className="text-sm font-medium">
+                  <label htmlFor="confirm-password" className={fieldLabelClass}>
                     Confirm password
                   </label>
-                  <input
+                  <TextInput
                     id="confirm-password"
                     name="confirmPassword"
                     type="password"
@@ -205,7 +201,6 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
                     required
                     minLength={12}
                     maxLength={128}
-                    className={inputClass}
                   />
                 </div>
               )}
