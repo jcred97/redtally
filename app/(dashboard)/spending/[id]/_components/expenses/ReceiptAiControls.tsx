@@ -102,7 +102,7 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
 
   const providerName = connection ? providers[connection.provider] : null;
   return (
-    <div className="grid justify-items-start gap-1.5 border-t border-gray-800 pt-2">
+    <div className="grid justify-items-start gap-2 border-t border-gray-800 pt-3">
       {settingsLoaded ? (
         <>
           <button type="button" className="button-secondary min-h-10 rounded-lg px-2.5 text-sm font-medium"
