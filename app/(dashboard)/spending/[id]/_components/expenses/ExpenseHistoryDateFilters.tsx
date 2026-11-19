@@ -2,17 +2,16 @@
 
 import { useLayoutEffect, useRef } from "react";
 import DateInput from "@/app/components/forms/DateInput";
+import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 
 export default function ExpenseHistoryDateFilters({
   month,
   day,
-  fieldClass,
   onChange,
 }: {
   month: string;
   day: string;
-  fieldClass: string;
   onChange: (field: "month" | "day", value: string) => void;
 }) {
   const monthInput = useRef<HTMLInputElement>(null);
@@ -28,7 +27,7 @@ export default function ExpenseHistoryDateFilters({
 
   return (
     <>
-      <label className="min-w-0 text-sm text-gray-300">
+      <label className={fieldLabelClass}>
         Month
         <DateInput
           ref={monthInput}
@@ -45,7 +44,7 @@ export default function ExpenseHistoryDateFilters({
           }}
         />
       </label>
-      <label className="min-w-0 text-sm text-gray-300">
+      <label className={fieldLabelClass}>
         Day <span className="text-gray-400">(optional)</span>
         <DateInput
           ref={dayInput}

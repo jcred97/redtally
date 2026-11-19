@@ -1,68 +1,81 @@
-import Form from "next/form";
+import { useLayoutEffect, useRef } from "react";
 import DateInput from "@/app/components/forms/DateInput";
+import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
+import styles from "@/app/components/forms/select.module.css";
+import { parseExpenseMonth } from "@/app/lib/expenses/date";
 
 type DashboardFiltersProps = {
   month: string;
   groups: { publicId: string; name: string }[];
   selectedIds: string[];
-  entryId?: string;
+  onMonthChange: (month: string) => void;
+  onGroupChange: (publicId: string, checked: boolean) => void;
 };
 
-export default function DashboardFilters({ month, groups, selectedIds, entryId }: DashboardFiltersProps) {
+export default function DashboardFilters({ month, groups, selectedIds, onMonthChange, onGroupChange }: DashboardFiltersProps) {
   const included = new Set(selectedIds);
+  const monthInput = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    if (monthInput.current) monthInput.current.value = month;
+  }, [month]);
 
   return (
-    <Form
-      key={`${month}:${selectedIds.join(",")}`}
-      action="/"
-      scroll={false}
-      prefetch={false}
+    <form
       aria-label="Dashboard filters"
-      className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5"
+      onSubmit={(event) => event.preventDefault()}
+      className="grid min-w-0 grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2"
     >
-      <input type="hidden" name="scope" value="1" />
-      {entryId && <input type="hidden" name="entry" value={entryId} />}
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="min-w-0 text-sm font-medium text-gray-200">
+      <div className={fieldLabelClass}>
+        <label>
           Month
           <DateInput
+            ref={monthInput}
             type="month"
             name="month"
             min="0001-01"
             max="9999-12"
+            pattern="[0-9]{4}-(0[1-9]|1[0-2])"
+            aria-describedby="dashboard-month-timezone"
             defaultValue={month}
-            className="mt-1 block min-h-11 max-w-full rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white focus-visible:outline-2 focus-visible:outline-red-400"
+            onChange={({ currentTarget: { value } }) => {
+              const selectedMonth = parseExpenseMonth(value);
+              if (selectedMonth) onMonthChange(selectedMonth);
+            }}
+            onBlur={({ currentTarget }) => {
+              if (!parseExpenseMonth(currentTarget.value)) currentTarget.value = month;
+            }}
+            className={fieldClass}
           />
         </label>
-        <span className="pb-3 text-xs text-gray-400">Manila time</span>
+        <p id="dashboard-month-timezone" className="mt-1 text-xs text-gray-400">Manila time</p>
       </div>
-      <details className="mt-3 min-w-0">
-        <summary className="min-h-10 cursor-pointer rounded-sm py-2 text-sm font-medium text-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
-          <span>Expense groups</span>
-          <span className="ml-2 text-xs font-normal text-gray-400">{selectedIds.length} included</span>
-        </summary>
-        <fieldset className="mt-1 grid max-h-40 gap-x-4 overflow-y-auto sm:grid-cols-2">
-          <legend className="sr-only">Expense groups included in the report</legend>
-          {groups.map(({ publicId, name }) => (
-            <label key={publicId} className="flex min-h-9 min-w-0 cursor-pointer items-center gap-2 rounded-sm text-sm text-gray-300 hover:text-white">
-              <input
-                type="checkbox"
-                name="group"
-                value={publicId}
-                defaultChecked={included.has(publicId)}
-                className="size-4 shrink-0 accent-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
-              />
-              <span className="min-w-0 wrap-anywhere">{name}</span>
-            </label>
-          ))}
-        </fieldset>
-      </details>
-      <button
-        type="submit"
-        className="mt-4 min-h-11 rounded-lg border border-gray-700 px-3 py-2 text-sm font-medium text-white hover:border-gray-500 hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
-      >
-        Apply filters
-      </button>
-    </Form>
+      <div className={fieldLabelClass}>
+        <span id="dashboard-expense-groups-label">Expense groups</span>
+        <details>
+          <summary
+            aria-labelledby="dashboard-expense-groups-label dashboard-expense-groups-count"
+            className={`${fieldClass} ${styles.disclosure} content-center`}
+          >
+            <span id="dashboard-expense-groups-count">{selectedIds.length} included</span>
+          </summary>
+          <fieldset className="mt-1 grid max-h-44 min-w-0 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 p-1">
+            <legend className="sr-only">Expense groups included in the report</legend>
+            {groups.map(({ publicId, name }) => (
+              <label key={publicId} className="flex min-h-9 min-w-0 cursor-pointer items-center gap-2 rounded-sm px-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">
+                <input
+                  type="checkbox"
+                  name="group"
+                  value={publicId}
+                  checked={included.has(publicId)}
+                  onChange={(event) => onGroupChange(publicId, event.currentTarget.checked)}
+                  className="size-4 shrink-0 accent-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+                />
+                <span className="min-w-0 wrap-anywhere">{name}</span>
+              </label>
+            ))}
+          </fieldset>
+        </details>
+      </div>
+    </form>
   );
 }

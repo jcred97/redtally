@@ -1,42 +1,32 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useId, useTransition, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import Select from "@/app/components/forms/Select";
+import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
 
 type DashboardQuickEntryProps = {
   groups: { publicId: string; name: string }[];
   entryId: string;
-  scopeQuery: string;
+  pending: boolean;
+  onGroupChange: (publicId: string) => void;
   children: ReactNode;
 };
 
-export default function DashboardQuickEntry({ groups, entryId, scopeQuery, children }: DashboardQuickEntryProps) {
-  const router = useRouter();
+export default function DashboardQuickEntry({ groups, entryId, pending, onGroupChange, children }: DashboardQuickEntryProps) {
   const groupSelectId = useId();
-  const [pending, startTransition] = useTransition();
   const currentGroup = groups.find(({ publicId }) => publicId === entryId);
 
-  function chooseGroup(publicId: string) {
-    const query = new URLSearchParams(scopeQuery);
-    query.set("entry", publicId);
-    startTransition(() => router.replace(`/?${query}`, { scroll: false }));
-  }
-
   return (
-    <section aria-labelledby="dashboard-entry-heading" className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-5">
+    <section aria-labelledby="dashboard-entry-heading" className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4">
       <h2 id="dashboard-entry-heading" className="text-base font-semibold">Quick expense entry</h2>
       {groups.length > 1 ? (
-        <div className="mt-3 min-w-0">
-          <label htmlFor={groupSelectId} className="text-sm font-medium text-gray-200">Expense group</label>
-          <select
+        <div className={`mt-3 ${fieldLabelClass}`}>
+          <label htmlFor={groupSelectId}>Expense group</label>
+          <Select
             id={groupSelectId}
             value={entryId}
-            disabled={pending}
-            onChange={(event) => chooseGroup(event.currentTarget.value)}
-            className="mt-1 block min-h-11 w-full rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white focus-visible:outline-2 focus-visible:outline-red-400"
-          >
-            {groups.map(({ publicId, name }) => <option key={publicId} value={publicId}>{name}</option>)}
-          </select>
+            onChange={onGroupChange}
+            options={groups.map(({ publicId, name }) => ({ value: publicId, label: name }))}
+            className={fieldClass}
+          />
         </div>
       ) : (
         <p className="mt-2 wrap-anywhere text-sm text-gray-400">{currentGroup?.name}</p>

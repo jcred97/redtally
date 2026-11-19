@@ -1,16 +1,31 @@
-.trigger {
+.trigger,
+.disclosure {
   position: relative;
   padding-inline-end: 2.5rem;
   text-align: start;
   overflow-wrap: anywhere;
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1rem;
 }
 
+.trigger::after,
+.disclosure::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 0.75rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.disclosure { list-style: none; }
+.disclosure::-webkit-details-marker { display: none; }
+details[open] > .disclosure::after { transform: translateY(-50%) rotate(180deg); }
+
 .trigger:focus-visible,
+.disclosure:focus-visible,
 .trigger[aria-expanded="true"] {
   outline: 2px solid var(--color-red-400);
   outline-offset: 2px;
@@ -61,7 +76,17 @@
 .option[aria-disabled="true"] { color: var(--color-gray-400); cursor: not-allowed; }
 
 @media (forced-colors: active) {
-  .trigger { background-image: none; }
+  .trigger::after,
+  .disclosure::after {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-inline-end: 0.25rem;
+    border-inline-end: 1px solid ButtonText;
+    border-bottom: 1px solid ButtonText;
+    transform: translateY(-75%) rotate(45deg);
+    background: none;
+  }
+  details[open] > .disclosure::after { transform: translateY(-25%) rotate(225deg); }
   .option[data-active="true"] { outline-color: Highlight; }
   .option[aria-selected="true"] { color: Highlight; }
   .option[aria-disabled="true"] { color: GrayText; }

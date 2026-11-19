@@ -119,19 +119,26 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   await expect(navigation.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   const filters = page.getByRole("form", { name: "Dashboard filters" });
-  await filters.getByText("Expense groups", { exact: true }).click();
+  const groupPicker = filters.locator("summary");
+  await expect(filters.getByRole("button", { name: "Apply filters", exact: true })).toHaveCount(0);
+  await groupPicker.press("Enter");
+  await expect(groupPicker).toContainText("1 included");
   await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(1);
   await expect(page.getByRole("checkbox", { name: "Browser daily expenses", exact: true })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Private foreign group" })).toHaveCount(0);
 
   await page.getByRole("checkbox", { name: "Browser daily expenses", exact: true }).uncheck();
+  await expect(page.getByRole("heading", { name: "No expense groups selected" })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("scope")).toBe("1");
+  await expect(groupPicker).toContainText("0 included");
   await page.getByRole("checkbox", { name: "Dashboard household", exact: true }).check();
   await page.getByRole("checkbox", { name: "Dashboard work", exact: true }).check();
   await page.getByLabel("Month", { exact: true }).fill(data.dashboard.month);
-  await page.getByRole("button", { name: "Apply filters" }).click();
   await expect.poll(() => new URL(page.url()).searchParams.getAll("group").sort()).toEqual([
     data.dashboard.budgeted, data.dashboard.unbudgeted,
   ].sort());
+  await expect(groupPicker).toContainText("2 included");
+  await expect(page.getByRole("checkbox", { name: "Dashboard work", exact: true })).toBeChecked();
   const spent = page.getByRole("region", { name: "Spent in April 2020" });
   await expect(spent.getByText("₱32.75", { exact: true })).toBeVisible();
   await expect(spent.getByText("₱7.25", { exact: true })).toBeVisible();
@@ -149,7 +156,8 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   const entry = page.getByRole("region", { name: "Quick expense entry" });
-  await entry.getByLabel("Expense group", { exact: true }).selectOption(data.dashboard.unbudgeted);
+  await entry.getByRole("combobox", { name: "Expense group", exact: true }).click();
+  await entry.getByRole("option", { name: "Dashboard work", exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.get("entry")).toBe(data.dashboard.unbudgeted);
   const expense = await newExpense(page);
   await expense.getByLabel("Title", { exact: true }).fill("Dashboard quick-entry ticket");
@@ -168,7 +176,7 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
 
   await page.goto(`/?month=${data.dashboard.month}&scope=1&group=${data.foreign.publicId}`);
   await expect(page.getByRole("heading", { name: "No expense groups selected" })).toBeVisible();
-  await filters.getByText("Expense groups", { exact: true }).click();
+  await groupPicker.click();
   await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
   await expect(page.getByText("Foreign secret", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Spent in April 2020", exact: true })).toHaveCount(0);

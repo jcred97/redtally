@@ -6,8 +6,7 @@ import { getExpenseGroupById, getExpenseGroupOptions } from "@/app/(dashboard)/_
 import Skeleton from "@/app/components/feedback/Skeleton";
 import { requireUser } from "@/app/lib/auth/session";
 import { getManilaToday, parseExpenseMonth } from "@/app/lib/expenses/date";
-import DashboardFilters from "./_home/dashboard/DashboardFilters";
-import DashboardQuickEntry from "./_home/dashboard/DashboardQuickEntry";
+import DashboardControls from "./_home/dashboard/DashboardControls";
 import DashboardReport from "./_home/dashboard/DashboardReport";
 import DashboardUnavailable from "./_home/dashboard/DashboardUnavailable";
 import { getHomeDashboard } from "./_home/dashboard/queries";
@@ -59,6 +58,7 @@ async function loadDashboard(query: DashboardQuery) {
 
     const scope = new URLSearchParams({ month, scope: "1" });
     for (const publicId of selectedIds) scope.append("group", publicId);
+    if (requestedEntry) scope.set("entry", requestedEntry.publicId);
 
     const [dashboard, entryGroup, bankOptions] = await Promise.all([
       selectedIds.length > 0 ? getHomeDashboard(selectedIds, month, today) : null,
@@ -66,7 +66,7 @@ async function loadDashboard(query: DashboardQuery) {
       getExpenseBankOptions(entry.id),
     ]);
     return {
-      status: "loaded", ownedGroups, selectedIds, requestedEntry, entry, month, today,
+      status: "loaded", ownedGroups, entry, today,
       scopeQuery: scope.toString(), dashboard, entryGroup, bankOptions,
     } as const;
   } catch (error) {
@@ -91,22 +91,19 @@ async function DashboardContent({ query }: { query: DashboardQuery }) {
     );
   }
 
-  const { ownedGroups, selectedIds, requestedEntry, entry, month, today, scopeQuery, dashboard, entryGroup, bankOptions } = result;
+  const { ownedGroups, entry, today, scopeQuery, dashboard, entryGroup, bankOptions } = result;
   const categories = entryGroup?.categories.map(({ id, name }) => ({ id, name })) ?? [];
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">
-        <DashboardFilters month={month} groups={ownedGroups} selectedIds={selectedIds} entryId={requestedEntry?.publicId} />
-        <DashboardQuickEntry groups={ownedGroups} entryId={entry.publicId} scopeQuery={scopeQuery}>
-          {entryGroup && (categories.length > 0 ? (
-            <NewExpenseButton key={entry.id} expenseGroupId={entry.id} categories={categories} bankOptions={bankOptions} />
-          ) : (
-            <NewCategoryButton key={entry.id} expenseGroupId={entry.id} />
-          ))}
-          {!entryGroup && <p role="status" className="text-sm text-gray-300">This expense group is no longer available.</p>}
-        </DashboardQuickEntry>
-      </div>
+      <DashboardControls groups={ownedGroups} entryId={entry.publicId} scopeQuery={scopeQuery}>
+        {entryGroup && (categories.length > 0 ? (
+          <NewExpenseButton key={entry.id} expenseGroupId={entry.id} categories={categories} bankOptions={bankOptions} />
+        ) : (
+          <NewCategoryButton key={entry.id} expenseGroupId={entry.id} />
+        ))}
+        {!entryGroup && <p role="status" className="text-sm text-gray-300">This expense group is no longer available.</p>}
+      </DashboardControls>
       {dashboard && dashboard.groups.length > 0 ? (
         <DashboardReport data={dashboard} today={today} />
       ) : (

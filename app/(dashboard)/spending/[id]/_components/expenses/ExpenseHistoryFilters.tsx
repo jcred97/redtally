@@ -7,6 +7,7 @@ import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import Select from "@/app/components/forms/Select";
+import { fieldClass, fieldLabelClass } from "@/app/components/forms/field-styles";
 import { nextExpenseHistoryScope } from "../../_lib/expenses/scope";
 
 type ExpenseHistoryFiltersProps = {
@@ -22,7 +23,6 @@ type ExpenseHistoryFiltersProps = {
 };
 
 const SEARCH_DELAY_MS = 300;
-const fieldClass = "mt-1 block min-h-10 w-full min-w-0 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-base text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-red-400 sm:text-sm";
 
 type FilterField = "month" | "day" | "category" | "paymentMethod" | "bank";
 
@@ -138,7 +138,7 @@ export default function ExpenseHistoryFilters({
       onSubmit={(event) => event.preventDefault()}
       className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3"
     >
-      <label className="min-w-0 text-sm text-gray-300">
+      <label className={fieldLabelClass}>
         Search expenses
         <input
           type="search"
@@ -152,8 +152,8 @@ export default function ExpenseHistoryFilters({
           className={fieldClass}
         />
       </label>
-      <ExpenseHistoryDateFilters month={month} day={day} fieldClass={fieldClass} onChange={changeFilter} />
-      <div className="min-w-0 text-sm text-gray-300">
+      <ExpenseHistoryDateFilters month={month} day={day} onChange={changeFilter} />
+      <div className={fieldLabelClass}>
         <label htmlFor="expense-filter-category">Category</label>
         <Select
           id="expense-filter-category"
@@ -167,7 +167,7 @@ export default function ExpenseHistoryFilters({
           ]}
         />
       </div>
-      <div className="min-w-0 text-sm text-gray-300">
+      <div className={fieldLabelClass}>
         <label htmlFor="expense-filter-payment-method">Payment method</label>
         <Select
           id="expense-filter-payment-method"
@@ -180,7 +180,7 @@ export default function ExpenseHistoryFilters({
           ]}
         />
       </div>
-      <div className="min-w-0 text-sm text-gray-300">
+      <div className={fieldLabelClass}>
         <label htmlFor="expense-filter-bank">Bank</label>
         <Select
           id="expense-filter-bank"
