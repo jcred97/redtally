@@ -17,7 +17,8 @@ import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type Expense
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
-import FinancedPurchaseFields, { type CreditAccountOption } from "./FinancedPurchaseFields";
+import CreditAccountFields, { type CreditAccountOption } from "./CreditAccountFields";
+import FinancedPurchaseFields from "./FinancedPurchaseFields";
 
 export type EditableExpense = {
   id: number;
@@ -64,6 +65,7 @@ export default function ExpenseFormDialog({
   const [bankAssignmentId, setBankAssignmentId] = useState("");
   const hasCategories = categories.length > 0;
   const financed = paymentMethod === "PAY_LATER";
+  const showSchedule = !expense && financed;
   const hasRepaymentPlan = Boolean(expense?.repaymentPlanId);
   const canSelectBank = isBankPaymentMethod(paymentMethod);
   const eligibleBanks = canSelectBank
@@ -178,7 +180,7 @@ export default function ExpenseFormDialog({
         returnFocusId={menuFocusKey ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
         description={hasRepaymentPlan ? "The amount, date, and payment method are tied to this expense’s repayment plan." : undefined}
-        dialogSize="wide"
+        dialogSize={showSchedule ? "extra-wide" : "wide"}
         compact
         pendingMessage="Saving your expense. Please wait..."
         failureMessage="Unable to save your expense. Please try again."
@@ -188,7 +190,7 @@ export default function ExpenseFormDialog({
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
-        <div className={`grid items-start gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
+        <div className={`grid items-start gap-4 ${expense ? "" : "md:grid-cols-2"} ${showSchedule ? "lg:grid-cols-3" : ""}`}>
           <div className={`grid min-w-0 gap-4 ${expense ? "sm:grid-cols-2" : ""}`}>
             <div className="col-span-full min-w-0">
               <label htmlFor={`${fieldId}-title`} className={fieldLabelClass}>Title</label>
@@ -314,13 +316,11 @@ export default function ExpenseFormDialog({
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
-            {!expense && (
-              <FinancedPurchaseFields creditAccounts={creditAccounts}
-                purchaseDate={date} hidden={!financed} />
-            )}
+            {!expense && <CreditAccountFields creditAccounts={creditAccounts} hidden={!showSchedule} />}
           </div>
 
           {!expense && <ReceiptImageInput paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />}
+          {!expense && <FinancedPurchaseFields purchaseDate={date} hidden={!showSchedule} />}
         </div>
       </FormDialog>
 

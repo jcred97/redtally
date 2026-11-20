@@ -13,6 +13,12 @@ import {
 import { createPortal } from "react-dom";
 import menuStyles from "@/app/components/menus/action-menu.module.css";
 
+const dialogWidths = {
+  default: "max-w-md",
+  wide: "max-w-3xl",
+  "extra-wide": "max-w-3xl lg:max-w-6xl",
+};
+
 type FormDialogProps = {
   triggerLabel: ReactNode;
   triggerAriaLabel?: string;
@@ -23,7 +29,7 @@ type FormDialogProps = {
   returnFocusId?: string;
   title: string;
   description?: string;
-  dialogSize?: "default" | "wide";
+  dialogSize?: keyof typeof dialogWidths;
   compact?: boolean;
   children: ReactNode;
   onOpenAction: () => void;
@@ -237,7 +243,7 @@ export default function FormDialog({
             }}
             onClose={handleClose}
             onClick={handleBackdropClick}
-            className={`m-auto rounded-xl border border-gray-800 bg-gray-900 text-white backdrop:bg-black/60 ${dialogSize === "wide" ? "max-w-3xl" : "max-w-md"} ${compact ? "max-h-[calc(100dvh-0.5rem)] w-[calc(100%-1rem)] flex-col overflow-hidden p-2 open:flex sm:max-h-[calc(100dvh-1rem)] sm:p-5" : "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto p-6"}`}
+            className={`m-auto rounded-xl border border-gray-800 bg-gray-900 text-white backdrop:bg-black/60 ${dialogWidths[dialogSize]} ${compact ? "max-h-[calc(100dvh-0.5rem)] w-[calc(100%-1rem)] flex-col overflow-hidden p-2 open:flex sm:max-h-[calc(100dvh-1rem)] sm:p-5" : "max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto p-6"}`}
           >
             <h2
               id={`${dialogId}-title`}
