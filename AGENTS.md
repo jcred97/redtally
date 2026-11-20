@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Coding guidelines
 
-- Use the simplest implementation that fully solves the problem. Reuse existing code where it fits and add abstractions only when they make the code easier to understand or maintain.
+- Keep it Simple Stupid (KISS). Use the simplest implementation that fully solves the problem. Reuse existing code where it fits and add abstractions only when they make the code easier to understand or maintain.
 - Verify the change through its normal entry point and cover relevant failure cases.
 - Write code that people can read easily. Use descriptive names and straightforward control flow. Use comments to explain decisions that are hard to infer from the code.
 - Always remove temporary files you create for a task once they are no longer needed. Clean them up before finishing, even if a command fails.
