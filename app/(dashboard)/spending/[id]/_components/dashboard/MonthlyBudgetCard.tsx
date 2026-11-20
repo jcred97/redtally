@@ -30,17 +30,27 @@ export default function MonthlyBudgetCard({
   budgetCentavos: number | null;
 }) {
   const id = useId();
+  const cardId = `${id}-card`;
   const headingId = `${id}-heading`;
+  const hasBudget = budgetCentavos !== null;
   const monthLabel = monthFormatter.format(parseExpenseDate(`${month}-01`));
   const spent = formatPesoAmount(totalCentavos);
-  const remaining = budgetCentavos === null ? 0 : budgetCentavos - totalCentavos;
+  const remaining = hasBudget ? budgetCentavos - totalCentavos : 0;
   const overBudget = remaining < 0;
-  const budgetAction = budgetCentavos === null ? "Set budget" : "Edit budget";
+  const budgetAction = hasBudget ? "Edit budget" : "Set Budget";
 
   return (
-    <section aria-labelledby={headingId} className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <h2 id={headingId} tabIndex={-1} className="self-center text-base font-semibold text-white sm:text-lg">Monthly budget</h2>
+    <section
+      id={cardId}
+      tabIndex={-1}
+      aria-labelledby={hasBudget ? headingId : undefined}
+      aria-label={hasBudget ? undefined : "Spending summary"}
+      className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6"
+    >
+      <header className={`mb-4 flex flex-wrap items-start gap-x-4 gap-y-2 ${hasBudget ? "justify-between" : "justify-end"}`}>
+        {hasBudget && (
+          <h2 id={headingId} className="self-center text-base font-semibold text-white sm:text-lg">Monthly budget</h2>
+        )}
         <div className="flex flex-wrap gap-2">
           <FormDialog
             triggerLabel={budgetAction}
@@ -57,7 +67,7 @@ export default function MonthlyBudgetCard({
               <TextInput
                 name="amount"
                 inputMode="decimal"
-                defaultValue={budgetCentavos === null ? "" : formatPesoInput(budgetCentavos)}
+                defaultValue={hasBudget ? formatPesoInput(budgetCentavos) : ""}
                 placeholder="0.00"
                 maxLength={11}
                 required
@@ -65,7 +75,7 @@ export default function MonthlyBudgetCard({
               />
             </label>
           </FormDialog>
-          {budgetCentavos !== null && (
+          {hasBudget && (
             <FormDialog
               triggerLabel="Remove"
               triggerAriaLabel="Remove budget"
@@ -77,7 +87,8 @@ export default function MonthlyBudgetCard({
               failureMessage="Unable to remove the budget. Try again."
               onOpenAction={() => {}}
               submitAction={() => removeMonthlyBudget(expenseGroupId, month)}
-              returnFocusId={headingId}
+              returnFocusId={cardId}
+              successFocusId={cardId}
               destructive
             >
               {null}
@@ -92,7 +103,7 @@ export default function MonthlyBudgetCard({
           <dd className="mt-1 wrap-anywhere text-2xl font-semibold tracking-tight text-white tabular-nums sm:text-3xl">{spent}</dd>
           <dd className="mt-1 text-xs text-gray-400">{expenseCount} {expenseCount === 1 ? "expense" : "expenses"}</dd>
         </div>
-        {budgetCentavos !== null && (
+        {hasBudget && (
           <>
             <div className="min-w-0">
               <dt className="text-sm text-gray-400">Budget target</dt>
@@ -108,7 +119,7 @@ export default function MonthlyBudgetCard({
         )}
       </dl>
 
-      {budgetCentavos === null ? (
+      {!hasBudget ? (
         <p className="mt-3 text-sm text-gray-400">No budget set for {monthLabel}.</p>
       ) : (
         <div aria-hidden="true" className="mt-5 h-2 overflow-hidden rounded-full bg-gray-800">
