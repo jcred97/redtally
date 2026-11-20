@@ -115,7 +115,7 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   await page.setViewportSize({ width: 360, height: 750 });
   await page.goto("/");
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups"]);
+  await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups", "Loans"]);
   await expect(navigation.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   const filters = page.getByRole("form", { name: "Dashboard filters" });
@@ -133,12 +133,13 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   await expect(groupPicker).toContainText("0 included");
   await page.getByRole("checkbox", { name: "Dashboard household", exact: true }).check();
   await page.getByRole("checkbox", { name: "Dashboard work", exact: true }).check();
-  await page.getByLabel("Month", { exact: true }).fill(data.dashboard.month);
   await expect.poll(() => new URL(page.url()).searchParams.getAll("group").sort()).toEqual([
     data.dashboard.budgeted, data.dashboard.unbudgeted,
   ].sort());
   await expect(groupPicker).toContainText("2 included");
   await expect(page.getByRole("checkbox", { name: "Dashboard work", exact: true })).toBeChecked();
+  await filters.getByLabel("Month", { exact: true }).fill(data.dashboard.month);
+  await expect(page).toHaveURL((url) => url.searchParams.get("month") === data.dashboard.month);
   const spent = page.getByRole("region", { name: "Spent in April 2020" });
   await expect(spent.getByText("₱32.75", { exact: true })).toBeVisible();
   await expect(spent.getByText("₱7.25", { exact: true })).toBeVisible();
