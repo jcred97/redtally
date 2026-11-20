@@ -25,9 +25,10 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view } = query;
   const showCategories = tab === "categories";
   const showBanks = tab === "banks";
+  const showCreditAccounts = tab === "credit-accounts";
   const showRecurring = tab === "recurring";
   const showDashboard = tab === "dashboard";
-  const showExpenses = !showCategories && !showBanks && !showRecurring && !showDashboard;
+  const showExpenses = !showCategories && !showBanks && !showCreditAccounts && !showRecurring && !showDashboard;
   const grouped = view === "grouped";
   const requestedPage = typeof rawPage === "string" && /^[1-9]\d*$/.test(rawPage)
     ? Number(rawPage)
@@ -83,7 +84,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const filterQuery = filterParams.toString();
 
   return {
-    showCategories, showBanks, showRecurring, showDashboard, showExpenses,
+    showCategories, showBanks, showCreditAccounts, showRecurring, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, chosenMonth, dashboardMonth,
     day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, search,
     filters, hasOtherFilters, hasFilters, filterQuery,
@@ -94,7 +95,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
 export type ExpenseGroupView = ReturnType<typeof parseExpenseGroupQuery>;
 
 export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
-  const { grouped, chosenMonth, showDashboard, showRecurring, showBanks, showCategories } = view;
+  const { grouped, chosenMonth, showDashboard, showRecurring, showBanks, showCreditAccounts, showCategories } = view;
   const groupPath = `/spending/${publicId}`;
   const expenseTab = grouped ? "?view=grouped" : "";
   const expensesHref = showDashboard && chosenMonth
@@ -103,16 +104,22 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const viewSuffix = grouped ? "&view=grouped" : "";
   const categoriesTab = `?tab=categories${viewSuffix}`;
   const banksTab = `?tab=banks${viewSuffix}`;
+  const creditAccountsTab = `?tab=credit-accounts${viewSuffix}`;
   const recurringTab = `?tab=recurring${viewSuffix}`;
   const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
-  const tabSuffix = showDashboard ? dashboardTab : showRecurring ? recurringTab : showBanks ? banksTab : showCategories ? categoriesTab : expenseTab;
+  const tabSuffix = showDashboard ? dashboardTab
+    : showRecurring ? recurringTab
+    : showBanks ? banksTab
+    : showCreditAccounts ? creditAccountsTab
+    : showCategories ? categoriesTab
+    : expenseTab;
   const allMonthsParams = new URLSearchParams(view.filterQuery);
   allMonthsParams.delete("day");
   allMonthsParams.delete("month");
   allMonthsParams.delete("through");
   allMonthsParams.set("allMonths", "1");
   return {
-    groupPath, expenseTab, expensesHref, categoriesTab, banksTab, recurringTab,
+    groupPath, expenseTab, expensesHref, categoriesTab, banksTab, creditAccountsTab, recurringTab,
     dashboardTab, tabSuffix,
     monthScopeHref: `${groupPath}?${view.monthScopeQuery}`,
     allMonthsHref: `${groupPath}?${allMonthsParams}`,

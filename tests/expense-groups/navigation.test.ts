@@ -90,3 +90,15 @@ test("canonical group URLs preserve repeated and unknown query parameters", () =
   assert.equal(canonicalExpenseGroupHref("id", { tab: "dashboard", extra: ["one two", "three&four"], absent: undefined }),
     "/spending/id?tab=dashboard&extra=one+two&extra=three%26four");
 });
+
+test("the Credit Accounts tab preserves the group and the grouped-history preference", () => {
+  const view = parseExpenseGroupQuery({ tab: "credit-accounts", view: "grouped" }, today);
+  const links = expenseGroupLinks("public-id", view);
+
+  assert.equal(view.showCreditAccounts, true);
+  assert.equal(view.showExpenses, false);
+  assert.equal(view.showBanks, false);
+  assert.equal(links.groupPath + links.creditAccountsTab, "/spending/public-id?tab=credit-accounts&view=grouped");
+  assert.equal(links.tabSuffix, links.creditAccountsTab);
+  assert.equal(links.expensesHref, "/spending/public-id?view=grouped");
+});

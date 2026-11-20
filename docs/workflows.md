@@ -34,7 +34,7 @@ Use **Loans** for cash loans and their repayments. Use **Credit Accounts** for P
 ### Where to find loans and bills
 
 - **Loans** opens the cash loan list with outstanding balances and payment information. Select a loan to see its repayment schedule and history.
-- **Credit Accounts** is available from **Expense Groups** and beside **Banks** inside each group. It shows upcoming and overdue Pay Later bills across your groups. Open an account to see its linked purchase plans or record a combined bill payment.
+- **Credit Accounts** is a tab beside **Banks** inside each expense group. The **All Expense Groups** page also links to shared credit accounts. Both views show upcoming and overdue Pay Later bills across your groups. Open an account to see its linked purchase plans or record a combined bill payment.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
 

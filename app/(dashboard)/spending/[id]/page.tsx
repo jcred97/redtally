@@ -8,10 +8,10 @@ import {
 } from "./_lib/navigation";
 import DashboardTab from "./_components/dashboard/DashboardTab";
 import ExpensesTab from "./_components/expenses/ExpensesTab";
+import CreditAccountsTab from "@/app/(dashboard)/expense-groups/credit-accounts/_components/CreditAccountsTab";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
-import { creditAccountsHref } from "@/app/lib/loans/credit-account-links";
 import { getCashLoansForExpenseGroup } from "@/app/lib/loans/queries";
 import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "./_components/categories/ExpenseCategories";
@@ -54,7 +54,7 @@ export default async function ExpenseGroupPage({
   const today = getManilaToday();
   const view = parseExpenseGroupQuery(query, today);
   const {
-    showCategories, showBanks, showRecurring, showDashboard, showExpenses,
+    showCategories, showBanks, showCreditAccounts, showRecurring, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, dashboardMonth, filters, merchant,
   } = view;
 
@@ -80,7 +80,7 @@ export default async function ExpenseGroupPage({
   if (historyAvailability === null) notFound();
 
   const links = expenseGroupLinks(expenseGroup.publicId, view);
-  const { groupPath, expensesHref, categoriesTab, banksTab, recurringTab, dashboardTab, tabSuffix } = links;
+  const { groupPath, expensesHref, categoriesTab, banksTab, creditAccountsTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
 
@@ -104,7 +104,7 @@ export default async function ExpenseGroupPage({
               { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Banks", href: groupPath + banksTab, current: showBanks },
-              { label: "Credit Accounts", href: creditAccountsHref, current: false },
+              { label: "Credit Accounts", href: groupPath + creditAccountsTab, current: showCreditAccounts },
             ].map(({ label, href, current }) => (
               <Link
                 key={label}
@@ -167,6 +167,8 @@ export default async function ExpenseGroupPage({
           />
         ) : bankCatalog ? (
           <ExpenseGroupBanks key={expenseGroup.id} expenseGroupId={expenseGroup.id} banks={bankCatalog} />
+        ) : showCreditAccounts ? (
+          <CreditAccountsTab />
         ) : (
           <ExpenseCategories expenseGroupId={expenseGroup.id} categories={expenseGroup.categories} />
         )}
