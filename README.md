@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list and provides access to shared **Credit Accounts**. Inside a group, **Credit Accounts** is beside **Banks**. **Loans** opens the cash loan list. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list and provides access to shared **Credit Accounts**. Each group's **Payment Provider** tab has **Banks** and **Pay Later** sections. **Loans** opens the cash loan list. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -41,7 +41,7 @@ Implemented source includes:
 
 Sessions last seven days and can renew after one day. Server-rendered pages validate the session. Browser requests renew both the database expiry and the HTTP-only cookie together. The dashboard checks the session on mount, on sign-out from another tab, when the window regains focus or reconnects, and every five minutes while a session exists. When a check confirms a sign-out or account change, the dashboard clears the previous account's data and opens the appropriate page.
 
-The Banks tab includes a Philippine starter catalog. Expense group owners can enable banks and choose the payment methods they use in each group. In the expense form, the optional bank picker shows only banks enabled for the selected payment method. Apply the committed migrations to populate the catalog in an existing database.
+The **Banks** section in **Payment Provider** includes a Philippine starter catalog. Expense group owners can enable banks and choose the payment methods they use in each group. In the expense form, the optional bank picker shows only banks enabled for the selected payment method. Apply the committed migrations to populate the catalog in an existing database.
 
 The Recurring tab lets owners schedule daily, weekly, monthly, and yearly expenses, optionally ending on a specific date. Use **Run due expenses** to post this group's due entries immediately. Scheduled entries use their original Manila calendar date and appear in regular history. Short months use their last day and retain the original day for subsequent months. A past start date queues catch-up. Paused or blocked schedules can resume with missed dates skipped or included. Deleting a schedule preserves the expenses it already posted.
 

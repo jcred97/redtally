@@ -34,13 +34,13 @@ Use **Loans** for cash loans and their repayments. Use **Credit Accounts** for P
 ### Where to find loans and bills
 
 - **Loans** opens the cash loan list with outstanding balances and payment information. Select a loan to see its repayment schedule and history.
-- The **Credit Accounts** tab beside **Banks** shows the credit account cards and their current status. From **All Expense Groups**, open **Credit Accounts** to see upcoming and overdue Pay Later bills across your groups.
+- In an expense group's **Payment Provider** tab, the **Pay Later** section shows providers and their current status for the group. From **All Expense Groups**, open **Credit Accounts** to see upcoming and overdue Pay Later bills across your groups.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
 
 ### Managing credit accounts
 
-Open an expense group, select **Credit Accounts**, and open the **Shopee · SPayLater** card. Check **Enable for this expense group**, select **SPayLater** under **Credit methods**, and save. That group can then use it in **New Expense → Pay Later**. For custom accounts, the credit method is **Pay Later**.
+Open an expense group and select **Payment Provider → Pay Later → Shopee**. Check **Enable for this expense group**, select **SPayLater** under **Credit methods**, and save. That group can then use it in **New Expense → Pay Later**. For custom accounts, the credit method is **Pay Later**.
 
 Clear **Enable for this expense group** and save to hide the account from new expenses in that group. **View Account** in the settings dialog opens the shared repayment plans, payment history, and bill payment form. The SPayLater setting on **All Expense Groups → Credit Accounts** sets the default for groups that have yet to save their own settings.
 

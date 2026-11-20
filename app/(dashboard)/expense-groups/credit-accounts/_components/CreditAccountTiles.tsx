@@ -22,7 +22,7 @@ export default function CreditAccountTiles({ accounts, expenseGroupId }: {
             ) : (
               <GroupCreditAccountCard
                 expenseGroupId={expenseGroupId}
-                title={`${product.provider} · ${product.name}`}
+                title={product.provider}
                 initials={product.provider.slice(0, 2)}
                 method={product.name}
                 productKey={product.key}

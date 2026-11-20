@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   canonicalExpenseGroupHref,
   expenseGroupLinks,
+  expenseGroupRedirectHref,
   parseExpenseGroupQuery,
 } from "../../app/(dashboard)/spending/[id]/_lib/navigation";
 
@@ -91,14 +92,21 @@ test("canonical group URLs preserve repeated and unknown query parameters", () =
     "/spending/id?tab=dashboard&extra=one+two&extra=three%26four");
 });
 
-test("the Credit Accounts tab preserves the group and the grouped-history preference", () => {
-  const view = parseExpenseGroupQuery({ tab: "credit-accounts", view: "grouped" }, today);
+test("the Payment Provider tab preserves the group and the grouped-history preference", () => {
+  const view = parseExpenseGroupQuery({ tab: "payment-providers", view: "grouped" }, today);
   const links = expenseGroupLinks("public-id", view);
 
-  assert.equal(view.showCreditAccounts, true);
+  assert.equal(view.showPaymentProviders, true);
   assert.equal(view.showExpenses, false);
-  assert.equal(view.showBanks, false);
-  assert.equal(links.groupPath + links.creditAccountsTab, "/spending/public-id?tab=credit-accounts&view=grouped");
-  assert.equal(links.tabSuffix, links.creditAccountsTab);
+  assert.equal(links.groupPath + links.paymentProvidersTab, "/spending/public-id?tab=payment-providers&view=grouped");
+  assert.equal(links.tabSuffix, links.paymentProvidersTab);
   assert.equal(links.expensesHref, "/spending/public-id?view=grouped");
+});
+
+test("old provider tabs redirect to the combined tab without dropping query parameters", () => {
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "payment-providers" }), null);
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "banks", view: "grouped" }),
+    "/spending/public-id?tab=payment-providers&view=grouped");
+  assert.equal(expenseGroupRedirectHref("42", "public-id", { tab: "credit-accounts", view: "grouped" }),
+    "/spending/public-id?tab=payment-providers&view=grouped#pay-later-title");
 });

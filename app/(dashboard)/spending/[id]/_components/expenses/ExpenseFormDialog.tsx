@@ -77,7 +77,7 @@ export default function ExpenseFormDialog({
     : paymentMethod === "CASH"
       ? "Unavailable for cash."
       : canSelectBank && eligibleBanks.length === 0
-        ? "Enable a bank for this method in Banks."
+        ? "Enable a bank for this method in Payment Provider."
         : null;
   const hasRecordedBank =
     expense?.bankName != null &&

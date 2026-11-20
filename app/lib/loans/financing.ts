@@ -1,7 +1,7 @@
 import { PaymentMethod, type Prisma } from "@/generated/prisma/client";
 import { isLoanId, readInstallments, readText, validateInstallmentTotal, type InstallmentInput } from "./form";
 
-const creditAccountUnavailable = "This credit account is unavailable for new purchases in this expense group. Review the Credit Accounts tab.";
+const creditAccountUnavailable = "This credit account is unavailable for new purchases in this expense group. Review Pay Later in the Payment Provider tab.";
 
 export type FinancingInput = {
   installments: InstallmentInput[];

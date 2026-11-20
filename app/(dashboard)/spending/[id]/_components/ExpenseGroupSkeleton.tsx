@@ -18,8 +18,7 @@ export default function ExpenseGroupSkeleton() {
             <span className="px-2.5 py-3 sm:px-4">Expenses</span>
             <span className="px-2.5 py-3 sm:px-4">Recurring</span>
             <span className="px-2.5 py-3 sm:px-4">Categories</span>
-            <span className="px-2.5 py-3 sm:px-4">Banks</span>
-            <span className="px-2.5 py-3 sm:px-4">Credit Accounts</span>
+            <span className="px-2.5 py-3 sm:px-4">Payment Provider</span>
           </div>
           <div className="ml-auto pb-2">
             <Skeleton className="h-8 w-24 rounded-lg sm:h-9 sm:w-32" />

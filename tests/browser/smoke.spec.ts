@@ -299,7 +299,7 @@ test("an owner can delete an empty group after disabling its bank", async ({ pag
   await create.getByRole("button", { name: "Create", exact: true }).click();
   const groupLink = page.getByRole("link", { name: /Unused bank group/ });
   await groupLink.click();
-  await page.getByRole("link", { name: "Banks", exact: true }).click();
+  await page.getByRole("link", { name: "Payment Provider", exact: true }).click();
 
   const disabledBank = page.getByRole("button", { name: "BPI Not enabled", exact: true });
   await disabledBank.click();

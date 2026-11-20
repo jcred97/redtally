@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  canonicalExpenseGroupHref,
   expenseGroupLinks,
+  expenseGroupRedirectHref,
   parseExpenseGroupQuery,
   type ExpenseGroupQuery,
 } from "./_lib/navigation";
 import DashboardTab from "./_components/dashboard/DashboardTab";
 import ExpensesTab from "./_components/expenses/ExpensesTab";
-import CreditAccountsTab from "@/app/(dashboard)/expense-groups/credit-accounts/_components/CreditAccountsTab";
+import ExpenseGroupPayLater from "@/app/(dashboard)/expense-groups/credit-accounts/_components/ExpenseGroupPayLater";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
@@ -47,14 +47,13 @@ export default async function ExpenseGroupPage({
     await Promise.all([params, searchParams]);
   const routeGroup = await resolveExpenseGroupRoute(routeKey);
   if (!routeGroup) notFound();
-  if (routeKey !== routeGroup.publicId) {
-    redirect(canonicalExpenseGroupHref(routeGroup.publicId, query));
-  }
+  const redirectHref = expenseGroupRedirectHref(routeKey, routeGroup.publicId, query);
+  if (redirectHref) redirect(redirectHref);
   const id = routeGroup.id;
   const today = getManilaToday();
   const view = parseExpenseGroupQuery(query, today);
   const {
-    showCategories, showBanks, showCreditAccounts, showRecurring, showDashboard, showExpenses,
+    showCategories, showPaymentProviders, showRecurring, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, dashboardMonth, filters, merchant,
   } = view;
 
@@ -62,7 +61,7 @@ export default async function ExpenseGroupPage({
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
-    showBanks ? getBankCatalogForExpenseGroup(id) : null,
+    showPaymentProviders ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring || showDashboard ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
     showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
@@ -71,7 +70,7 @@ export default async function ExpenseGroupPage({
     showDashboard ? getCashLoansForExpenseGroup(id) : [],
   ]);
 
-  if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
+  if (!expenseGroup || (showExpenses && !expensePage) || (showPaymentProviders && !bankCatalog) || (showDashboard && !dashboard)) {
     notFound();
   }
   const historyAvailability = expensePage?.totalExpenses === 0
@@ -80,7 +79,7 @@ export default async function ExpenseGroupPage({
   if (historyAvailability === null) notFound();
 
   const links = expenseGroupLinks(expenseGroup.publicId, view);
-  const { groupPath, expensesHref, categoriesTab, banksTab, creditAccountsTab, recurringTab, dashboardTab, tabSuffix } = links;
+  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
 
@@ -103,8 +102,7 @@ export default async function ExpenseGroupPage({
               { label: "Expenses", href: expensesHref, current: showExpenses },
               { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
-              { label: "Banks", href: groupPath + banksTab, current: showBanks },
-              { label: "Credit Accounts", href: groupPath + creditAccountsTab, current: showCreditAccounts },
+              { label: "Payment Provider", href: groupPath + paymentProvidersTab, current: showPaymentProviders },
             ].map(({ label, href, current }) => (
               <Link
                 key={label}
@@ -166,9 +164,10 @@ export default async function ExpenseGroupPage({
             rules={recurringExpenses}
           />
         ) : bankCatalog ? (
-          <ExpenseGroupBanks key={expenseGroup.id} expenseGroupId={expenseGroup.id} banks={bankCatalog} />
-        ) : showCreditAccounts ? (
-          <CreditAccountsTab key={expenseGroup.id} expenseGroupId={expenseGroup.id} />
+          <div key={expenseGroup.id} className="space-y-8">
+            <ExpenseGroupBanks expenseGroupId={expenseGroup.id} banks={bankCatalog} />
+            <ExpenseGroupPayLater expenseGroupId={expenseGroup.id} />
+          </div>
         ) : (
           <ExpenseCategories expenseGroupId={expenseGroup.id} categories={expenseGroup.categories} />
         )}
