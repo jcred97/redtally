@@ -8,6 +8,7 @@ import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, rea
 const cashFrequencies = ["One-time", "Weekly", "Monthly", "Other"];
 const groupSelect = { id: true, publicId: true, name: true } as const;
 const creditAccountSelect = { id: true, name: true } as const;
+const creditAccountSettingsSelect = { ...creditAccountSelect, key: true, enabled: true } as const;
 const expenseInclude = { category: { include: { expenseGroup: { select: groupSelect } } } } as const;
 
 function isExpenseGroupId(id: number) {
@@ -154,14 +155,19 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       return db.repaymentPlan.findUnique({ where: { id, ...ownedPlan(userId) }, include: planInclude(userId) });
     },
 
+    async getCreditAccountSettings() {
+      const userId = await requireUserId();
+      return db.payLaterAccount.findMany({
+        where: { userId }, select: creditAccountSettingsSelect, orderBy: { name: "asc" },
+      });
+    },
+
     async getCreditAccounts() {
       const userId = await requireUserId();
       return db.payLaterAccount.findMany({
         where: { userId },
         select: {
-          ...creditAccountSelect,
-          key: true,
-          enabled: true,
+          ...creditAccountSettingsSelect,
           plans: { where: ownedPlan(userId), select: { installments: installmentsFor(userId) } },
         },
         orderBy: { name: "asc" },

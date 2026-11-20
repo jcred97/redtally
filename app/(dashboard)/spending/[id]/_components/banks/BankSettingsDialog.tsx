@@ -6,6 +6,7 @@ import { saveBankAssignment } from "@/app/(dashboard)/_lib/banks/mutations";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
+import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/SettingsTileLabel";
 import BankLogo from "./BankLogo";
 
 const paymentMethods = [
@@ -25,7 +26,6 @@ export default function BankSettingsDialog({
   const savedEnabled = bank.assignment?.active ?? false;
   const [enabled, setEnabled] = useState(savedEnabled);
   const status = bank.active ? (savedEnabled ? "Enabled" : "Not enabled") : "Unavailable";
-  const statusColor = bank.active && savedEnabled ? "text-emerald-400" : "text-gray-400";
 
   async function save(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
@@ -36,15 +36,9 @@ export default function BankSettingsDialog({
   return (
     <FormDialog
       triggerLabel={(
-        <>
-          <BankLogo name={bank.name} />
-          <span className="min-w-0">
-            <span className="block wrap-anywhere font-medium">{bank.name}</span>
-            <span className={`mt-1 block ${statusColor}`}>{status}</span>
-          </span>
-        </>
+        <SettingsTileLabel icon={<BankLogo name={bank.name} />} name={bank.name} status={status} enabled={bank.active && savedEnabled} />
       )}
-      triggerClassName="flex h-full w-full cursor-pointer items-center gap-3 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-left text-sm transition-colors hover:border-gray-600 hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+      triggerClassName={settingsTileClass}
       title={bank.name}
       description={
         bank.active

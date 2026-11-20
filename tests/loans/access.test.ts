@@ -72,6 +72,12 @@ test("cash loans remain private and a provider bill applies once across purchase
     await loans.setCreditProductEnabled(disableProduct);
     assert.deepEqual(await loans.getEnabledCreditAccounts(), []);
     assert.equal((await loans.getCreditAccount(account.id))?.plans.length, 2);
+    assert.deepEqual(await loans.getCreditAccountSettings(), [
+      { id: account.id, name: account.name, key: account.key, enabled: false },
+    ]);
+    assert.deepEqual(await otherLoans.getCreditAccountSettings(), [
+      { id: otherAccount.id, name: otherAccount.name, key: otherAccount.key, enabled: true },
+    ]);
     const visibleAccounts = await loans.getCreditAccounts();
     assert.deepEqual(visibleAccounts.map(({ id, enabled }) => ({ id, enabled })), [{ id: account.id, enabled: false }]);
     assert.deepEqual(visibleAccounts[0].plans.flatMap(({ installments }) => installments.map(({ amountCentavos }) => amountCentavos)).sort((a, b) => a - b), [45000, 120000]);

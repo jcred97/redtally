@@ -34,7 +34,7 @@ Use **Loans** for cash loans and their repayments. Use **Credit Accounts** for P
 ### Where to find loans and bills
 
 - **Loans** opens the cash loan list with outstanding balances and payment information. Select a loan to see its repayment schedule and history.
-- **Credit Accounts** is a tab beside **Banks** inside each expense group. The **All Expense Groups** page also links to shared credit accounts. Both views show upcoming and overdue Pay Later bills across your groups. Open an account to see its linked purchase plans or record a combined bill payment.
+- The **Credit Accounts** tab beside **Banks** shows the credit account cards and their current status. From **All Expense Groups**, open **Credit Accounts** to see upcoming and overdue Pay Later bills across your groups.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
 
@@ -42,9 +42,9 @@ Cash loan details show the lender, amount borrowed, receiving account, optional 
 
 Open **Expense Groups → Credit Accounts** and select the **Shopee · SPayLater** card to open its settings. Check **Enable SPayLater** and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
 
-Clear **Enable SPayLater** in settings and save to hide it from new expenses. Once an SPayLater account exists, **View Account** opens its repayment plans and payment history and lets you record a payment even when the account is disabled. Re-enabling SPayLater uses the same account.
+Clear **Enable SPayLater** in settings and save to hide it from new expenses. Once an SPayLater account exists, **View Account** opens its repayment plans and payment history and lets you record a payment even when the account is disabled. In the group tab, **View Account** is inside the card's settings dialog. Re-enabling SPayLater uses the same account.
 
-To add an account for another provider, select **New Credit Account**, enter the account name in the dialog, and select **Create account**. Select the new account's card to open it.
+To add an account for another provider, open **All Expense Groups → Credit Accounts** and select **New Credit Account**. Enter the account name in the dialog and select **Create account**. Select the new account's card to open it.
 
 ### Recording a financed purchase
 

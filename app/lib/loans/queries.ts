@@ -11,6 +11,7 @@ export const {
   getCashLoansForExpenseGroup,
   getCashLoan,
   getRepaymentPlan,
+  getCreditAccountSettings,
   getCreditAccounts,
   getEnabledCreditAccounts,
   getCreditAccount,
