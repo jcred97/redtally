@@ -29,6 +29,7 @@ User
 | `RecurringExpense` | Schedule and next due date for an expense in one group | Same-group category and bank assignment; positive integer centavos; calendar dates with an inclusive optional end date |
 | `RecurringExpenseSubmission` | Records a schedule draft and its original payload hash | A draft ID is unique within its group. Deleting the schedule preserves the claim so a late retry cannot recreate it. |
 | `RecurringExpenseOccurrence` | Records that the worker posted a scheduled date | Unique schedule and due date; survives expense deletion until the schedule itself is deleted |
+| `ReceiptScanner` | Optional receipt-scanning provider connection | One connection per user, with an encrypted API key and last four characters for display |
 
 Application names are mapped to the existing database identifiers. These naming improvements require no additional migration or record changes:
 
@@ -42,7 +43,7 @@ Application names are mapped to the existing database identifiers. These naming 
 
 `ExpenseGroup` is the named record shown in the current **Expense Groups** navigation and list. **Spending** would fit a broader section if a future view brings together reports and expense groups. The PostgreSQL table name is `Spending`. [Current navigation](roadmap.md#purpose-and-navigation)
 
-`PaymentMethod` contains the existing Cash, Debit Card, Credit Card, Bank Transfer, and Bank Payment choices. Expense groups expose monthly targets through `budgets`. The application model is named `Budget` to describe the business concept; its current implementation remains monthly, matching the Salesforce app. Each `budgetMonth` must be the first day of its calendar month, with one budget per expense group/month and a positive integer-centavo amount. No daily, yearly, or custom-period fields are introduced. Raw SQL and historical migration tests intentionally retain physical database names.
+`PaymentMethod` supports Cash, Debit Card, Credit Card, Bank Transfer, Bank Payment, and Pay Later. Saving a Pay Later purchase creates a linked repayment plan. Expense groups expose monthly targets through `budgets`. Each `budgetMonth` must be the first day of its calendar month, with one budget per expense group/month and a positive integer-centavo amount. Raw SQL and historical migration tests retain physical database names. [Loan and financed-purchase relationships](#loan-and-financed-purchase-relationships)
 
 Bank keys are the lower-case bank name after trimming surrounding spaces and collapsing internal whitespace. The caller supplies the key; a database CHECK rejects a key that does not match that normalization. Migration `20261111130000_philippine_bank_catalog` adds a starter catalog based on Bangko Sentral ng Pilipinas listings and preserves entries with matching keys. [Universal and commercial banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Commercial/assets.aspx) · [Digital banks](https://www.bsp.gov.ph/PaymentAndSettlement/PPDD_Payments_Bulletin.pdf) · [Rural banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Rural/assets.aspx)
 
@@ -56,9 +57,18 @@ Category display names and totals are derived by queries/UI rather than duplicat
 
 Migration `20261115120000_recurring_expenses` adds the schedule and occurrence tables with row-level security and no Data API policies. The worker creates the expense, records its scheduled date, and advances the schedule in one transaction. Duplicating an expense group copies its ordinary expense history and starts with an empty Recurring tab.
 
+## Loan and financed-purchase relationships
+
+The Loans workflow persists `Loan`, `PayLaterAccount`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Receiving and funding account names are stored as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans workflows](workflows.md#loans-and-pay-later)
+
+- **Cash loan.** `Loan` has its own owner, lender, terms, and schedule. Its optional `expenseGroupId` must belong to the same user. A linked group opens the same loan record. Purchases funded with loan proceeds count toward group spending as they occur.
+- **Financed purchase.** One `Expense` represents the full purchase. Its `RepaymentPlan` belongs to a reusable provider account and gets its expense group from that expense. Each plan has its own schedule and outstanding balance. The provider balance rolls up those same plans.
+- **Payments.** A `LoanPayment` records the actual payment once. Allocations apply it to the covered installments, including installments from different plans on one provider bill. Payment allocations preserve the original purchase amount and reduce outstanding balances.
+- **History.** Duplicating an expense group can copy expense history without creating payable balances. A future correction workflow must preserve recorded payments. Validate ownership on both ends of links between user-owned records.
+
 ## Planned financial-model dependencies
 
-The initial Loans workflow persists `Loan`, `PayLaterAccount`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Migration `20261120120000_loans` added those tables and `PAY_LATER` to production on November 20, 2026. Verification confirmed that row-level security was enabled on all six new tables with no Data API policies and that all 10 preexisting business tables matched the encrypted backup. Receiving and funding account names are recorded as text until the ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans workflows](pay-later-and-loans-session.md)
+The planned ledger will record loan disbursements as increases in available funds and debt, and record principal repayments as outflows that reduce debt. It will record separately identified interest and fees as expenses when the underlying transactions support that breakdown.
 
 Phase 1 uses the existing expense, budget, and recurring expense models. The following hierarchy includes the deployed Loans workflow and the planned financial records for Phases 2–4. [Dashboard and connected-finances roadmap](roadmap.md#dashboard-and-connected-finances)
 
@@ -96,24 +106,14 @@ User
 
 The shared `Bank` catalog provides institution names. `BankAssignment` stores group-specific payment settings. A `FinancialAccount` carries a balance, so a user can have several distinct financial accounts at the same bank. The existing user-owned support records are Better Auth's `Account` and `Session`, plus `ReceiptScanner`. Better Auth's `Account` holds authentication identities. [Prisma schema](../server/db/schema.prisma)
 
-### Loan and financed-purchase relationships
-
-- **Cash loan.** `Loan` has its own owner, lender, terms, and repayment schedule. Its optional `expenseGroupId` must belong to the same user. A general loan can leave it blank. A linked group opens the same loan record. The planned ledger will record disbursements as increases in available funds and the amount owed.
-- **Financed purchase.** Save the full purchase as one `Expense` with one linked `RepaymentPlan` under the reusable provider account. The plan gets its expense group from the original expense. Each purchase has its own schedule and outstanding balance, even when several purchases use the same provider.
-- **Payments.** Record an actual payment once with its funding bank account or wallet name. Allocations apply that payment to the corresponding plans or installments, including when a provider bill covers multiple purchases. The planned ledger will track principal repayments as cash outflows that reduce debt and record separately identified interest and fees as expenses when posted. Purchases funded with cash-loan proceeds count toward the group budget as they occur.
-- **History.** Duplicating an expense group can copy expense history without creating or copying payable balances. A future correction workflow must preserve recorded payments. Validate ownership on both ends of every link between user-owned records.
-
-The Loans area uses **Dashboard** for totals and upcoming payments and **Loan List** for individual cash loans and financed purchases. Expense groups provide purpose-based grouping for cash loans, and credit accounts group repayment plans by provider account. The provider balance is a rollup of the same plans shown in the list. [Pay Later and Loans design notes](pay-later-and-loans-session.md#loans-navigation)
-
 Dashboard, cash-flow forecasts, and net worth use the underlying financial records to calculate their totals and projections. [Dashboard roadmap](roadmap.md#layout-and-acceptance-criteria)
 
 | Planned capability | Required model behavior |
 | --- | --- |
-| Cross-group expense Dashboard | Aggregate only the owner's included groups and selected date range. Group duplication can copy history, so keep inclusion visible. Keep category identity tied to its group and report budget coverage explicitly. |
 | Financial accounts and transactions | Support multiple accounts per institution, opening balances, income, expenses, linked transfers, and reconciliation. Link posted purchases to their expense records so cross-group reporting counts each purchase once. |
 | Bills and paydays | Separate planned occurrences from confirmed transactions and match them without counting both. Existing recurrence occurrence records prove generation, not payment. |
 | Goals | Allocate portions of real account balances, with funding/withdrawal history and limits against over-allocation. Earmarking is distinct from transferring funds. |
-| Credit cards, cash loans, and Pay Later | Track liabilities, statement obligations, and payments. Derive outstanding balances and payoff progress from obligations and recorded payments. Dashboard totals count each obligation once. |
+| Credit cards and loan ledger integration | Track card statement obligations and link cash loan and Pay Later payments to financial accounts. Derive outstanding balances and payoff progress from obligations and recorded payments. Dashboard totals count each obligation once. |
 | Cash-flow forecasts | Derive dated projections from recorded balances and expected events, with explicit assumptions, scope, and freshness. Budget remaining alone cannot establish available cash. |
 | Net worth and portfolios | Use assets minus liabilities and dated valuations. Count investments once across brokerage accounts and portfolio views. Distinguish contributions and withdrawals from investment returns. |
 | Multi-currency reporting | Retain original amounts/currencies and explicit exchange-rate snapshots and dates. Never add raw amounts in different currencies. PHP remains the current implementation. |

@@ -4,7 +4,7 @@ Planning baseline: October 22, 2026. Unchecked items are planned work.
 
 Release update: October 25, 2026. [PR #1](https://github.com/jcred97/redtally/pull/1) merged as `39be226038cb867de9a98fbfb357e013eace4236`; the authentication migration was applied and the matching Vercel production deployment reached ready status. A backup restore was verified, all 25 original business rows were preserved, and the five legacy expense groups remain unclaimed.
 
-## Next milestone: private-account daily expense tracking
+## Daily expense tracking
 
 Each signed-in user can record an expense on a phone, correct mistakes, review monthly spending, and recover saved history. Retain the current Next.js, Prisma, and PostgreSQL foundation.
 
@@ -29,6 +29,7 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 - [x] Add owner-only expense deletion with a confirmation showing the expense title and amount.
 - [x] Validate title, amount, date, and category on the server. Ensure a submitted category belongs to the intended Expense Group and its signed-in owner.
 - [x] Provide pending, success, and error feedback for creation; preserve entered values after failed saves.
+- [x] Suggest editable expense details from on-device receipt OCR and offer an optional AI scan when the user wants more help. See [receipt scanning](workflows.md#receipt-scanning).
 
 ### 3. Make daily phone use comfortable
 
@@ -44,7 +45,7 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 
 ### 4. Verify recovery and private access
 
-- [x] Provide owner-only CSV expense-history export, respecting the current filters across all pages and preserving exact amounts, recorded dates/times, and merchant/category/payment/bank/notes fields. Exports stream in bounded batches and escape spreadsheet formula-like text.
+- [x] Provide owner-only CSV, PDF, and Excel expense-history exports across all pages matching the current filters. Preserve exact amounts, recorded dates and times, merchant, category, payment method, bank, and notes. CSV streams in bounded batches and escapes spreadsheet formula-like text.
 - [ ] Document and operationalize an ongoing database backup/restore procedure. The October 25 authentication release included a verified isolated backup restore; CSV history export does not replace a full account/database backup.
 - [x] Add authentication and ownership checks covering implemented reads and mutations in source.
 - [x] Activate those protections through a coordinated migration/deployment and verify signed-out, cross-user, and session-revocation behavior in the deployed environment. Production HTTP checks passed on October 25, 2026; temporary test accounts and groups were removed.
@@ -54,7 +55,7 @@ Each signed-in user can record an expense on a phone, correct mistakes, review m
 The November 11, 2026 browser smoke test used 360 px and 430 px viewports, an isolated database, and fallback fonts because Google Fonts was unreachable. It covered a rejected save and successful retry, editing, confirmed deletion, and exact totals after reload. A shortened viewport verified dialog scrolling and saving. The native software keyboard still needs a check on a physical phone.
 
 - At representative 360-430px phone widths, the entry flow and history are usable without horizontal page scrolling; the software keyboard does not hide essential controls.
-- Create a Expense Group and Category, add an Expense, edit it, and delete it. Confirm changes survive refresh and summaries remain correct.
+- Create an expense group and category, then add, edit, and delete an expense. Confirm changes survive a refresh and summaries remain correct.
 - Exact-money checks include PHP 0.10 + PHP 0.20 = PHP 0.30, plus a month-boundary date check under the chosen Manila date policy.
 - Invalid amounts/dates and a category from another Expense Group are rejected by the server; a failed save retains input and supports a safe retry.
 - Month/category filters agree with saved records and displayed totals.
@@ -69,7 +70,7 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 **Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups retain their existing Dashboard, Expenses, Recurring, Categories, and Banks views. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
-The first Phase 2 workflow went live on November 20, 2026 with commit `e629b71` and migration `20261120120000_loans`. The top-level **Loans** section has a **Dashboard** for outstanding balances and payments and a **Loan List** with one row per cash loan or financed purchase. Each row opens its own details, and **Manage Credit Accounts** opens reusable provider accounts such as SPayLater. Production checks verified the signed-in Loan List and anonymous redirects. [Pay Later and Loans design](pay-later-and-loans-session.md) · [Production rollout](../README.md#loans-production-rollout)
+The first Phase 2 release adds **Loans**, with a **Dashboard** for balances and payments and a **Loan List** for cash loans and financed purchases. **Manage Credit Accounts** opens reusable provider accounts such as SPayLater. [Loans and Pay Later workflows](workflows.md#loans-and-pay-later) · [Production rollout](../README.md#loans-production-rollout)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 
@@ -139,4 +140,4 @@ After the daily workflow is useful:
 
 ## Deliberately deferred
 
-Native mobile apps, bank synchronization, receipt AI, subscriptions, and a comprehensive offline sync engine are not prerequisites for the first single-user milestone.
+Native mobile apps, bank synchronization, and comprehensive offline sync remain deferred. Subscription and renewal tracking is part of the planned bills timeline.

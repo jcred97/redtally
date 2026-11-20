@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. **Loans** has a dashboard and one list row per cash loan or financed purchase. [Loans workflows](docs/pay-later-and-loans-session.md) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. **Loans** has a dashboard and one list row per cash loan or financed purchase. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -31,7 +31,7 @@ Implemented source includes:
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
 - Expenses update as you type part of a merchant name or title, and the other filters apply as soon as you change them. Search is case-insensitive, and the filtered URL includes the search text. Dashboard merchant links retain their exact matches.
 - **Export Expenses** opens a file-type chooser for CSV, PDF, or Excel (`.xlsx`). Each download includes every expense matching the current history filters, including rows beyond the current page, with PHP amounts, calendar dates, recorded Manila times, title, merchant, category, payment method, bank, and notes. Choose **All months** first to export the full group. CSV works well for imports, PDF for sharing and printing, and Excel for spreadsheet analysis. Exports require the group's owner; CSV formula-like text is escaped and Excel text is stored as literal strings. CSV streams in batches; PDF and Excel are prepared before downloading.
-- In **New Expense**, paste a receipt image or choose a photo or screenshot. RedTally reads it on your device by default and suggests a title, merchant, peso total, date, Manila time, payment method, and bank when available. Connect your own OpenAI or Anthropic API key in **Account settings → Receipt scanning** to use optional AI scanning. Selecting **Scan with** sends the image to the named provider and uses your provider quota or balance. Apply the suggestions you want, then review the editable form before saving.
+- **New Expense** reads pasted or selected receipt images on-device by default. You can review and apply suggestions, or choose an optional OpenAI or Anthropic scan when useful. [Receipt scanning workflow](docs/workflows.md#receipt-scanning)
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
 - **Import expenses** reads CSV, TSV, and Excel `.xlsx` files up to 5 MB in the browser. Choose a worksheet if needed, map the description, date, amount, and optional merchant columns, and select an existing category for the batch. The preview shows invalid rows and possible duplicates before you choose what to save. Each import supports up to 500 data rows and saves positive PHP expenses. Named merchants distinguish otherwise matching expenses; files without merchants retain conservative duplicate warnings. Retrying an uncertain save reuses its draft IDs and does not create another copy.
 - The same import dialog accepts unlocked PDF bank statements with selectable text, up to 5 MB and 30 pages. PDF import expects date, description, and debit, withdrawal, or purchase headings on each transaction page of a PHP statement, with four-digit years in the transaction dates. The preview shows source pages so you can compare extracted debits with the statement and deselect transfers or other entries. For scanned PDFs or other statement layouts, use the bank’s CSV or Excel export when available.
@@ -61,7 +61,7 @@ Use a development PostgreSQL database and keep connection credentials out of Git
    - `DIRECT_URL`: connection used by the Prisma CLI through `prisma.config.ts`.
    - `BETTER_AUTH_SECRET`: generate at least 32 random bytes; the configuration requires a secret of at least 32 characters. Never reuse the example placeholder or commit the value.
    - `BETTER_AUTH_URL`: canonical origin, normally `http://localhost:3000` locally; HTTPS is required outside localhost. Do not include a path, query, or fragment.
-   - `RECEIPT_SCANNER_ENCRYPTION_KEY`: optional base64-encoded 32-byte secret for AI receipt scanning. Generate a separate key using the command in `.env.example` and keep it stable across deployments. Changing it requires users to reconnect their providers.
+   - `RECEIPT_SCANNER_ENCRYPTION_KEY`: optional base64-encoded 32-byte secret for AI receipt scanning. Generate a separate key using the command in `.env.example` and keep it stable across deployments. [Receipt scanner deployment](docs/workflows.md#receipt-scanner-deployment)
 3. For a fresh development database, apply committed migrations with `npx prisma migrate deploy`.
 4. Generate the Prisma client with `npx prisma generate`.
 5. Start the app with `npm run dev`, then open [localhost:3000](http://localhost:3000).
@@ -157,6 +157,8 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
 | `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Dashboard route and cross-group reporting feature |
 | `app/(dashboard)/expense-groups/` | Expense Groups list and its private `_components/` |
+| `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
+| `app/(dashboard)/loans/` | Loans dashboard, cash loans, financed purchases, credit accounts, and repayment forms |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
@@ -165,9 +167,13 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |
+| `app/api/receipt-scan/` | Authenticated AI receipt-scanning endpoint |
+| `app/receipt-ocr/` | Versioned local Tesseract worker, runtime, and language assets |
 | `app/api/cron/recurring-expenses/` | Protected scheduled worker entry point |
 | `app/lib/auth/` | Better Auth configuration, browser and server clients, and session checks |
 | `app/lib/expenses/` | Expense dates, exact centavo parsing/formatting/totals, merchant validation, and import normalization |
+| `app/lib/loans/` | Loan, installment, and repayment logic |
+| `app/lib/receipt-scanning/` | Provider credentials, AI adapters, and receipt suggestion normalization |
 | `app/components/` | Shared auth, dialog, feedback, and native form-field components |
 | `app/components/forms/` | Reusable Select and DateInput controls with shared icons and picker behavior |
 | `server/db/client.ts` | Shared runtime database client |
@@ -184,13 +190,14 @@ Authenticated pages render per request because their session check uses request 
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
 | `tests/dashboard/` | Cross-group and per-group spending, comparison periods, and budget ownership tests |
+| `tests/loans/` | Loan ownership, financed purchases, and repayment tests |
 | `tests/db/migrations/public-id.test.ts` | Public UUID backfill, defaults, uniqueness, and preserved records |
 | `tests/db/migrations/` | Tests for PostgreSQL migrations and data preservation |
 | `public/branding/` | Active RedTally header logo and handwritten R coin favicon |
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |
 | `docs/roadmap.md` | Planned milestones and completion criteria |
 | `docs/data-model.md` | Core model, integrity rules, and preservation strategy |
-| `docs/pay-later-and-loans-session.md` | Loans navigation, cash loans, Pay Later purchases, and repayments |
+| `docs/workflows.md` | Account settings, receipt scanning, cash loans, Pay Later purchases, and repayments |
 | `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
 Application code uses grouped feature routes, the private Dashboard home feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.
