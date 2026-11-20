@@ -9,7 +9,9 @@ const totalLabel = /^(?:total amount paid|amount paid|total paid|amount charged|
 const dateLabel = /^(?:(?:(?:transaction|purchase|payment|receipt|invoice) )?date(?:\s*(?:and|[&/])\s*time)?|paid on)\b/i;
 const timeLabel = /^(?:(?:transaction|purchase|receipt|invoice|payment) time|time of (?:transaction|purchase|payment)|time|paid at)(?=$|\s*[:=]|\s+\d)/i;
 const orderTimestampLabel = /^(?:order\s+(?:date(?:\s*(?:and|[&/])\s*time)?|time|(?:placed|created)(?:\s+(?:date|time|on|at))?)|ordered\s+(?:on|at)|placed\s+on|(?:date|time)\s+ordered)\b/i;
-const fulfillmentLabel = /^(?:(?:date|time)\s+(?:of\s+)?)?(?:deliver(?:y|ed)|ship(?:ped|ment|ping)|dispatch(?:ed)?|received|completed|completion|tracking|estimated delivery|eta)(?:\s+(?:date(?:\s*(?:and|[&/])\s*time)?|time|on|at))?(?=$|\s*[:=]|\s+\d|\s+[a-z]{3,9}\.?\s+\d)/i;
+const fulfillmentLabel = /^(?:(?:date|time)\s+(?:of\s+)?)?(?:order\s+|parcel\s+(?:has\s+been\s+)?)?(?:deliver(?:y|ed)|ship(?:ped|ment|ping)|dispatch(?:ed)?|received|completed?|completion|tracking|estimated delivery|eta)(?:\s+(?:date(?:\s*(?:and|[&/])\s*time)?|time|on|at))?(?=$|\s*[:=]|\s+\d|\s+[a-z]{3,9}\.?\s+\d)/i;
+const timelineTimestamp = /(?:^|\s)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s*[ap]\.?\s*m\.?)?)\s*[.·|–—-]?\s+(.*\S)$/i;
+const orderPlacedEvent = /^order\s+(?:is\s+)?placed[.!]?$/i;
 const paymentLabel = /^(?:payment\s+method|(?:mode|method)\s+of\s+payment|payment\s+mode|tender\s+type|paid\s+(?:by|with|via))(?=$|[\s:=])/i;
 const bankLabel = /^(?:(?:bank\s+name|issuing\s+bank|payment\s+bank|card\s+issuer)(?=$|[\s:=])|bank(?=$|\s*[:=]))/i;
 const timeZoneLabel = /^(?:(?:transaction|receipt) )?(?:time\s*zone|tz)(?=$|[\s:=])/i;
@@ -150,8 +152,20 @@ function suggestTime(lines: string[], values: string[]) {
 }
 
 function suggestTimestamp(lines: string[]) {
-  const orderValues = getLabeledValues(lines, orderTimestampLabel);
-  if (orderValues.length) {
+  // Tracking timelines put the timestamp before the event, sometimes after OCR noise from an icon.
+  const events = lines.flatMap((line) => {
+    const row = timelineTimestamp.exec(line);
+    return row ? [{ timestamp: row[1] + " " + row[2], event: row[3] }] : [];
+  });
+  const orderValues = [
+    ...getLabeledValues(lines, orderTimestampLabel),
+    ...events.filter(({ event }) => orderPlacedEvent.test(event)).map(({ timestamp }) => timestamp),
+  ];
+  const hasPlacedRow = lines.some((line) => {
+    const prefix = /\d[\d./:\s]*\s+/.exec(line);
+    return prefix && orderPlacedEvent.test(line.slice(prefix.index + prefix[0].length));
+  });
+  if (orderValues.length || hasPlacedRow) {
     const timestamps = orderValues.map(readTimestamp);
     const dates = timestamps.flatMap(({ date }) => date ? [date] : []);
     const date = singleValue(dates);
@@ -163,7 +177,8 @@ function suggestTimestamp(lines: string[]) {
     return { date, time: suggestTime(lines, clocks) };
   }
 
-  const hasFulfillment = lines.some((line) => fulfillmentLabel.test(line));
+  const hasFulfillment = lines.some((line) => fulfillmentLabel.test(line)) ||
+    events.some(({ event }) => fulfillmentLabel.test(event));
   let inFulfillmentSection = false;
   // Preserve indexes so a split label cannot pick up a value across a removed line.
   const transactionLines = hasFulfillment ? lines.map((line) => {

@@ -66,6 +66,16 @@ test("keeps ordinary payment timestamps and ignores delivery-only dates and cloc
   assert.deepEqual(suggestReceiptFields("Delivery Date: 2026-11-19\nPayment Date: 2026-11-13\nPayment Time: 16:22"), { date: "2026-11-13", time: "16:22" });
 });
 
+test("reads the order timestamp immediately before the placed event on a tracking timeline", () => {
+  assert.deepEqual(suggestReceiptFields([
+    "11/18/2026 15:42 Delivered", "Parcel has been delivered",
+    "11/17/2026 08:57 Preparing to ship", "5 11/17/2026 04:43 Order placed", "Order is placed",
+  ].join("\n")), { date: "2026-11-17", time: "04:43" });
+  assert.deepEqual(suggestReceiptFields("11/18/2026 15:42 Delivered"), {});
+  assert.deepEqual(suggestReceiptFields("11/18/2026 15:42\nOrder delivered\n117720260443 Order placed"), {});
+  assert.deepEqual(suggestReceiptFields("Date: 2026-11-18\n117720260443 Order placed"), {});
+});
+
 test("suggests explicitly shown payment methods and banks from OCR text", () => {
   assert.deepEqual(suggestReceiptFields("Payment Method\nBDO Debit Card"), { paymentMethod: "DEBIT_CARD", bank: "BDO" });
   assert.deepEqual(suggestReceiptFields("Payment Method: BDO Debit Card ending in 1234"), { paymentMethod: "DEBIT_CARD", bank: "BDO" });

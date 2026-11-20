@@ -68,7 +68,8 @@ function toPng(image: HTMLImageElement, width: number, height: number): Promise<
   if (!context) throw new Error("Image conversion is unavailable.");
   context.fillStyle = "white";
   context.fillRect(0, 0, width, height);
-  context.drawImage(image, 0, 0);
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, width, height);
   return new Promise((resolve, reject) => {
     canvas.toBlob((result) => {
       canvas.width = 0;
@@ -156,8 +157,10 @@ export default function ReceiptImageInput({
           import("../../_lib/receipt-fields"),
         ]);
         if (signal.aborted) return;
-        // Scan a browser-decoded PNG so WebP variants use the same OCR input.
-        const ocrImage = blob.type === "image/webp" ? await toPng(image, width, height) : blob;
+        // Enlarge small screenshots so OCR can distinguish fine text and date separators.
+        const scale = Math.max(1, Math.min(2, 1800 / Math.max(width, height)));
+        const ocrImage = scale > 1 || blob.type === "image/webp"
+          ? await toPng(image, Math.round(width * scale), Math.round(height * scale)) : blob;
         if (signal.aborted) return;
         const text = await readReceiptText(ocrImage, signal);
         if (!signal.aborted) setLocalSuggestions(suggestReceiptFields(text));
