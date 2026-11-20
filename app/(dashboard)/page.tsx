@@ -84,7 +84,7 @@ async function DashboardContent({ query }: { query: DashboardQuery }) {
       <section className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
         <h2 className="text-lg font-semibold">No expense groups yet</h2>
         <p className="mt-2 text-sm text-gray-300">Create an expense group to start tracking your spending.</p>
-        <Link href="/expense-groups" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-red-700 px-4 text-sm font-semibold hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
+        <Link href="/expense-groups" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-red-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
           Go to Expense Groups
         </Link>
       </section>

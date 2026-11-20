@@ -87,7 +87,7 @@ export default function ProfileSettings({ name, email, image }: { name: string; 
             }} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={!file} className="button-primary min-h-10 rounded-lg px-4 text-sm font-medium">
+            <button type="submit" disabled={!file} className="min-h-10 rounded-lg bg-red-500 px-4 text-sm font-medium text-white transition-colors enabled:hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50">
               {pending ? "Saving…" : "Save photo"}
             </button>
             {photo && (

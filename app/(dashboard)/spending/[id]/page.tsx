@@ -106,7 +106,7 @@ export default async function ExpenseGroupPage({
                 key={label}
                 href={href}
                 aria-current={current ? "page" : undefined}
-                className={`-mb-px border-b-2 px-2.5 py-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 sm:px-4 ${current ? "border-red-500 text-white" : "border-transparent text-gray-400 hover:text-white"}`}
+                className={`-mb-px border-b-2 px-2.5 py-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 sm:px-4 ${current ? "border-red-400 text-white" : "border-transparent text-gray-400 hover:text-white"}`}
               >
                 {label}
               </Link>
