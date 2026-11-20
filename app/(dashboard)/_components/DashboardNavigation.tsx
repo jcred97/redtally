@@ -21,7 +21,7 @@ export default function DashboardNavigation() {
           key={href}
           href={href}
           aria-current={current ? (pathname === href ? "page" : "location") : undefined}
-          className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap rounded-t-sm border-b-2 px-1 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${current ? "border-red-400 text-white" : "border-transparent text-gray-300 hover:text-white"}`}
+          className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap rounded-t-sm border-b-2 px-1 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${current ? "border-red-500 text-white" : "border-transparent text-gray-300 hover:text-white"}`}
         >
           {label}
         </Link>
