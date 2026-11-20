@@ -21,6 +21,8 @@ Keep on-device reading as the default when someone pastes or chooses an image in
 2. With a provider connected, offer **Scan with [provider]**, using its actual name. Explain beside the action that it sends this image to that provider and uses the person's quota or balance. Send the image only when they choose to scan.
 3. Show the resulting suggestions for individual review. Applying a suggestion updates the chosen field. The person decides when to save the expense.
 
+AI scanning can suggest a supported payment method and a bank or card issuer shown on the receipt. Apply the method first or select it in the form. The bank can be applied when it matches an enabled bank in the expense group that supports the selected method. For Shopee and other order summaries, use the date and time the order was placed. Leave missing order details blank.
+
 ## Deployment
 
 Apply the committed `20261119120000_receipt_scanner` migration before deploying the app. Set `RECEIPT_SCANNER_ENCRYPTION_KEY` to a separate base64-encoded 32-byte secret in each environment where AI scanning should be enabled. Keep the secret stable across deployments. If it changes, users must replace their stored API keys. On-device reading works without this setting.

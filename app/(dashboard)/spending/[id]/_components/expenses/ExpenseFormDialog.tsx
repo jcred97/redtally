@@ -13,7 +13,7 @@ import {
 } from "@/app/(dashboard)/_lib/expenses/mutations";
 import { expenseTimeInput, getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoInput } from "@/app/lib/expenses/money";
-import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
@@ -136,6 +136,12 @@ export default function ExpenseFormDialog({
         break;
       case "time":
         setTime(value);
+        break;
+      case "paymentMethod":
+        if (isPaymentMethod(value)) changePaymentMethod(value);
+        break;
+      case "bank":
+        if (eligibleBanks.some((bank) => String(bank.id) === value)) setBankAssignmentId(value);
         break;
     }
   }
@@ -299,7 +305,7 @@ export default function ExpenseFormDialog({
             )}
           </div>
 
-          {!expense && <ReceiptImageInput onApply={applyReceiptSuggestion} />}
+          {!expense && <ReceiptImageInput paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />}
         </div>
       </FormDialog>
 

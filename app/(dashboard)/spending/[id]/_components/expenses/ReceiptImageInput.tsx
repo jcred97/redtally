@@ -3,7 +3,10 @@ import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } fro
 import FileInput from "@/app/components/forms/FileInput";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
+import { isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import { maxReceiptImagePixels, providers, receiptImageTypes, type ReceiptProvider, type ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
+import { findReceiptBank } from "@/app/lib/receipt-scanning/suggestions";
+import type { PaymentMethod } from "@/generated/prisma/enums";
 import ReceiptAiControls from "./ReceiptAiControls";
 
 const maxImageBytes = 8 * 1024 * 1024;
@@ -20,6 +23,8 @@ const fields = [
       return minutes === null ? value : formatExpenseTime(minutes);
     },
   },
+  { field: "paymentMethod", label: "payment method", format: (value: string) => isPaymentMethod(value) ? paymentMethodLabels[value] : value },
+  { field: "bank", label: "bank", format: (value: string) => value },
 ] as const;
 
 const buttonClass = "button-secondary shrink-0 rounded-lg px-2.5 text-sm font-medium";
@@ -75,8 +80,12 @@ function toPng(image: HTMLImageElement, width: number, height: number): Promise<
 }
 
 export default function ReceiptImageInput({
+  paymentMethod,
+  bankOptions,
   onApply,
 }: {
+  paymentMethod: PaymentMethod | "";
+  bankOptions: readonly ExpenseBankOption[];
   onApply: (field: keyof ReceiptSuggestions, value: string) => void;
 }) {
   const headingId = useId();
@@ -192,7 +201,11 @@ export default function ReceiptImageInput({
   const suggestions = currentAiResult ? currentAiResult.suggestions : localSuggestions;
   const visibleFields = fields.filter(({ field }) => Boolean(suggestions?.[field]));
   const nameCount = Number(Boolean(suggestions?.title)) + Number(Boolean(suggestions?.merchant));
-  const detailCount = visibleFields.length - nameCount;
+  const detailCount = Number(Boolean(suggestions?.amount)) + Number(Boolean(suggestions?.date)) + Number(Boolean(suggestions?.time));
+  const suggestedBank = suggestions?.bank ? findReceiptBank(suggestions.bank, bankOptions) : undefined;
+  const bankHelp = !suggestedBank?.paymentMethods.length ? "Unavailable in this expense group."
+    : !paymentMethod || paymentMethod === "CASH" || !suggestedBank.paymentMethods.includes(paymentMethod)
+      ? "Select a compatible payment method first." : "";
   const imageButtonClass = `${buttonClass} min-h-10 max-sm:px-2 max-sm:text-[13px]`;
 
   return (
@@ -247,17 +260,23 @@ export default function ReceiptImageInput({
               if (!value) return null;
               const valueId = `${headingId}-${field}`;
               const isName = field === "title" || field === "merchant";
-              const span = isName && nameCount === 1 ? "col-span-full"
+              const isPayment = field === "paymentMethod" || field === "bank";
+              const isFirstPayment = field === "paymentMethod" || (field === "bank" && !suggestions.paymentMethod);
+              const span = isPayment ? `col-span-3 ${isFirstPayment ? "col-start-1" : ""}`
+                : isName && nameCount === 1 ? "col-span-full"
                 : !isName && detailCount === 3 ? "col-span-3 @min-[19rem]:col-span-2" : "col-span-3";
+              const help = field === "bank" ? bankHelp : "";
+              const displayValue = field === "bank" && suggestedBank ? suggestedBank.name : format(value);
               return (
                 <li key={field} className={`min-w-0 ${span}`}>
-                  <button type="button" aria-label={`Use ${label}`} aria-describedby={valueId} className={`${buttonClass} grid h-full min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] content-start gap-x-1 py-2 text-left leading-tight`} onClick={() => {
-                    onApply(field, value);
+                  <button type="button" aria-label={`Use ${label}`} aria-describedby={help ? `${valueId} ${valueId}-help` : valueId} disabled={Boolean(help)} className={`${buttonClass} grid h-full min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] content-start gap-x-1 py-2 text-left leading-tight`} onClick={() => {
+                    onApply(field, field === "bank" && suggestedBank ? String(suggestedBank.id) : value);
                     setApplied(`Applied suggested ${label}.`);
                   }}>
                     <span className="text-xs capitalize text-gray-400">{label}</span>
-                    <span className="text-xs text-gray-200">Use</span>
-                    <span id={valueId} className="col-span-full wrap-anywhere text-white">{format(value)}</span>
+                    {!help && <span className="text-xs text-gray-200">Use</span>}
+                    <span id={valueId} className="col-span-full wrap-anywhere text-white">{displayValue}</span>
+                    {help && <span id={`${valueId}-help`} className="col-span-full mt-1 text-xs text-gray-300">{help}</span>}
                   </button>
                 </li>
               );

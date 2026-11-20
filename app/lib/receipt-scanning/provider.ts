@@ -1,8 +1,8 @@
 import "server-only";
 
-import { parseExpenseDay, parseExpenseTime } from "@/app/lib/expenses/date";
-import { formatPesoInput, parsePesoAmount } from "@/app/lib/expenses/money";
-import { providers, type ReceiptProvider, type ReceiptSuggestions } from "./config";
+import { paymentMethodLabels } from "@/app/lib/expenses/payment";
+import { providers, type ReceiptProvider } from "./config";
+import { normalizeReceiptSuggestions } from "./suggestions";
 
 type ReceiptImage = { mimeType: string; base64: string };
 type TextBlock = { type: string; text?: string };
@@ -12,7 +12,12 @@ const extractionPrompt = [
   "Use null for absent, unclear, or conflicting values. Return all nulls for a non-receipt, refund, incoming payment, or failed, pending, or canceled transaction.",
   "Use a short purchase description for title, and the shop or payee for merchant. Do not include account numbers, addresses, or reference codes.",
   "For amount, use a positive decimal string for the final amount paid in Philippine pesos only. Do not convert foreign currency or use amounts with uncertain currency.",
-  "Use YYYY-MM-DD for an unambiguous transaction date, and HH:mm in 24-hour Manila time for an unambiguous transaction time.",
+  "Set receiptType to ORDER for an order summary or confirmation, including Shopee, and TRANSACTION for a purchase or payment receipt.",
+  "For an order, use the date and time the order was placed, such as Order Time, Order Date, Order Created, or Placed on. Use orderDate and orderTime even if payment occurred later. If the order timestamp is missing, leave its date or time null.",
+  "For a purchase or payment receipt use the explicit transaction, purchase, or payment timestamp in transactionDate and transactionTime.",
+  "Never use shipment, delivery, received, completion, ETA, tracking, refund, or screenshot status bar timestamps. A date and time must come from the same event. Use YYYY-MM-DD for the date and HH:mm in 24-hour Manila time.",
+  "Use the payment method actually shown. Map explicit cash or cash on delivery to CASH, and use DEBIT_CARD, CREDIT_CARD, BANK_TRANSFER, or BANK_PAYMENT only when the receipt distinguishes that method. Leave generic card, wallet, pay-later, and ambiguous methods null.",
+  "For bank, use the bank or card issuer explicitly identified for the payment. Leave it null for cash, generic card networks, an unrelated merchant bank, or when no institution is identified. Do not include account or card numbers.",
 ].join(" ");
 
 const schema = {
@@ -21,10 +26,15 @@ const schema = {
     title: { type: ["string", "null"] },
     merchant: { type: ["string", "null"] },
     amount: { type: ["string", "null"] },
-    date: { type: ["string", "null"] },
-    time: { type: ["string", "null"] },
+    receiptType: { type: ["string", "null"], enum: ["ORDER", "TRANSACTION", null] },
+    orderDate: { type: ["string", "null"] },
+    orderTime: { type: ["string", "null"] },
+    transactionDate: { type: ["string", "null"] },
+    transactionTime: { type: ["string", "null"] },
+    paymentMethod: { type: ["string", "null"], enum: [...Object.keys(paymentMethodLabels), null] },
+    bank: { type: ["string", "null"] },
   },
-  required: ["title", "merchant", "amount", "date", "time"],
+  required: ["title", "merchant", "amount", "receiptType", "orderDate", "orderTime", "transactionDate", "transactionTime", "paymentMethod", "bank"],
   additionalProperties: false,
 };
 
@@ -113,12 +123,6 @@ export async function testReceiptProvider(provider: ReceiptProvider, apiKey: str
   await requestProvider(provider, apiKey);
 }
 
-function nameSuggestion(value: unknown) {
-  if (typeof value !== "string") return undefined;
-  const text = value.replace(/\s+/g, " ").trim();
-  return text && text.length <= 100 ? text : undefined;
-}
-
 export async function scanWithProvider(provider: ReceiptProvider, apiKey: string, image: ReceiptImage, signal: AbortSignal) {
   const text = await requestProvider(provider, apiKey, image, signal);
   let result: unknown;
@@ -131,19 +135,5 @@ export async function scanWithProvider(provider: ReceiptProvider, apiKey: string
     throw new ReceiptProviderError(`${providers[provider]} returned unreadable suggestions. Try again.`);
   }
 
-  const fields = result as Record<string, unknown>;
-  const suggestions: ReceiptSuggestions = {
-    title: nameSuggestion(fields.title),
-    merchant: nameSuggestion(fields.merchant),
-    date: parseExpenseDay(fields.date),
-  };
-  if (typeof fields.amount === "string" && fields.amount.length <= 20) {
-    try { suggestions.amount = formatPesoInput(parsePesoAmount(fields.amount)); } catch { /* Skip invalid totals. */ }
-  }
-  if (typeof fields.time === "string") {
-    try {
-      if (parseExpenseTime(fields.time) !== null) suggestions.time = fields.time;
-    } catch { /* Skip invalid times. */ }
-  }
-  return suggestions;
+  return normalizeReceiptSuggestions(result as Record<string, unknown>);
 }

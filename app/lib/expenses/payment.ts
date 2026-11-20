@@ -8,6 +8,10 @@ export const paymentMethodLabels = {
   BANK_PAYMENT: "Bank payment",
 } satisfies Record<PaymentMethod, string>;
 
+export function isPaymentMethod(value: unknown): value is PaymentMethod {
+  return typeof value === "string" && Object.hasOwn(paymentMethodLabels, value);
+}
+
 export const bankPaymentMethodFields = {
   DEBIT_CARD: "supportedDebitCard",
   CREDIT_CARD: "supportedCreditCard",
