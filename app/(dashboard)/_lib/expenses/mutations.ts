@@ -58,6 +58,7 @@ export async function createExpense(
         bankAssignmentId: formData.get("bankAssignmentId"),
       },
       formData.get("submissionId"),
+      formData,
     );
   } catch (error) {
     if (error instanceof TypeError) {
@@ -70,6 +71,7 @@ export async function createExpense(
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
+  if (formData.get("paymentMethod") === "PAY_LATER") revalidatePath("/loans", "layout");
 
   return { success: true };
 }
@@ -112,6 +114,7 @@ export async function updateExpense(
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
+  if (formData.get("paymentMethod") === "PAY_LATER") revalidatePath("/loans", "layout");
 
   return { success: true };
 }

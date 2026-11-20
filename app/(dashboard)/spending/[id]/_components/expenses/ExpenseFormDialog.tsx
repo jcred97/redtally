@@ -13,10 +13,11 @@ import {
 } from "@/app/(dashboard)/_lib/expenses/mutations";
 import { expenseTimeInput, getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoInput } from "@/app/lib/expenses/money";
-import { isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
+import FinancedPurchaseFields, { type CreditAccountOption } from "./FinancedPurchaseFields";
 
 export type EditableExpense = {
   id: number;
@@ -30,12 +31,14 @@ export type EditableExpense = {
   paymentMethod: PaymentMethod | null;
   bankAssignmentId: number | null;
   bankName: string | null;
+  repaymentPlanId?: string | null;
 };
 
 type ExpenseFormDialogProps = {
   expenseGroupId: number;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
+  creditAccounts?: CreditAccountOption[];
   expense?: EditableExpense;
   menuFocusKey?: string;
 };
@@ -44,6 +47,7 @@ export default function ExpenseFormDialog({
   expenseGroupId,
   categories,
   bankOptions,
+  creditAccounts = [],
   expense,
   menuFocusKey,
 }: ExpenseFormDialogProps) {
@@ -59,7 +63,9 @@ export default function ExpenseFormDialog({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [bankAssignmentId, setBankAssignmentId] = useState("");
   const hasCategories = categories.length > 0;
-  const canSelectBank = paymentMethod !== "" && paymentMethod !== "CASH";
+  const financed = paymentMethod === "PAY_LATER";
+  const hasRepaymentPlan = Boolean(expense?.repaymentPlanId);
+  const canSelectBank = isBankPaymentMethod(paymentMethod);
   const eligibleBanks = canSelectBank
     ? bankOptions.filter((bank) => bank.paymentMethods.includes(paymentMethod))
     : [];
@@ -68,7 +74,7 @@ export default function ExpenseFormDialog({
     ? "Select a method first."
     : paymentMethod === "CASH"
       ? "Unavailable for cash."
-      : eligibleBanks.length === 0
+      : canSelectBank && eligibleBanks.length === 0
         ? "Enable a bank for this method in Banks."
         : null;
   const hasRecordedBank =
@@ -110,8 +116,7 @@ export default function ExpenseFormDialog({
   function changePaymentMethod(method: PaymentMethod | "") {
     setPaymentMethod(method);
     if (
-      method === "" ||
-      method === "CASH" ||
+      !isBankPaymentMethod(method) ||
       !bankOptions.some(
         (bank) => String(bank.id) === bankAssignmentId && bank.paymentMethods.includes(method)
       )
@@ -172,6 +177,7 @@ export default function ExpenseFormDialog({
         triggerClassName={menuFocusKey ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm` : undefined}
         returnFocusId={menuFocusKey ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
+        description={hasRepaymentPlan ? "The amount, date, and payment method are tied to this expense’s repayment plan." : undefined}
         dialogSize="wide"
         compact
         pendingMessage="Saving your expense. Please wait..."
@@ -223,6 +229,7 @@ export default function ExpenseFormDialog({
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 required
+                readOnly={hasRepaymentPlan}
                 maxLength={20}
                 placeholder="150.75"
                 aria-describedby={`${fieldId}-amount-help`}
@@ -253,6 +260,7 @@ export default function ExpenseFormDialog({
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
                 required
+                readOnly={hasRepaymentPlan}
               />
             </div>
             <div className="min-w-0">
@@ -274,14 +282,17 @@ export default function ExpenseFormDialog({
                 id={`${fieldId}-payment-method`}
                 name="paymentMethod"
                 value={paymentMethod}
+                disabled={hasRepaymentPlan}
                 onChange={(value) => changePaymentMethod(value as PaymentMethod | "")}
                 options={[
                   { value: "", label: "No payment method" },
-                  ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
+                  ...Object.entries(paymentMethodLabels)
+                    .filter(([value]) => value !== "PAY_LATER" || !expense || expense.paymentMethod === value)
+                    .map(([value, label]) => ({ value, label })),
                 ]}
               />
             </div>
-            <div className="min-w-0">
+            {!financed && <div className="min-w-0">
               <label htmlFor={`${fieldId}-bank`} className={fieldLabelClass}>
                 Bank <span className="text-xs">(optional)</span>
               </label>
@@ -299,9 +310,13 @@ export default function ExpenseFormDialog({
                 ]}
               />
               {bankHelp && <p id={`${fieldId}-bank-help`} className="mt-1 text-xs text-gray-400">{bankHelp}</p>}
-            </div>
+            </div>}
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
+            )}
+            {!expense && (
+              <FinancedPurchaseFields creditAccounts={creditAccounts}
+                purchaseDate={date} hidden={!financed} />
             )}
           </div>
 

@@ -6,6 +6,7 @@ export const paymentMethodLabels = {
   CREDIT_CARD: "Credit card",
   BANK_TRANSFER: "Bank transfer",
   BANK_PAYMENT: "Bank payment",
+  PAY_LATER: "Pay Later",
 } satisfies Record<PaymentMethod, string>;
 
 export function isPaymentMethod(value: unknown): value is PaymentMethod {
@@ -17,9 +18,13 @@ export const bankPaymentMethodFields = {
   CREDIT_CARD: "supportedCreditCard",
   BANK_TRANSFER: "supportedBankTransfer",
   BANK_PAYMENT: "supportedBankPayment",
-} as const satisfies Record<Exclude<PaymentMethod, "CASH">, string>;
+} as const satisfies Record<Exclude<PaymentMethod, "CASH" | "PAY_LATER">, string>;
 
 export type BankPaymentMethod = keyof typeof bankPaymentMethodFields;
+
+export function isBankPaymentMethod(value: unknown): value is BankPaymentMethod {
+  return typeof value === "string" && Object.hasOwn(bankPaymentMethodFields, value);
+}
 
 export type ExpenseBankOption = {
   id: number;

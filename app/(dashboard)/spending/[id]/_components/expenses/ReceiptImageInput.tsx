@@ -3,7 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } fro
 import FileInput from "@/app/components/forms/FileInput";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
-import { isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
 import { maxReceiptImagePixels, providers, receiptImageTypes, type ReceiptProvider, type ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import { findReceiptBank } from "@/app/lib/receipt-scanning/suggestions";
 import type { PaymentMethod } from "@/generated/prisma/enums";
@@ -207,7 +207,7 @@ export default function ReceiptImageInput({
   const detailCount = Number(Boolean(suggestions?.amount)) + Number(Boolean(suggestions?.date)) + Number(Boolean(suggestions?.time));
   const suggestedBank = suggestions?.bank ? findReceiptBank(suggestions.bank, bankOptions) : undefined;
   const bankHelp = !suggestedBank?.paymentMethods.length ? "Unavailable in this expense group."
-    : !paymentMethod || paymentMethod === "CASH" || !suggestedBank.paymentMethods.includes(paymentMethod)
+    : !isBankPaymentMethod(paymentMethod) || !suggestedBank.paymentMethods.includes(paymentMethod)
       ? "Select a compatible payment method first." : "";
   const imageButtonClass = `${buttonClass} min-h-10 max-sm:px-2 max-sm:text-[13px]`;
 

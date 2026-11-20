@@ -19,6 +19,7 @@ type ExpensePageRow = {
       categoryName: string;
       categoryIcon: string | null;
       bankName: string | null;
+      repaymentPlanId: string | null;
       dayExpenseCount: bigint | null;
       dayTotalCentavos: bigint | null;
     })
@@ -34,6 +35,7 @@ type ExpenseGroupSummary = {
 };
 
 export type ExpenseHistoryFilters = {
+  expenseId?: number;
   day?: string;
   month?: string;
   through?: string;
@@ -137,7 +139,9 @@ function copyName(name: string) {
   return (shortened || "Expense Group") + suffix;
 }
 
-function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMethod, bank, merchant, search }: ExpenseHistoryFilters) {
+function expenseHistoryFilterSql({ expenseId, day, month, through, categoryId, paymentMethod, bank, merchant, search }: ExpenseHistoryFilters) {
+  const expenseFilter = expenseId !== undefined && validId(expenseId)
+    ? Prisma.sql`AND id = ${expenseId}` : Prisma.empty;
   const selectedDay = parseExpenseDay(day);
   const selectedMonth = parseExpenseMonth(month);
   const monthStart = selectedMonth ? `${selectedMonth}-01` : undefined;
@@ -174,7 +178,7 @@ function expenseHistoryFilterSql({ day, month, through, categoryId, paymentMetho
   } else if (selectedMerchant) {
     textFilter = Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`;
   }
-  return Prisma.sql`${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${textFilter}`;
+  return Prisma.sql`${expenseFilter} ${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${textFilter}`;
 }
 
 // Identity is resolved per operation, never captured at startup or supplied by a browser.
@@ -363,7 +367,8 @@ export function createExpenseGroupAccess(
           expense.id, expense.title, expense.merchant, expense."amountCentavos", expense.date, expense."timeMinutes", expense."updatedAt", expense."categoryId",
           expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
-          category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName"
+          category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName",
+          plan.id AS "repaymentPlanId"
         FROM pagination
         LEFT JOIN LATERAL (
           SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
@@ -380,6 +385,10 @@ export function createExpenseGroupAccess(
         LEFT JOIN "ExpenseGroupBank" assignment
           ON assignment.id = expense."bankAssignmentId" AND assignment."expenseGroupId" = pagination.id
         LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
+        LEFT JOIN "RepaymentPlan" plan ON plan."expenseId" = expense.id AND EXISTS (
+          SELECT 1 FROM "PayLaterAccount" credit
+          WHERE credit.id = plan."creditAccountId" AND credit."userId" = ${userId}
+        )
         ORDER BY expense.date::date DESC, expense."timeMinutes" DESC NULLS LAST, expense.date DESC, expense.id DESC
       `;
 
@@ -409,6 +418,7 @@ export function createExpenseGroupAccess(
           legacyBankName: row.legacyBankName,
           category: { name: row.categoryName, icon: row.categoryIcon },
           bankAssignment: row.bankName === null ? null : { bank: { name: row.bankName } },
+          repaymentPlanId: row.repaymentPlanId,
         })),
       };
     },
@@ -581,6 +591,7 @@ export function createExpenseGroupAccess(
           if (!group) throw new ExpenseGroupAccessError("Expense group not found");
           if (group.hasRecords) throw new ExpenseGroupAccessError(GROUP_HAS_DEPENDENCIES);
 
+          await tx.loan.updateMany({ where: { expenseGroupId: id, userId }, data: { expenseGroupId: null } });
           await tx.bankAssignment.deleteMany({ where: { expenseGroupId: id } });
           await tx.expenseGroup.delete({ where });
         });

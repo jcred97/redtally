@@ -39,6 +39,9 @@ function readRule(formData: FormData) {
   if (endDate && endDate < startDate) throw new TypeError("End date must be on or after the start date.");
 
   const payment = parsePaymentSelection(input);
+  if (payment?.paymentMethod === "PAY_LATER") {
+    throw new TypeError("Set up Pay Later when recording an individual expense.");
+  }
   return {
     categoryId, title, amountCentavos, frequency, startDate, endDate,
     paymentMethod: payment?.paymentMethod ?? null,

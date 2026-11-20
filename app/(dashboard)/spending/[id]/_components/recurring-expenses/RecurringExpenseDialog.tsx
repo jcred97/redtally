@@ -99,7 +99,9 @@ export default function RecurringExpenseDialog({
           onChange={(value) => changeMethod(value as PaymentMethod | "")}
           options={[
             { value: "", label: "No payment method" },
-            ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
+            ...Object.entries(paymentMethodLabels)
+              .filter(([value]) => value !== "PAY_LATER")
+              .map(([value, label]) => ({ value, label })),
           ]} />
       </div>
       {(eligibleBanks.length > 0 || unavailableBank) && (

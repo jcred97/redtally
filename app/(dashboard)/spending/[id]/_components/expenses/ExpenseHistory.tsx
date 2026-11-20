@@ -70,9 +70,10 @@ export default function ExpenseHistory({
             paymentMethod: expense.paymentMethod,
             bankAssignmentId: expense.bankAssignmentId,
             bankName: expenseBankName(expense),
+            repaymentPlanId: expense.repaymentPlanId,
           }}
         />
-        <DeleteExpenseButton
+        {!expense.repaymentPlanId && <DeleteExpenseButton
           menuFocusKey={menuFocusKey}
           expenseGroupId={expenseGroupId}
           expense={{
@@ -80,7 +81,7 @@ export default function ExpenseHistory({
             title: expense.title,
             amountCentavos: expense.amountCentavos,
           }}
-        />
+        />}
       </>
     );
   }
@@ -111,6 +112,11 @@ export default function ExpenseHistory({
                     <div className="min-w-0 flex-1">
                       <h3 className="wrap-anywhere font-medium">{expense.title}</h3>
                       {expense.merchant && <p className="mt-0.5 wrap-anywhere text-xs text-gray-400">{expense.merchant}</p>}
+                      {expense.repaymentPlanId && (
+                        <Link href={`/loans/plans/${expense.repaymentPlanId}`} className="mt-1 inline-block text-sm text-red-400 underline underline-offset-4">
+                          View plan
+                        </Link>
+                      )}
                     </div>
                     <p className="whitespace-nowrap font-semibold text-red-400">
                       {formatPesoAmount(expense.amountCentavos)}
@@ -173,6 +179,11 @@ export default function ExpenseHistory({
                         {expense.title}
                         {expense.merchant && (
                           <p className="mt-0.5 w-0 min-w-full wrap-anywhere text-xs font-normal text-gray-400">{expense.merchant}</p>
+                        )}
+                        {expense.repaymentPlanId && (
+                          <Link href={`/loans/plans/${expense.repaymentPlanId}`} className="mt-1 inline-block text-sm text-red-400 underline underline-offset-4">
+                            View plan
+                          </Link>
                         )}
                       </td>
                       <td className="py-4 text-gray-300">

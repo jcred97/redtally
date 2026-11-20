@@ -50,8 +50,16 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const bankFilterValue = bank && typeof rawBank === "string" ? rawBank : undefined;
   const search = parseExpenseHistorySearch(query.search ?? query.merchantSearch);
   const merchant = search ? undefined : parseExpenseHistoryMerchantFilter(rawMerchant);
-  const filters = { day, month, through, categoryId, paymentMethod, bank, merchant, search };
+  const rawExpense = query.expense;
+  const requestedExpense = typeof rawExpense === "string" && /^[1-9]\d{0,9}$/.test(rawExpense)
+    ? Number(rawExpense)
+    : undefined;
+  const expenseId = requestedExpense !== undefined && requestedExpense <= 2_147_483_647
+    ? requestedExpense
+    : undefined;
+  const filters = { ...(expenseId === undefined ? {} : { expenseId }), day, month, through, categoryId, paymentMethod, bank, merchant, search };
   const filterParams = new URLSearchParams();
+  if (expenseId !== undefined) filterParams.set("expense", String(expenseId));
   if (categoryId !== undefined) filterParams.set("category", String(categoryId));
   if (paymentMethod !== undefined) filterParams.set("paymentMethod", paymentMethod);
   if (bankFilterValue !== undefined) filterParams.set("bank", bankFilterValue);

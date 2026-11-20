@@ -18,6 +18,7 @@ enum PaymentMethod {
   BANK_TRANSFER
   BANK_PAYMENT
   CASH
+  PAY_LATER
 
   @@map("TransactionType")
 }
@@ -45,6 +46,7 @@ model ExpenseGroup {
   expenseSubmissions ExpenseSubmission[]
   recurringExpenses  RecurringExpense[]
   recurringExpenseSubmissions RecurringExpenseSubmission[]
+  loans              Loan[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   // Null means preserved, unclaimed legacy data; never visible to signed-in users.
@@ -52,6 +54,7 @@ model ExpenseGroup {
   user               User?               @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([userId])
+  @@unique([id, userId])
   @@map("Spending")
 }
 
@@ -88,6 +91,7 @@ model Expense {
   updatedAt        DateTime        @updatedAt
   submission       ExpenseSubmission?
   recurringOccurrence RecurringExpenseOccurrence?
+  repaymentPlan    RepaymentPlan?
 
   @@index([expenseGroupId, date])
   @@index([categoryId, expenseGroupId])
@@ -201,6 +205,91 @@ model BankAssignment {
   @@map("ExpenseGroupBank")
 }
 
+model Loan {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  expenseGroupId     Int?
+  expenseGroup       ExpenseGroup?     @relation(fields: [expenseGroupId, userId], references: [id, userId], onDelete: Restrict)
+  title              String            @db.VarChar(120)
+  lender             String            @db.VarChar(120)
+  amountCentavos     Int
+  disbursementDate   DateTime          @db.Date
+  receivingAccount   String            @db.VarChar(120)
+  repaymentFrequency String?           @db.VarChar(16)
+  installments       LoanInstallment[]
+  submissionId       String            @db.Uuid
+  payloadHash        String
+  createdAt          DateTime          @default(now())
+
+  @@unique([userId, submissionId])
+  @@index([expenseGroupId, userId])
+}
+
+model PayLaterAccount {
+  id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  name      String          @db.VarChar(120)
+  key       String          @db.VarChar(120)
+  plans     RepaymentPlan[]
+  createdAt DateTime        @default(now())
+
+  @@unique([userId, key])
+}
+
+model RepaymentPlan {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expenseId       Int               @unique
+  expense         Expense           @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+  creditAccountId String            @db.Uuid
+  creditAccount   PayLaterAccount   @relation(fields: [creditAccountId], references: [id], onDelete: Restrict)
+  installments    LoanInstallment[]
+  createdAt       DateTime          @default(now())
+
+  @@index([creditAccountId])
+}
+
+model LoanInstallment {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  loanId         String?                 @db.Uuid
+  loan           Loan?                   @relation(fields: [loanId], references: [id], onDelete: Restrict)
+  planId         String?                 @db.Uuid
+  plan           RepaymentPlan?          @relation(fields: [planId], references: [id], onDelete: Restrict)
+  dueDate        DateTime                @db.Date
+  amountCentavos Int
+  allocations    LoanPaymentAllocation[]
+
+  @@unique([loanId, dueDate])
+  @@unique([planId, dueDate])
+}
+
+model LoanPayment {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  paidOn         DateTime                @db.Date
+  fundingAccount String                  @db.VarChar(120)
+  amountCentavos Int
+  submissionId   String                  @db.Uuid
+  payloadHash    String
+  allocations    LoanPaymentAllocation[]
+  createdAt      DateTime                @default(now())
+
+  @@unique([userId, submissionId])
+}
+
+model LoanPaymentAllocation {
+  paymentId      String          @db.Uuid
+  payment        LoanPayment     @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  installmentId  String          @db.Uuid
+  installment    LoanInstallment @relation(fields: [installmentId], references: [id], onDelete: Restrict)
+  amountCentavos Int
+
+  @@id([paymentId, installmentId])
+  @@index([installmentId])
+}
+
 model User {
   id            String         @id
   name          String
@@ -213,6 +302,9 @@ model User {
   accounts      Account[]
   expenseGroups ExpenseGroup[]
   receiptScanner ReceiptScanner?
+  loans          Loan[]
+  payLaterAccounts PayLaterAccount[]
+  loanPayments   LoanPayment[]
 
   @@map("user")
 }

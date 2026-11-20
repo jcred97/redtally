@@ -12,6 +12,7 @@ export default function DashboardNavigation() {
       href: "/expense-groups",
       current: pathname === "/expense-groups" || pathname.startsWith("/spending/"),
     },
+    { label: "Loans", href: "/loans", current: pathname === "/loans" || pathname.startsWith("/loans/") },
   ];
 
   return (

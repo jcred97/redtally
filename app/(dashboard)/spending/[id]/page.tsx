@@ -11,6 +11,7 @@ import ExpensesTab from "./_components/expenses/ExpensesTab";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
+import { getCashLoansForExpenseGroup } from "@/app/lib/loans/queries";
 import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "./_components/categories/ExpenseCategories";
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
@@ -56,7 +57,7 @@ export default async function ExpenseGroupPage({
     grouped, requestedPage, currentMonth, dashboardMonth, filters, merchant,
   } = view;
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard, linkedLoans] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
@@ -66,6 +67,7 @@ export default async function ExpenseGroupPage({
     showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
     showRecurring ? getRecurringExpenses(id) : null,
     showDashboard ? getDashboard(id, dashboardMonth, today) : null,
+    showDashboard ? getCashLoansForExpenseGroup(id) : [],
   ]);
 
   if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
@@ -137,6 +139,7 @@ export default async function ExpenseGroupPage({
             currentMonth={currentMonth}
             categories={categoryOptions}
             bankOptions={bankOptions}
+            linkedLoans={linkedLoans}
           />
         ) : expensePage ? (
           <ExpensesTab

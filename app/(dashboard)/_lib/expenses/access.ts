@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { PaymentMethod, Prisma, type BankAssignment, type PrismaClient } from "@/generated/prisma/client";
 import { parsePesoAmount } from "@/app/lib/expenses/money";
 import { parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
-import { bankPaymentMethodFields, type BankPaymentMethod } from "@/app/lib/expenses/payment";
+import { bankPaymentMethodFields, isBankPaymentMethod, type BankPaymentMethod } from "@/app/lib/expenses/payment";
 import { parseMerchant } from "@/app/lib/expenses/merchant";
+import { createFinancedPurchase, readFinancing } from "@/app/lib/loans/financing";
 
 const MAX_RECORD_ID = 2_147_483_647;
 const SUBMISSION_ID_PATTERN =
@@ -92,7 +93,7 @@ export async function validateBankSelection(
   { paymentMethod, bankAssignmentId }: PaymentSelection
 ) {
   if (bankAssignmentId === null) return;
-  if (!paymentMethod || paymentMethod === PaymentMethod.CASH) {
+  if (!isBankPaymentMethod(paymentMethod)) {
     throw new BankSelectionError("Choose a card, transfer, or bank payment method to select a bank.");
   }
 
@@ -124,15 +125,26 @@ export function createExpenseAccess(
       }
 
       // Ownership and deletion happen in one query, never a separate pre-check.
+      const ownedExpense = {
+        id: expenseId,
+        expenseGroupId,
+        category: { expenseGroup: { userId } },
+      };
       const result = await db.expense.deleteMany({
         where: {
-          id: expenseId,
-          expenseGroupId,
-          category: { expenseGroup: { userId } },
+          ...ownedExpense,
+          repaymentPlan: null,
         },
       });
 
       if (result.count === 0) {
+        const expense = await db.expense.findUnique({
+          where: ownedExpense,
+          select: { repaymentPlan: { select: { id: true } } },
+        });
+        if (expense?.repaymentPlan) {
+          throw new TypeError("This expense has a repayment plan. Open the plan to review its balance and payments.");
+        }
         throw new TypeError("Expense not found in this expense group");
       }
     },
@@ -141,7 +153,8 @@ export function createExpenseAccess(
       expenseGroupId: number,
       categoryId: number,
       input: ExpenseInput,
-      submissionId: unknown
+      submissionId: unknown,
+      financingFields?: FormData,
     ) {
       const userId = await requireUserId();
 
@@ -161,6 +174,9 @@ export function createExpenseAccess(
       const merchant = parseMerchant(input.merchant);
       const timeMinutes = parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
+      const financing = payment?.paymentMethod === PaymentMethod.PAY_LATER
+        ? readFinancing(financingFields ?? new FormData(), values.date)
+        : null;
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
       const payload = [categoryId, values.title, values.amountCentavos, values.date];
       // Keep hashes for saved drafts that predate payment selection valid.
@@ -174,6 +190,7 @@ export function createExpenseAccess(
           ...paymentPayload,
           ...(timeMinutes === null ? [] : [{ timeMinutes }]),
           ...(merchant ? [{ merchant }] : []),
+          ...(financing ? [{ financing }] : []),
         ]))
         .digest("hex");
 
@@ -207,7 +224,7 @@ export function createExpenseAccess(
 
           if (payment) await validateBankSelection(tx, expenseGroupId, payment);
 
-          return tx.expense.create({
+          const expense = await tx.expense.create({
             data: {
               ...values,
               merchant,
@@ -227,6 +244,8 @@ export function createExpenseAccess(
               submission: { connect: { expenseGroupId_id: submissionKey } },
             },
           });
+          if (financing) await createFinancedPurchase(tx, userId, expense.id, financing);
+          return expense;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
       } catch (error) {
         if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
@@ -274,21 +293,37 @@ export function createExpenseAccess(
       try {
         const expense = await db.$transaction(async (tx) => {
           const where = { ...ownedExpense, updatedAt };
-          let paymentChanges: (PaymentSelection & { legacyBankName: null }) | undefined;
-          if (payment) {
-            const existingPayment = await tx.expense.findUnique({
-              where,
-              select: { paymentMethod: true, bankAssignmentId: true },
-            });
-            if (!existingPayment) return undefined;
+          const existing = await tx.expense.findUnique({
+            where,
+            select: {
+              paymentMethod: true,
+              bankAssignmentId: true,
+              amountCentavos: true,
+              date: true,
+              repaymentPlan: { select: { id: true } },
+            },
+          });
+          if (!existing) return undefined;
 
-            if (
-              payment.paymentMethod !== existingPayment.paymentMethod ||
-              payment.bankAssignmentId !== existingPayment.bankAssignmentId
-            ) {
-              await validateBankSelection(tx, expenseGroupId, payment);
-              paymentChanges = { ...payment, legacyBankName: null };
-            }
+          const changesPayment = payment && (
+            payment.paymentMethod !== existing.paymentMethod ||
+            payment.bankAssignmentId !== existing.bankAssignmentId
+          );
+          if (existing.repaymentPlan && (
+            changesPayment ||
+            values.amountCentavos !== existing.amountCentavos ||
+            values.date.getTime() !== existing.date.getTime()
+          )) {
+            throw new TypeError("The amount, date, and payment method are tied to this expense's repayment plan.");
+          }
+          if (changesPayment && payment.paymentMethod === PaymentMethod.PAY_LATER) {
+            throw new TypeError("Add a new expense with Pay Later to set up a repayment plan.");
+          }
+
+          let paymentChanges: (PaymentSelection & { legacyBankName: null }) | undefined;
+          if (changesPayment) {
+            await validateBankSelection(tx, expenseGroupId, payment);
+            paymentChanges = { ...payment, legacyBankName: null };
           }
 
           const [updatedExpense] = await tx.expense.updateManyAndReturn({

@@ -23,7 +23,7 @@ export function normalizeReceiptSuggestions(fields: Record<string, unknown>): Re
     merchant: nameSuggestion(fields.merchant),
     date,
     paymentMethod,
-    bank: paymentMethod !== "CASH" && bank && /\p{L}/u.test(bank) ? bank : undefined,
+    bank: paymentMethod !== "CASH" && paymentMethod !== "PAY_LATER" && bank && /\p{L}/u.test(bank) ? bank : undefined,
   };
   if (typeof fields.amount === "string" && fields.amount.length <= 20) {
     try { suggestions.amount = formatPesoInput(parsePesoAmount(fields.amount)); } catch { /* Skip invalid totals. */ }
