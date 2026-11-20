@@ -35,14 +35,22 @@ Use **Loans** for cash loans, financed purchases, and repayments. The feature we
 
 - **Dashboard** shows total outstanding, upcoming and overdue payments, and recent payments.
 - **Loan List** shows one row per cash loan or financed purchase, with the name, type or provider, outstanding balance, and next payment. Select a name to open the loan or repayment plan.
-- **Credit Accounts** shows one row per reusable account, such as SPayLater. Open an account to see its bills and linked purchase plans or record a combined bill payment. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
+- **Credit Accounts** shows provider settings and reusable accounts. Open an account to see its bills and linked purchase plans or record a combined bill payment. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
+
+### Managing credit accounts
+
+Open **Loans → Credit Accounts**, check **SPayLater** under **Shopee**, and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
+
+Uncheck **SPayLater** and save to hide it from new expenses. If you already have an SPayLater account, open **View Account** on the **Shopee** card to see its repayment plans and payment history or record a payment. Re-enabling SPayLater uses the same account.
+
+To add an account for another provider, select **New Credit Account**, enter the account name in the dialog, and select **Create account**.
 
 ### Recording a financed purchase
 
 1. Open **New Expense** in the appropriate expense group and enter the full purchase amount, date, and category.
-2. Choose **Pay Later** as the payment method or apply it from a receipt suggestion. Under **Credit account**, select an existing provider account or choose **Add credit account** and enter the new account name. The **Bank** field is hidden for Pay Later purchases.
+2. Choose **Pay Later** as the payment method or apply it from a receipt suggestion. Under **Credit account**, select an enabled account or choose **Add credit account** and enter the new account name. The **Bank** field is hidden for Pay Later purchases.
 3. Choose the **Term** and enter the due dates and amounts shown by the provider.
 4. Select **Save expense**. RedTally saves the purchase, its linked repayment plan, and any new credit account together. The full purchase counts once toward the expense group’s spending. Find its repayment plan in **Loans → Loan List**.
 

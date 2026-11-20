@@ -62,6 +62,7 @@ Migration `20261115120000_recurring_expenses` adds the schedule and occurrence t
 The Loans workflow persists `Loan`, `PayLaterAccount`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Receiving and funding account names are stored as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans workflows](workflows.md#loans-and-pay-later)
 
 - **Cash loan.** `Loan` has its own owner, lender, terms, and schedule. Its optional `expenseGroupId` must belong to the same user. A linked group opens the same loan record. Purchases funded with loan proceeds count toward group spending as they occur.
+- **Credit account availability.** Each `PayLaterAccount` belongs to a user and can be used across their expense groups. The Shopee setting uses the existing normalized `spaylater` account key. Disabling an account excludes it from new financed purchases. Existing plans, bills, and payments still use the same account. Custom credit accounts remain available.
 - **Financed purchase.** One `Expense` represents the full purchase. Its `RepaymentPlan` belongs to a reusable provider account and gets its expense group from that expense. Each plan has its own schedule and outstanding balance. The provider balance rolls up those same plans.
 - **Payments.** A `LoanPayment` records the actual payment once. Allocations apply it to the covered installments, including installments from different plans on one provider bill. Payment allocations preserve the original purchase amount and reduce outstanding balances.
 - **History.** Duplicating an expense group can copy expense history without creating payable balances. A future correction workflow must preserve recorded payments. Validate ownership on both ends of links between user-owned records.
@@ -125,6 +126,8 @@ Introduce financial-account and transaction storage additively, with a deliberat
 Migration `20261022150000_core_expense_group_model` runs in one transaction. It adds the new tables, adds/backfills each expense's group ID, and strengthens foreign keys. It neither renames nor recreates the original tables, resets sequences, nor changes existing amounts, titles, dates, bank text, categories, or group names. Existing `/spending/[id]` URLs remain supported.
 
 Back up the existing application rows and migration history before applying it. Afterward, compare all original columns per ID, verify the group backfill and null bank assignments, and reconcile counts/totals. Apply migrations before running the new application build, which reads the new optional bank relation. The previous deployed read/create-group workflows remain compatible with the retained physical tables. Older external expense writers would need to supply the new required group ID and are outside this app's current implemented workflows.
+
+Apply `20261120150000_credit_account_availability` before deploying credit account settings. The migration adds `PayLaterAccount.enabled` with a default of `true`, keeping existing accounts available for new expenses.
 
 ## Deferred
 

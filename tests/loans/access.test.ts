@@ -42,6 +42,10 @@ test("cash loans remain private and a provider bill applies once across purchase
     assert.equal(await client.loan.count(), 1);
 
     const account = await client.payLaterAccount.create({ data: { userId: "alice", name: "SPayLater", key: "spaylater" } });
+    const enableProduct = form([["productKey", "spaylater"], ["enabled", "on"]]);
+    const disableProduct = form([["productKey", "spaylater"]]);
+    assert.equal((await loans.setCreditProductEnabled(enableProduct)).id, account.id);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(), [{ id: account.id, name: account.name }]);
     const otherAccount = await client.payLaterAccount.create({ data: { userId: "bob", name: "Other", key: "other" } });
     const expenses = createExpenseAccess(client, async () => "alice");
     const createPurchase = (title: string, amount: string, accountId: string, submissionId: string) => expenses.create(
@@ -59,6 +63,19 @@ test("cash loans remain private and a provider bill applies once across purchase
     const installments = await client.loanInstallment.findMany({ where: { plan: { creditAccountId: account.id } } });
     assert.equal(installments.length, 2);
 
+    await loans.setCreditProductEnabled(disableProduct);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(), []);
+    assert.equal((await loans.getCreditAccount(account.id))?.plans.length, 2);
+    assert.deepEqual(await otherLoans.getEnabledCreditAccounts(), [{ id: otherAccount.id, name: otherAccount.name }]);
+    await assert.rejects(createPurchase("Disabled account", "10", account.id, randomUUID()), /credit account/i);
+    await assert.rejects(expenses.create(
+      group.id, group.categories[0].id,
+      { title: "Disabled account by name", amount: "10", date: "2026-11-20", paymentMethod: "PAY_LATER" }, randomUUID(),
+      form([["creditAccountName", "spaylater"], ["installmentDate", "2026-12-15"], ["installmentAmount", "10"]]),
+    ), /credit account/i);
+    assert.equal((await createPurchase("Paint sprayer", "1200", account.id, sprayerDraft)).id, sprayer.id);
+    assert.equal(await client.expense.count(), 2);
+
     const paymentDraft = form([
       ["submissionId", randomUUID()], ["paidOn", "2026-12-15"], ["fundingAccount", "Checking"], ["amount", "1650"],
       ...installments.flatMap(({ id, amountCentavos }): [string, string][] => [
@@ -74,6 +91,8 @@ test("cash loans remain private and a provider bill applies once across purchase
     const allocations = await client.loanPaymentAllocation.findMany({ where: { paymentId: payment.id } });
     assert.equal(allocations.length, 2);
     assert.equal(allocations.reduce((sum, allocation) => sum + allocation.amountCentavos, 0), 165000);
+    assert.equal((await loans.setCreditProductEnabled(enableProduct)).id, account.id);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(), [{ id: account.id, name: account.name }]);
 
     const expenseGroups = createExpenseGroupAccess(client, async () => "alice");
     await expenseGroups.duplicate(group.id);

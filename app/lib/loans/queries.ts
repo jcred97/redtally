@@ -12,5 +12,6 @@ export const {
   getCashLoan,
   getRepaymentPlan,
   getCreditAccounts,
+  getEnabledCreditAccounts,
   getCreditAccount,
 } = access;

@@ -38,10 +38,16 @@ export async function createFinancedPurchase(
   if (!expense) throw new TypeError("This expense is unavailable for financing.");
   validateInstallmentTotal(financing.installments, expense.amountCentavos);
 
-  const account = "creditAccountId" in financing
-    ? await tx.payLaterAccount.findUnique({ where: { id: financing.creditAccountId, userId }, select: { id: true } })
-    : await saveCreditAccount(tx, userId, financing.creditAccountName);
-  if (!account) throw new TypeError("This credit account is unavailable.");
+  const creditAccountId = "creditAccountId" in financing
+    ? financing.creditAccountId
+    : (await saveCreditAccount(tx, userId, financing.creditAccountName)).id;
+  // Keep availability stable until the expense and its repayment plan commit together.
+  const [account] = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "PayLaterAccount"
+    WHERE id = ${creditAccountId}::uuid AND "userId" = ${userId} AND enabled
+    FOR SHARE
+  `;
+  if (!account) throw new TypeError("This credit account is unavailable for new purchases. Review Credit Accounts in Loans.");
 
   return tx.repaymentPlan.create({
     data: { expenseId, creditAccountId: account.id, installments: { create: financing.installments } },

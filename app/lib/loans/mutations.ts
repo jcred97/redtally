@@ -9,7 +9,7 @@ const access = createLoanAccess(prisma, requireUserId);
 
 export type LoanActionState = { error?: string; success?: boolean; id?: string };
 
-async function submit(operation: () => Promise<{ id: string }>): Promise<LoanActionState> {
+async function submit(operation: () => Promise<{ id?: string }>): Promise<LoanActionState> {
   try {
     const { id } = await operation();
     revalidatePath("/loans");
@@ -31,6 +31,10 @@ export async function createCashLoan(_previous: LoanActionState, formData: FormD
 
 export async function createCreditAccount(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
   return submit(() => access.createCreditAccount(formData));
+}
+
+export async function setCreditProductEnabled(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
+  return submit(() => access.setCreditProductEnabled(formData));
 }
 
 export async function recordLoanPayment(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {

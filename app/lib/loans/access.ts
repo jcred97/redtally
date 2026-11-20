@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { MAX_AMOUNT_CENTAVOS, sumCentavos } from "@/app/lib/expenses/money";
+import { creditProducts } from "./credit-products";
 import { saveCreditAccount } from "./financing";
 import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, readText, validateInstallmentTotal } from "./form";
 
@@ -158,7 +159,14 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
     async getCreditAccounts() {
       const userId = await requireUserId();
       return db.payLaterAccount.findMany({
-        where: { userId }, select: creditAccountSelect, orderBy: { name: "asc" },
+        where: { userId }, select: { ...creditAccountSelect, key: true, enabled: true }, orderBy: { name: "asc" },
+      });
+    },
+
+    async getEnabledCreditAccounts() {
+      const userId = await requireUserId();
+      return db.payLaterAccount.findMany({
+        where: { userId, enabled: true }, select: creditAccountSelect, orderBy: { name: "asc" },
       });
     },
 
@@ -178,6 +186,33 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       const userId = await requireUserId();
       const name = readText(formData.get("name"), "Credit account name");
       return db.$transaction((tx) => saveCreditAccount(tx, userId, name));
+    },
+
+    async setCreditProductEnabled(formData: FormData): Promise<{ id?: string }> {
+      const userId = await requireUserId();
+      const [key, extraKey] = formData.getAll("productKey");
+      const product = creditProducts.find((candidate) => candidate.key === key);
+      const [checked, extraChecked] = formData.getAll("enabled");
+      if (!product || extraKey !== undefined || extraChecked !== undefined ||
+        (checked !== undefined && checked !== "on")) {
+        throw new TypeError("Choose a valid credit product and setting.");
+      }
+
+      if (checked === "on") {
+        // Keep the account ID and history even if another request created it first.
+        const [account] = await db.$queryRaw<{ id: string }[]>`
+          INSERT INTO "PayLaterAccount" ("userId", name, key, enabled)
+          VALUES (${userId}, ${product.name}, ${product.key}, true)
+          ON CONFLICT ("userId", key) DO UPDATE SET enabled = true
+          RETURNING id
+        `;
+        return account;
+      }
+
+      const [account] = await db.payLaterAccount.updateManyAndReturn({
+        where: { userId, key: product.key }, data: { enabled: false }, select: { id: true },
+      });
+      return account ?? {};
     },
 
     async createCashLoan(formData: FormData) {

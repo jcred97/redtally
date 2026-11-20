@@ -232,6 +232,7 @@ model PayLaterAccount {
   user      User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   name      String          @db.VarChar(120)
   key       String          @db.VarChar(120)
+  enabled   Boolean         @default(true)
   plans     RepaymentPlan[]
   createdAt DateTime        @default(now())
 

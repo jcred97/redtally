@@ -1,4 +1,4 @@
-import { getCreditAccounts } from "@/app/lib/loans/queries";
+import { getEnabledCreditAccounts } from "@/app/lib/loans/queries";
 import ExpenseFormDialog from "./ExpenseFormDialog";
 import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
 
@@ -11,7 +11,7 @@ export default async function NewExpenseButton({
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
 }) {
-  const creditAccounts = await getCreditAccounts();
+  const creditAccounts = await getEnabledCreditAccounts();
 
   return (
     <ExpenseFormDialog expenseGroupId={expenseGroupId} categories={categories} bankOptions={bankOptions}
