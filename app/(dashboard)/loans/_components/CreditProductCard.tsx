@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useId, useState } from "react";
+import { useState } from "react";
+import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
+import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import { setCreditProductEnabled } from "@/app/lib/loans/mutations";
-import { loanPanel, primaryAction, secondaryAction } from "./LoanPage";
+import { secondaryAction } from "./LoanPage";
+
+const saveError = "Unable to save credit account settings. Please try again.";
 
 export default function CreditProductCard({
   product,
@@ -13,35 +17,56 @@ export default function CreditProductCard({
   product: { key: string; name: string; provider: string };
   account?: { id: string; enabled: boolean };
 }) {
-  const headingId = useId();
-  const helpId = useId();
+  const title = `${product.provider} · ${product.name}`;
   const savedEnabled = account?.enabled ?? false;
   const [enabled, setEnabled] = useState(savedEnabled);
-  const [result, action, pending] = useActionState(setCreditProductEnabled, {});
-  const changed = savedEnabled !== enabled;
+
+  async function save(formData: FormData) {
+    formData.set("productKey", product.key);
+    const result = await setCreditProductEnabled({}, formData);
+    if (!result.success) {
+      return { error: result.error ?? saveError };
+    }
+    return { success: true } as const;
+  }
 
   return (
-    <section aria-labelledby={headingId} className={loanPanel}>
-      <h2 id={headingId} className="font-semibold">{product.provider}</h2>
-      <form action={action} className="mt-3 space-y-4">
-        <input type="hidden" name="productKey" value={product.key} />
-        <div>
-          <label className="flex min-h-10 items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-medium has-disabled:opacity-60">
-            <Checkbox name="enabled" checked={enabled} disabled={pending} aria-describedby={helpId}
-              onChange={(event) => setEnabled(event.target.checked)} />
-            {product.name}
-          </label>
-          <p id={helpId} className="mt-2 text-sm text-gray-400">Make this account available for new Pay Later expenses across your expense groups.</p>
-        </div>
-        {result.error && changed && <p role="alert" className="text-sm text-red-300">{result.error}</p>}
-        {result.success && !changed && <p role="status" className="sr-only">Credit account settings saved.</p>}
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={pending || !changed} className={primaryAction}>
-            {pending ? "Saving…" : "Save changes"}
-          </button>
-          {account && <Link href={`/loans/accounts/${account.id}`} className={secondaryAction}>View Account</Link>}
-        </div>
-      </form>
-    </section>
+    <div className="flex h-full flex-wrap items-center rounded-lg border border-gray-800 bg-gray-900">
+      <FormDialog
+        triggerLabel={(
+          <>
+            <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-gray-700 text-xs font-semibold uppercase text-gray-100">
+              {product.provider.slice(0, 2)}
+            </span>
+            <span className="min-w-0">
+              <span className="block wrap-anywhere font-medium">{title}</span>
+              <span className={`mt-1 block ${savedEnabled ? "text-emerald-400" : "text-gray-400"}`}>
+                {savedEnabled ? "Enabled" : "Not enabled"}
+              </span>
+            </span>
+          </>
+        )}
+        triggerClassName="flex min-w-0 flex-1 basis-40 cursor-pointer items-center gap-3 self-stretch rounded-lg px-4 py-3 text-left text-sm transition-colors hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+        title={title}
+        description="Make this account available for new Pay Later expenses across your expense groups."
+        onOpenAction={() => setEnabled(savedEnabled)}
+        submitDisabled={savedEnabled === enabled}
+        submitLabel="Save changes"
+        pendingLabel="Saving…"
+        pendingMessage="Saving credit account settings…"
+        failureMessage={saveError}
+        submitAction={save}
+      >
+        <label className={`flex min-h-10 items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 ${fieldLabelClass}`}>
+          <Checkbox name="enabled" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
+          Enable {product.name}
+        </label>
+      </FormDialog>
+      {account && (
+        <Link href={`/loans/accounts/${account.id}`} aria-label={`View account for ${title}`} className={`${secondaryAction} m-2`}>
+          View Account
+        </Link>
+      )}
+    </div>
   );
 }

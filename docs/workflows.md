@@ -35,17 +35,17 @@ Use **Loans** for cash loans, financed purchases, and repayments. The feature we
 
 - **Dashboard** shows total outstanding, upcoming and overdue payments, and recent payments.
 - **Loan List** shows one row per cash loan or financed purchase, with the name, type or provider, outstanding balance, and next payment. Select a name to open the loan or repayment plan.
-- **Credit Accounts** shows provider settings and reusable accounts. Open an account to see its bills and linked purchase plans or record a combined bill payment. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
+- **Credit Accounts** shows provider settings and reusable accounts in a grid like the **Banks** tab. Open an account to see its bills and linked purchase plans or record a combined bill payment. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
 
 ### Managing credit accounts
 
-Open **Loans → Credit Accounts**, check **SPayLater** under **Shopee**, and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
+Open **Loans → Credit Accounts** and select the **Shopee · SPayLater** card to open its settings. Check **Enable SPayLater** and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
 
-Uncheck **SPayLater** and save to hide it from new expenses. If you already have an SPayLater account, open **View Account** on the **Shopee** card to see its repayment plans and payment history or record a payment. Re-enabling SPayLater uses the same account.
+Clear **Enable SPayLater** in settings and save to hide it from new expenses. Once an SPayLater account exists, **View Account** opens its repayment plans and payment history and lets you record a payment even when the account is disabled. Re-enabling SPayLater uses the same account.
 
-To add an account for another provider, select **New Credit Account**, enter the account name in the dialog, and select **Create account**.
+To add an account for another provider, select **New Credit Account**, enter the account name in the dialog, and select **Create account**. Select the new account's card to open it.
 
 ### Recording a financed purchase
 
@@ -64,7 +64,7 @@ Purchases funded with cash-loan proceeds count toward group spending as they occ
 
 ### Recording repayments
 
-Use **Record Payment** from a cash loan or financed purchase. To record a provider bill payment, open **Loans → Credit Accounts**, select the account, and choose **Record Bill Payment**. Enter the funding bank account or wallet name. If one provider bill covers multiple purchases, record the payment once and allocate it to the installments it covers. The allocations reduce outstanding balances and preserve the original expense amounts.
+Use **Record Payment** from a cash loan or financed purchase. To record a provider bill payment, open **Loans → Credit Accounts**, select **View Account** for SPayLater or open a custom account card, then choose **Record Bill Payment**. Enter the funding bank account or wallet name. If one provider bill covers multiple purchases, record the payment once and allocate it to the installments it covers. The allocations reduce outstanding balances and preserve the original expense amounts.
 
 For example, a ₱3,600 paint sprayer bought with SPayLater appears once in Renovation spending. A ₱1,650 provider bill payment can cover a ₱1,200 sprayer installment and a ₱450 drill installment. The cash loan used for Renovation stays a separate entry in **Loan List**.
 
