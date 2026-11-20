@@ -3,9 +3,10 @@ import { getLoans } from "@/app/lib/loans/queries";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoAmount, sumCentavos } from "@/app/lib/expenses/money";
 import LoanList, { type LoanListRow } from "./_components/LoanList";
-import LoanPage, { LoanFacts, primaryAction, secondaryAction } from "./_components/LoanPage";
+import LoanPage, { LoanFacts, primaryAction } from "./_components/LoanPage";
 import { PaymentHistory } from "./_components/LoanPayments";
-import { collectPayments, loanListHref, manilaDueWindow, summarizeInstallments } from "./_lib/display";
+import LoanTabs from "./_components/LoanTabs";
+import { collectPayments, manilaDueWindow, summarizeInstallments } from "./_lib/display";
 
 export default async function LoansPage({
   searchParams,
@@ -36,22 +37,10 @@ export default async function LoansPage({
 
   return (
     <LoanPage title="Loans">
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-2 border-b border-gray-800">
-        <nav aria-label="Loans views" className="flex flex-wrap">
-          {[
-            { label: "Dashboard", href: "/loans", current: !showList },
-            { label: "Loan List", href: loanListHref, current: showList },
-          ].map(({ label, href, current }) => (
-            <Link key={label} href={href} aria-current={current ? "page" : undefined} className={`-mb-px border-b-2 px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 sm:px-4 ${current ? "border-red-500 text-white" : "border-transparent text-gray-400 hover:text-white"}`}>
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex flex-wrap gap-2 pb-2">
-          {showList && <Link href="/loans/accounts" className={secondaryAction}>Manage Credit Accounts</Link>}
-          <Link href="/loans/new" className={`${primaryAction} hover:bg-red-600`}>Add Loan</Link>
-        </div>
-      </div>
+      <LoanTabs
+        current={showList ? "list" : "dashboard"}
+        action={<Link href="/loans/new" className={`${primaryAction} hover:bg-red-600`}>Add Loan</Link>}
+      />
       <div className="mt-5 space-y-4">
         {showList ? (
           <LoanList rows={rows} emptyMessage="No loans or financed purchases yet. Add a cash loan here or choose Pay Later when recording an expense." />

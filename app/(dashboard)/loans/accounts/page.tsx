@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { getCreditAccounts } from "@/app/lib/loans/queries";
 import CreditAccountForm from "../_components/CreditAccountForm";
-import LoanPage, { backToLoanList, loanLink, loanPanel } from "../_components/LoanPage";
+import LoanPage, { loanLink, loanPanel } from "../_components/LoanPage";
+import LoanTabs from "../_components/LoanTabs";
 
 export default async function CreditAccountsPage() {
   const accounts = await getCreditAccounts();
 
   return (
-    <LoanPage title="Credit Accounts" back={backToLoanList}>
-      <div className="mt-4 max-w-xl space-y-4">
+    <LoanPage title="Loans">
+      <LoanTabs current="accounts" />
+      <div className="mt-5 max-w-xl space-y-4">
         <CreditAccountForm />
         {accounts.length ? (
           <ul aria-label="Credit accounts" className={`${loanPanel} divide-y divide-gray-800`}>

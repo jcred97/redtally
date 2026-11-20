@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. **Loans** has a dashboard and one list row per cash loan or financed purchase. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. **Loans** has **Dashboard**, **Loan List**, and **Credit Accounts** tabs. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 

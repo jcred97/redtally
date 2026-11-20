@@ -35,7 +35,7 @@ Use **Loans** for cash loans, financed purchases, and repayments. The feature we
 
 - **Dashboard** shows total outstanding, upcoming and overdue payments, and recent payments.
 - **Loan List** shows one row per cash loan or financed purchase, with the name, type or provider, outstanding balance, and next payment. Select a name to open the loan or repayment plan.
-- **Manage Credit Accounts** opens reusable provider accounts such as SPayLater. Select an account to see its bills and linked plans. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
+- **Credit Accounts** shows one row per reusable account, such as SPayLater. Open an account to see its bills and linked purchase plans or record a combined bill payment. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
 
@@ -56,7 +56,7 @@ Purchases funded with cash-loan proceeds count toward group spending as they occ
 
 ### Recording repayments
 
-Use **Record Payment** from a cash loan or financed purchase, or **Record Bill Payment** from a provider account. Enter the funding bank account or wallet name. If one provider bill covers multiple purchases, record the payment once and allocate it to the installments it covers. The allocations reduce outstanding balances and preserve the original expense amounts.
+Use **Record Payment** from a cash loan or financed purchase. To record a provider bill payment, open **Loans → Credit Accounts**, select the account, and choose **Record Bill Payment**. Enter the funding bank account or wallet name. If one provider bill covers multiple purchases, record the payment once and allocate it to the installments it covers. The allocations reduce outstanding balances and preserve the original expense amounts.
 
 For example, a ₱3,600 paint sprayer bought with SPayLater appears once in Renovation spending. A ₱1,650 provider bill payment can cover a ₱1,200 sprayer installment and a ₱450 drill installment. The cash loan used for Renovation stays a separate entry in **Loan List**.
 
