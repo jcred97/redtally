@@ -2,7 +2,7 @@ import Skeleton from "@/app/components/feedback/Skeleton";
 
 export default function ExpenseGroupSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 text-white sm:px-6">
+    <div className="mx-auto w-full max-w-7xl flex-1 px-4 text-white sm:px-6">
       <p role="status" className="sr-only">
         Loading expense group...
       </p>
@@ -12,16 +12,14 @@ export default function ExpenseGroupSkeleton() {
           <Skeleton className="h-8 w-44 sm:h-9 sm:w-52" />
           <Skeleton className="h-6 w-20 shrink-0" />
         </div>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-1 border-b border-gray-800 sm:mt-6 sm:gap-4">
-          <div className="flex flex-wrap text-sm font-medium text-gray-400">
-            <span className="px-2.5 py-3 sm:px-4">Dashboard</span>
-            <span className="px-2.5 py-3 sm:px-4">Expenses</span>
-            <span className="px-2.5 py-3 sm:px-4">Recurring</span>
-            <span className="px-2.5 py-3 sm:px-4">Categories</span>
-            <span className="px-2.5 py-3 sm:px-4">Payment Provider</span>
+        <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[1fr_auto] lg:gap-6 lg:border-b lg:border-gray-800">
+          <div className="flex flex-wrap border-b border-gray-800 text-sm font-medium text-gray-400 lg:min-h-14 lg:border-b-0">
+            {["Dashboard", "Expenses", "Recurring", "Categories", "Payment Provider"].map((label) => (
+              <span key={label} className="-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 border-transparent px-2.5 sm:px-4">{label}</span>
+            ))}
           </div>
-          <div className="ml-auto pb-2">
-            <Skeleton className="h-8 w-24 rounded-lg sm:h-9 sm:w-32" />
+          <div className="mt-3 flex justify-end lg:my-2 lg:self-center">
+            <Skeleton className="h-10 w-32 rounded-lg" />
           </div>
         </div>
       </header>
@@ -43,20 +41,14 @@ export default function ExpenseGroupSkeleton() {
           </div>
         </div>
         <div aria-hidden="true" className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <span className="text-lg font-semibold">Expenses</span>
-          <Skeleton className="h-10 w-44 rounded-lg" />
+          <span className="text-lg font-semibold sm:mr-auto">Expenses</span>
+          <Skeleton className="h-10 w-44 rounded-lg sm:order-last" />
+          <div className="flex flex-wrap gap-2 max-sm:basis-full">
+            <Skeleton className="h-10 w-32 rounded-lg" />
+            <Skeleton className="h-10 w-32 rounded-lg" />
+          </div>
         </div>
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {["Total Spent", "Expenses", "Group categories"].map((label) => (
-            <div
-              key={label}
-              className="rounded-xl border border-gray-800 bg-gray-900 p-5"
-            >
-              <p className="mb-1 text-sm text-gray-400">{label}</p>
-              <Skeleton className="h-8 w-28" />
-            </div>
-          ))}
-        </div>
+        <Skeleton className="mb-2 h-5 w-44" />
 
         <div aria-hidden="true">
           <div aria-hidden="true" className="space-y-3 sm:hidden">

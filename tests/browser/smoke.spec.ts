@@ -114,9 +114,16 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
 test("Dashboard selects an owned scope, reconciles reports, and opens group history", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 750 });
   await page.goto("/");
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  const openNavigation = page.getByRole("button", { name: "Open navigation" });
+  const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
+  const navigation = drawer.getByRole("navigation", { name: "Main navigation" });
+  await expect(drawer).toBeHidden();
+  await openNavigation.click();
   await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups", "Loans"]);
   await expect(navigation.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(openNavigation).toBeFocused();
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   const filters = page.getByRole("form", { name: "Dashboard filters" });
   const groupPicker = filters.locator("summary");
@@ -173,7 +180,10 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   await recent.click();
   await expect.poll(() => new URL(page.url()).pathname).toBe(`/spending/${data.dashboard.unbudgeted}`);
   await expect(page.getByRole("heading", { name: "Work groceries", exact: true })).toBeVisible();
+  await openNavigation.click();
   await expect(navigation.getByRole("link", { name: "Expense Groups" })).toHaveAttribute("aria-current", "location");
+  await drawer.getByRole("button", { name: "Close navigation" }).click();
+  await expect(drawer).toBeHidden();
 
   await page.goto(`/?month=${data.dashboard.month}&scope=1&group=${data.foreign.publicId}`);
   await expect(page.getByRole("heading", { name: "No expense groups selected" })).toBeVisible();
@@ -257,15 +267,17 @@ test("empty expense group guides the first category and expense", async ({ page 
 
   const history = page.getByRole("region", { name: "Expenses", exact: true });
   await expect(history.getByText("No expenses yet", { exact: true })).toBeVisible();
-  await expect(history.getByText("Create a category to start recording expenses.")).toBeVisible();
+  await expect(history.getByText("Select + New Category to start recording expenses.")).toBeVisible();
   await expect(history.getByRole("link", { name: "All months", exact: true })).toHaveCount(0);
-  await history.getByRole("link", { name: "Go to Categories", exact: true }).click();
+  const expenseGroupUrl = page.url();
   await page.getByRole("button", { name: "+ New Category", exact: true }).click();
   const category = page.getByRole("dialog", { name: "New Category", exact: true });
   await category.getByLabel("Name", { exact: true }).fill("First category");
   await category.getByRole("button", { name: "Create", exact: true }).click();
   await expect(category).not.toBeVisible();
-  await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  await expect(page).toHaveURL(expenseGroupUrl);
+  await expect(page.getByRole("navigation", { name: "Expense group views" })
+    .getByRole("link", { name: "Expenses", exact: true })).toBeFocused();
 
   await expect(history.getByText("No expenses yet", { exact: true })).toBeVisible();
   await expect(history.getByText("Select + New Expense to add your first expense.")).toBeVisible();

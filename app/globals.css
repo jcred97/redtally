@@ -39,6 +39,21 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+html:has(.mobile-navigation-drawer[open]) {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-navigation-drawer[open] > div {
+    animation: mobile-navigation-in 180ms ease-out;
+  }
+}
+
+@keyframes mobile-navigation-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
 @utility button-secondary {
   border: 1px solid transparent;
   background-color: color-mix(in srgb, var(--color-red-500) 14%, var(--color-gray-900));

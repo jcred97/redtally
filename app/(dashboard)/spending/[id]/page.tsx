@@ -18,10 +18,9 @@ import ExpenseCategories from "./_components/categories/ExpenseCategories";
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
 import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
 import { getDashboard } from "./_lib/dashboard/queries";
-import ImportExpensesButton from "./_components/expenses/ImportExpensesButton";
-import ExportExpensesButton from "./_components/expenses/ExportExpensesButton";
 import NewCategoryButton from "./_components/categories/NewCategoryButton";
 import NewExpenseButton from "./_components/expenses/NewExpenseButton";
+import RecurringExpenseDialog from "./_components/recurring-expenses/RecurringExpenseDialog";
 import RecurringExpenses from "./_components/recurring-expenses/RecurringExpenses";
 import {
   getExpenseGroupById,
@@ -82,9 +81,19 @@ export default async function ExpenseGroupPage({
   const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
+  const activeTabId = "expense-group-active-tab";
+
+  let primaryAction = null;
+  if (showCategories || ((showExpenses || showDashboard) && categoryOptions.length === 0)) {
+    primaryAction = <NewCategoryButton expenseGroupId={id} successFocusId={showCategories ? undefined : activeTabId} />;
+  } else if (showExpenses || showDashboard) {
+    primaryAction = <NewExpenseButton expenseGroupId={id} categories={categoryOptions} bankOptions={bankOptions} />;
+  } else if (showRecurring && categoryOptions.length > 0) {
+    primaryAction = <RecurringExpenseDialog expenseGroupId={id} categories={categoryOptions} banks={bankOptions} today={today} />;
+  }
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 text-white sm:px-6">
+    <div className="mx-auto w-full max-w-7xl flex-1 px-4 text-white sm:px-6">
       <header className="pt-6">
         <div className="flex items-center justify-between gap-4">
           <ExpenseGroupSwitcher
@@ -95,8 +104,8 @@ export default async function ExpenseGroupPage({
           />
           <ExpenseGroupSettings key={`settings-${expenseGroup.id}`} group={currentGroup} tabSuffix={tabSuffix} />
         </div>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-1 border-b border-gray-800 sm:mt-6 sm:gap-4">
-          <nav aria-label="Expense group views" className="flex flex-wrap">
+        <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[1fr_auto] lg:gap-6 lg:border-b lg:border-gray-800">
+          <nav aria-label="Expense group views" className="flex flex-wrap border-b border-gray-800 lg:min-h-14 lg:border-b-0">
             {[
               { label: "Dashboard", href: groupPath + dashboardTab, current: showDashboard },
               { label: "Expenses", href: expensesHref, current: showExpenses },
@@ -107,24 +116,17 @@ export default async function ExpenseGroupPage({
               <Link
                 key={label}
                 href={href}
+                id={current ? activeTabId : undefined}
                 aria-current={current ? "page" : undefined}
-                className={`-mb-px border-b-2 px-2.5 py-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 sm:px-4 ${current ? "border-red-500 text-white" : "border-transparent text-gray-400 hover:text-white"}`}
+                className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 sm:px-4 ${current ? "border-red-500 text-white" : "border-transparent text-gray-400 hover:text-white"}`}
               >
                 {label}
               </Link>
             ))}
           </nav>
-          {(showExpenses || showCategories) && (
-            <div className="ml-auto min-w-0 pb-2 [&_button]:ml-auto [&_button]:whitespace-nowrap [&_p]:text-right max-sm:[&_button]:px-2.5 max-sm:[&_button]:text-xs">
-              {showCategories ? (
-                <NewCategoryButton expenseGroupId={expenseGroup.id} />
-              ) : (
-                <div className="flex flex-wrap items-start justify-end gap-2 [&_button]:ml-0">
-                  <ImportExpensesButton key={expenseGroup.id} expenseGroupId={expenseGroup.id} categories={categoryOptions} />
-                  <ExportExpensesButton exportHref={`${groupPath}/export?${view.filterQuery}`} />
-                  <NewExpenseButton expenseGroupId={expenseGroup.id} categories={categoryOptions} bankOptions={bankOptions} />
-                </div>
-              )}
+          {primaryAction && (
+            <div key={id} className="mt-3 flex justify-end lg:my-2 lg:self-center [&_button]:min-h-10 [&_button]:focus-visible:outline-2 [&_button]:focus-visible:outline-offset-2 [&_button]:focus-visible:outline-red-400">
+              {primaryAction}
             </div>
           )}
         </div>
@@ -137,8 +139,6 @@ export default async function ExpenseGroupPage({
             groupPath={groupPath}
             expenseGroupId={id}
             currentMonth={currentMonth}
-            categories={categoryOptions}
-            bankOptions={bankOptions}
             linkedLoans={linkedLoans}
           />
         ) : expensePage ? (

@@ -6,6 +6,8 @@ import type { getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expe
 import type { ExpenseGroupLinks, ExpenseGroupView } from "../../_lib/navigation";
 import ExpenseHistory from "./ExpenseHistory";
 import ExpenseHistoryFilters from "./ExpenseHistoryFilters";
+import ExportExpensesButton from "./ExportExpensesButton";
+import ImportExpensesButton from "./ImportExpensesButton";
 
 type ExpensesTabProps = {
   expenseGroupId: number;
@@ -21,7 +23,8 @@ type ExpensesTabProps = {
 
 export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
   const { day, month, through, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
-  const { groupPath, expenseTab, categoriesTab, allMonthsHref } = links;
+  const { groupPath, expenseTab, allMonthsHref } = links;
+  const { totalExpenses, totalCentavos } = expensePage;
   const firstExpense = historyAvailability === "none";
   const thisMonthOnly = month === currentMonth && !day && !through && !hasOtherFilters;
   const emptyStateTitle = firstExpense
@@ -44,8 +47,8 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
       />
       <section aria-labelledby="expense-history-title">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 id="expense-history-title" tabIndex={-1} className="text-lg font-semibold">Expenses</h2>
-          <nav aria-label="Expense history view" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">
+          <h2 id="expense-history-title" tabIndex={-1} className="text-lg font-semibold sm:mr-auto">Expenses</h2>
+          <nav aria-label="Expense history view" className="inline-flex shrink-0 gap-0.5 rounded-lg border border-gray-800 p-0.5 sm:order-last">
             {[
               { label: "Table", grouped: false },
               { label: "Grouped by day", grouped: true },
@@ -65,44 +68,34 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
               );
             })}
           </nav>
-        </header>
-        {!grouped && (
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-1 text-sm text-gray-400">Total Spent</p>
-              <p className="text-2xl font-bold">
-                {formatPesoAmount(expensePage.totalCentavos)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-1 text-sm text-gray-400">Expenses</p>
-              <p className="text-2xl font-bold">{expensePage.totalExpenses}</p>
-            </div>
-            <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-              <p className="mb-1 text-sm text-gray-400">Group categories</p>
-              <p className="text-2xl font-bold">{categories.length}</p>
-            </div>
+          <div className="flex flex-wrap items-start gap-2 max-sm:basis-full [&_button]:min-h-10">
+            <ImportExpensesButton key={expenseGroupId} expenseGroupId={expenseGroupId} categories={categories} />
+            <ExportExpensesButton exportHref={`${groupPath}/export?${filterQuery}`} />
           </div>
+        </header>
+        {!grouped && totalExpenses > 0 && (
+          <p className="mb-2 text-sm text-gray-400 tabular-nums">
+            {totalExpenses} {totalExpenses === 1 ? "matching expense" : "matching expenses"} · {formatPesoAmount(totalCentavos)} total
+          </p>
         )}
 
-        {expensePage.totalExpenses === 0 ? (
+        {totalExpenses === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-gray-800 bg-gray-900">
               <span className="text-2xl">💸</span>
             </div>
             <p className="font-medium text-gray-300">{emptyStateTitle}</p>
-            {firstExpense && (categories.length === 0 ? (
-              <>
-                <p className="mt-1 text-sm text-gray-400">Create a category to start recording expenses.</p>
-                <Link href={groupPath + categoriesTab} className="mt-3 text-sm text-gray-300 underline underline-offset-4 hover:text-white">
-                  Go to Categories
-                </Link>
-              </>
-            ) : (
-              <p className="mt-1 text-sm text-gray-400">
-                Select <strong className="font-medium text-gray-300">+ New Expense</strong> to add your first expense.
-              </p>
-            ))}
+            {firstExpense && (
+              categories.length === 0 ? (
+                <p className="mt-1 text-sm text-gray-400">
+                  Select <strong className="font-medium text-gray-300">+ New Category</strong> to start recording expenses.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-gray-400">
+                  Select <strong className="font-medium text-gray-300">+ New Expense</strong> to add your first expense.
+                </p>
+              )
+            )}
             {historyAvailability === "older" && (
               <Link href={allMonthsHref} className="mt-3 text-sm text-gray-300 underline underline-offset-4 hover:text-white">
                 All months
@@ -116,7 +109,7 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
             categories={categories}
             bankOptions={bankOptions}
             expenses={expensePage.expenses}
-            groupedSummary={grouped ? { day, month, through, totalExpenses: expensePage.totalExpenses, totalCentavos: expensePage.totalCentavos } : undefined}
+            groupedSummary={grouped ? { day, month, through, totalExpenses, totalCentavos } : undefined}
             page={expensePage.page}
             totalPages={expensePage.totalPages}
             filterQuery={filterQuery}

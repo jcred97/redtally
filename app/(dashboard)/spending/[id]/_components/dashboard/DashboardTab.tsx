@@ -3,32 +3,21 @@ import Link from "next/link";
 import DashboardMonthNavigation from "./DashboardMonthNavigation";
 import ExpenseDashboard from "./ExpenseDashboard";
 import MonthlyBudgetCard from "./MonthlyBudgetCard";
-import NewCategoryButton from "../categories/NewCategoryButton";
-import NewExpenseButton from "../expenses/NewExpenseButton";
 
 type DashboardTabProps = {
   dashboard: ComponentProps<typeof ExpenseDashboard>["dashboard"];
   groupPath: string;
   expenseGroupId: number;
   currentMonth: string;
-  categories: ComponentProps<typeof NewExpenseButton>["categories"];
-  bankOptions: ComponentProps<typeof NewExpenseButton>["bankOptions"];
   linkedLoans: ReadonlyArray<{ id: string; title: string }>;
 };
 
-export default function DashboardTab({ dashboard, groupPath, expenseGroupId, currentMonth, categories, bankOptions, linkedLoans }: DashboardTabProps) {
+export default function DashboardTab({ dashboard, groupPath, expenseGroupId, currentMonth, linkedLoans }: DashboardTabProps) {
   return (
     <>
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-3 sm:gap-x-6">
+      <div className="mb-5">
         <DashboardMonthNavigation groupPath={groupPath} month={dashboard.month} currentMonth={currentMonth} />
-        <div className="[&_button]:min-h-11">
-          {categories.length > 0 ? (
-            <NewExpenseButton key={expenseGroupId} expenseGroupId={expenseGroupId} categories={categories} bankOptions={bankOptions} />
-          ) : (
-            <NewCategoryButton key={expenseGroupId} expenseGroupId={expenseGroupId} />
-          )}
-        </div>
-      </header>
+      </div>
       <ExpenseDashboard
         dashboard={dashboard}
         groupPath={groupPath}

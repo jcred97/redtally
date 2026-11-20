@@ -27,6 +27,7 @@ type FormDialogProps = {
   triggerClassName?: string;
   destructive?: boolean;
   returnFocusId?: string;
+  successFocusId?: string;
   title: string;
   description?: string;
   dialogSize?: keyof typeof dialogWidths;
@@ -52,6 +53,7 @@ export default function FormDialog({
   triggerClassName,
   destructive = false,
   returnFocusId,
+  successFocusId,
   title,
   description,
   dialogSize = "default",
@@ -69,6 +71,7 @@ export default function FormDialog({
   const dialogId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const focusOnCloseId = useRef<string | undefined>(undefined);
   const submitting = useRef(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -102,6 +105,7 @@ export default function FormDialog({
     }
 
     onOpenAction();
+    focusOnCloseId.current = undefined;
     setError("");
     setOpen(true);
   }
@@ -115,6 +119,13 @@ export default function FormDialog({
   }
 
   function restoreTriggerFocus() {
+    const focusId = focusOnCloseId.current;
+    const focusTarget = focusId ? document.getElementById(focusId) : null;
+    if (focusTarget) {
+      focusTarget.focus();
+      return;
+    }
+
     const trigger = triggerRef.current;
 
     if (trigger?.getClientRects().length) {
@@ -183,6 +194,7 @@ export default function FormDialog({
         if (result && "error" in result) {
           setError(result.error);
         } else if (result && "success" in result) {
+          focusOnCloseId.current = successFocusId;
           dialogRef.current?.close();
           // A server refresh can replace the dialog before its native close event arrives.
           handleClose();

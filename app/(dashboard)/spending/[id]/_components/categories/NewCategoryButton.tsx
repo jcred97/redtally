@@ -5,8 +5,10 @@ import { createCategory } from "@/app/(dashboard)/_lib/categories/mutations";
 
 export default function NewCategoryButton({
   expenseGroupId,
+  successFocusId,
 }: {
   expenseGroupId: number;
+  successFocusId?: string;
 }) {
   async function createCategoryInGroup(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
@@ -17,6 +19,7 @@ export default function NewCategoryButton({
   return (
     <CreateNameDialog
       triggerLabel="+ New Category"
+      successFocusId={successFocusId}
       title="New Category"
       description="Categories organize the expenses in this group."
       placeholder="e.g. Food or Transport"

@@ -8,6 +8,7 @@ import { fieldLabelClass } from "@/app/components/forms/field-styles";
 type CreateNameDialogProps = {
   triggerLabel: ReactNode;
   triggerVariant?: "primary" | "menu";
+  successFocusId?: string;
   title: string;
   description: string;
   placeholder: string;
