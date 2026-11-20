@@ -12,7 +12,8 @@ test.beforeAll(async () => {
     'INSERT INTO "Spending" (name, "userId", "updatedAt") VALUES ($1, $2, now()) RETURNING id, "publicId"',
     ["Bank dropdown browser tests", data.userId],
   )).rows[0];
-  await db.query('INSERT INTO "Category" (name, "spendingId") VALUES ($1, $2)', ["Bank test category", group.id]);
+  await db.query('INSERT INTO "Category" (name, "spendingId") VALUES ($1, $3), ($2, $3)',
+    ["Bank test category", "Secondary test category", group.id]);
   assignments = [];
   for (const name of ["Browser Alpha Bank", "Browser Zulu Bank"]) {
     const bank = (await db.query<{ id: number }>(
@@ -160,19 +161,27 @@ test("bank menu dismisses on Tab and outside click and clears when payment metho
   await expect(dialog.locator('input[name="bankAssignmentId"]')).toHaveValue("");
 });
 
-test("recurring expense requires a category and saves keyboard-selected category and bank", async ({ page }) => {
+test("recurring expense defaults to the first category and saves a different category and bank", async ({ page }) => {
   await page.getByRole("link", { name: "Recurring", exact: true }).click();
   await page.getByRole("button", { name: "+ New Recurring Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New recurring expense", exact: true });
+  const bank = dialog.getByRole("combobox", { name: "Bank (optional)", exact: true });
+  await expect(bank).toBeDisabled();
+  await expect(bank).toHaveAccessibleDescription("Select a method first.");
   await dialog.getByLabel("Title", { exact: true }).fill("Recurring bank selection");
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("2.50");
   await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
   const create = dialog.getByRole("button", { name: "Create schedule", exact: true });
   const category = dialog.getByRole("combobox", { name: "Category", exact: true });
-  const submitted = () => db.query<{ bankAssignmentId: number; category: string }>(
+  const submitted = () => db.query<{ bankAssignmentId: number | null; category: string }>(
     'SELECT r."bankAssignmentId", c.name AS category FROM "RecurringExpense" r JOIN "Category" c ON c.id = r."categoryId" WHERE r."expenseGroupId" = $1 AND r.title = $2',
     [group.id, "Recurring bank selection"],
   );
+  await expect(category).toHaveText("Bank test category");
+  await category.press("Home");
+  await category.press("Enter");
+  await expect(category).toHaveText("Select a category");
+
   let submissions = 0;
   page.on("request", (request) => {
     if (request.method() === "POST" && request.headers()["next-action"]) submissions++;
@@ -186,16 +195,32 @@ test("recurring expense requires a category and saves keyboard-selected category
 
   await category.press("End");
   await category.press("Enter");
-  await expect(category).toHaveText("Bank test category");
+  await expect(category).toHaveText("Secondary test category");
   await expect(category).not.toHaveAttribute("aria-invalid", "true");
   await choosePaymentMethod(dialog, "Bank transfer");
-  const bank = dialog.getByRole("combobox", { name: "Bank (optional)", exact: true });
   await bank.click();
   await dialog.getByRole("option", { name: assignments[1].name, exact: true }).click();
   await expect(dialog.locator('input[name="bankAssignmentId"]')).toHaveValue(String(assignments[1].id));
   await create.click();
   await expect(dialog).not.toBeVisible();
   await expect.poll(async () => (await submitted()).rows).toEqual([
-    { bankAssignmentId: assignments[1].id, category: "Bank test category" },
+    { bankAssignmentId: assignments[1].id, category: "Secondary test category" },
+  ]);
+
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.getByRole("button", { name: "Edit recurring expense: Recurring bank selection", exact: true }).click();
+  const edit = page.getByRole("dialog", { name: "Edit recurring expense", exact: true });
+  const editBank = edit.getByRole("combobox", { name: "Bank (optional)", exact: true });
+  await expect(edit.getByLabel("Start date", { exact: true })).toHaveValue("2099-01-01");
+  await expect(edit.getByRole("combobox", { name: "Category", exact: true })).toHaveText("Secondary test category");
+  await expect(editBank).toHaveText(assignments[1].name);
+  await choosePaymentMethod(edit, "Cash");
+  await expect(editBank).toBeDisabled();
+  await expect(editBank).toHaveText("No bank");
+  await expect(editBank).toHaveAccessibleDescription("Unavailable for cash.");
+  await edit.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(edit).not.toBeVisible();
+  await expect.poll(async () => (await submitted()).rows).toEqual([
+    { bankAssignmentId: null, category: "Secondary test category" },
   ]);
 });

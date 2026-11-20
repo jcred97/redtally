@@ -341,8 +341,7 @@ test("a lost schedule response can be retried from the dialog and posts one expe
   const dialog = page.getByRole("dialog", { name: "New recurring expense", exact: true });
   await dialog.getByLabel("Title", { exact: true }).fill(title);
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("15.25");
-  await dialog.getByRole("combobox", { name: "Category", exact: true }).click();
-  await dialog.getByRole("option", { name: "Food", exact: true }).click();
+  await expect(dialog.getByRole("combobox", { name: "Category", exact: true })).toHaveText("Food");
   const startDay = await dialog.getByLabel("Start date", { exact: true }).inputValue();
   await dialog.getByLabel("End date (optional)", { exact: true }).fill(startDay);
 
