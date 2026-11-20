@@ -1,6 +1,6 @@
 # Pay Later and Loans design notes
 
-The first Loans workflow covers cash loans, purchases financed through SPayLater or another provider, and repayments. Receiving and funding account names are entered manually. Ledger-backed disbursements and repayments remain part of the wider financial accounts work. [Phase 2 roadmap](roadmap.md#phase-2-financial-accounts-income-and-bills)
+The Loans workflow covers cash loans, purchases financed through SPayLater or another provider, and repayments. It went live on November 20, 2026 after the production migration. The signed-in Loan List was verified. Receiving and funding account names are entered manually. Ledger-backed disbursements and repayments remain part of the wider financial accounts work. [Production rollout](../README.md#loans-production-rollout) · [Phase 2 roadmap](roadmap.md#phase-2-financial-accounts-income-and-bills)
 
 ## Loans navigation
 
@@ -37,7 +37,7 @@ User
         └── Installments
 ```
 
-`Loan` is a first-class, user-owned record. A cash loan can use an optional `expenseGroupId` when it funds a specific purpose. The group can show **View Loan**, which opens the same loan details shown in the Loan List. Each financed purchase has a plan under a reusable provider account. Its expense group comes from the linked expense, so the user selects the group once. These relationships cover grouping by purpose and credit account. A separate `LoanGroup` can wait until users need custom collections spanning lenders. These are domain relationships. Exact Prisma tables and the integration with balance-bearing financial accounts remain open. [Planned financial data model](data-model.md#planned-financial-model-dependencies)
+`Loan` is a first-class, user-owned record. A cash loan can use an optional `expenseGroupId` when it funds a specific purpose. The group can show **View Loan**, which opens the same loan details shown in the Loan List. Each financed purchase has a plan under a reusable provider account. Its expense group comes from the linked expense, so the user selects the group once. These relationships cover grouping by purpose and credit account. A separate `LoanGroup` can wait until users need custom collections spanning lenders. Integration with balance-bearing financial accounts remains planned. [Financial data model](data-model.md#planned-financial-model-dependencies)
 
 ## Recording a financed purchase
 
@@ -46,13 +46,13 @@ User
 3. Choose the item's **Term**, such as one payment on the next bill or three or six monthly payments. Use the due dates and amounts shown by the provider.
 4. Save the expense and its linked repayment plan together. The full purchase counts once toward the expense group's spending. The plan is visible as its own row in **Loan List**.
 
-The **Bank** field stays blank for a purchase funded entirely by SPayLater. At repayment, choose the bank account or wallet that actually paid. If the legal lender is recorded, use the name on the loan agreement. [Shopee billing guide](https://help.shopee.ph/portal/4/article/81111) · [Monee Credit terms](https://help.shopee.ph/portal/4/article/166075-Monee-Credit-Terms-and-Conditions)
+The **Bank** field stays blank for a purchase funded entirely by SPayLater. At repayment, enter the name of the bank account or wallet used to pay. If the legal lender is recorded, use the name on the loan agreement. [Shopee billing guide](https://help.shopee.ph/portal/4/article/81111) · [Monee Credit terms](https://help.shopee.ph/portal/4/article/166075-Monee-Credit-Terms-and-Conditions)
 
 ## Recording a cash loan
 
 Use **Loans → Loan List → Add Loan** for a cash or credit-to-cash loan. Record the lender, amount borrowed, disbursement date, receiving bank account or wallet, and repayment schedule. Leave **Expense Group** blank for a general cash loan or select a group such as **Renovation** when the loan is for that purpose.
 
-Loan proceeds increase available funds and the amount owed. Actual purchases count toward the expense group's budget as they occur. Principal repayments reduce the loan balance and appear as cash outflows. Separately identified interest and fees count as expenses when posted. [Planned financial data model](data-model.md#planned-financial-model-dependencies)
+Actual purchases count toward the expense group's budget as they occur. The planned ledger will record loan proceeds as increases in available funds and the amount owed, and principal repayments as cash outflows that reduce debt. It will count separately identified interest and fees as expenses when posted. [Financial data model](data-model.md#planned-financial-model-dependencies)
 
 Deleting an empty expense group removes its link from any cash loans and keeps those loans and payments.
 
@@ -71,7 +71,7 @@ Use **Record Payment** from the loan, installment, or provider bill. Record the 
 
 The paint sprayer appears in Renovation as one ₱3,600 expense with a **View Plan** link. The same group shows the renovation cash loan with a **View Loan** link. An ₱8,000 tile purchase paid by debit card also counts toward Renovation spending. A ₱1,650 Shopee bill payment can cover the ₱1,200 sprayer installment and the ₱450 drill installment. Duplicating an expense group copies history without creating new payable balances.
 
-On older deployments, record the purchase once with `(SPayLater)` in the title and follow the due dates in Shopee. Existing expenses do not gain a repayment plan automatically when Loans is deployed.
+Expenses recorded before the Loans rollout keep their original details. A new financed purchase creates a repayment plan when saved with **Pay Later**.
 
 ## Changes shipped during the chat
 

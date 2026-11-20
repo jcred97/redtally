@@ -58,13 +58,13 @@ Migration `20261115120000_recurring_expenses` adds the schedule and occurrence t
 
 ## Planned financial-model dependencies
 
-The initial Loans workflow persists `Loan`, `PayLaterAccount`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. The `20261120120000_loans` migration adds those tables and `PAY_LATER` while preserving existing expense data. Receiving and funding account names are recorded as text until the ledger is available. [Loans workflows](pay-later-and-loans-session.md)
+The initial Loans workflow persists `Loan`, `PayLaterAccount`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Migration `20261120120000_loans` added those tables and `PAY_LATER` to production on November 20, 2026. Verification confirmed that row-level security was enabled on all six new tables with no Data API policies and that all 10 preexisting business tables matched the encrypted backup. Receiving and funding account names are recorded as text until the ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans workflows](pay-later-and-loans-session.md)
 
-Phase 1 uses the existing expense, budget, and recurring expense models. The following hierarchy covers the financial records proposed for Phases 2–4. [Dashboard and connected-finances roadmap](roadmap.md#dashboard-and-connected-finances)
+Phase 1 uses the existing expense, budget, and recurring expense models. The following hierarchy includes the deployed Loans workflow and the planned financial records for Phases 2–4. [Dashboard and connected-finances roadmap](roadmap.md#dashboard-and-connected-finances)
 
 ### Proposed ownership hierarchy
 
-Each top-level branch belongs to `User`. The indentation shows ownership and arrows show references across branches. The names describe responsibilities. The exact Prisma models, foreign keys, and migrations are open.
+Each top-level branch belongs to `User`. The indentation shows ownership and arrows show references across branches. The names describe responsibilities. Prisma models, foreign keys, and migrations for the future ledger and other planned records remain open.
 
 ```text
 User
@@ -98,10 +98,10 @@ The shared `Bank` catalog provides institution names. `BankAssignment` stores gr
 
 ### Loan and financed-purchase relationships
 
-- **Cash loan.** `Loan` has its own owner, lender, terms, and repayment schedule. Its optional `expenseGroupId` must belong to the same user. A general loan can leave it blank. A linked group opens the same loan record. The disbursement transaction increases funds in the receiving account and records the amount owed.
+- **Cash loan.** `Loan` has its own owner, lender, terms, and repayment schedule. Its optional `expenseGroupId` must belong to the same user. A general loan can leave it blank. A linked group opens the same loan record. The planned ledger will record disbursements as increases in available funds and the amount owed.
 - **Financed purchase.** Save the full purchase as one `Expense` with one linked `RepaymentPlan` under the reusable provider account. The plan gets its expense group from the original expense. Each purchase has its own schedule and outstanding balance, even when several purchases use the same provider.
-- **Payments.** Record an actual payment once from the funding bank account or wallet. Allocations apply that payment to the corresponding plans or installments, including when a provider bill covers multiple purchases. Principal repayment reduces debt and is a cash outflow. Separately identified interest and fees count as expenses when posted. Purchases funded with cash-loan proceeds count toward the group budget as they occur.
-- **History.** Duplicating an expense group can copy expense history without creating or copying payable balances. Corrections to a plan preserve its recorded payments. Validate ownership on both ends of every link between user-owned records.
+- **Payments.** Record an actual payment once with its funding bank account or wallet name. Allocations apply that payment to the corresponding plans or installments, including when a provider bill covers multiple purchases. The planned ledger will track principal repayments as cash outflows that reduce debt and record separately identified interest and fees as expenses when posted. Purchases funded with cash-loan proceeds count toward the group budget as they occur.
+- **History.** Duplicating an expense group can copy expense history without creating or copying payable balances. A future correction workflow must preserve recorded payments. Validate ownership on both ends of every link between user-owned records.
 
 The Loans area uses **Dashboard** for totals and upcoming payments and **Loan List** for individual cash loans and financed purchases. Expense groups provide purpose-based grouping for cash loans, and credit accounts group repayment plans by provider account. The provider balance is a rollup of the same plans shown in the list. [Pay Later and Loans design notes](pay-later-and-loans-session.md#loans-navigation)
 

@@ -69,7 +69,7 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 **Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups retain their existing Dashboard, Expenses, Recurring, Categories, and Banks views. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
-The first Phase 2 workflow adds a top-level **Loans** section alongside **Dashboard** and **Expense Groups**. Its **Dashboard** summarizes outstanding balances, upcoming and overdue payments, and recent payments. Its **Loan List** shows one row per cash loan or financed purchase. Each row opens its own details, and **Manage Credit Accounts** opens reusable provider accounts such as SPayLater. [Pay Later and Loans design](pay-later-and-loans-session.md)
+The first Phase 2 workflow went live on November 20, 2026 with commit `e629b71` and migration `20261120120000_loans`. The top-level **Loans** section has a **Dashboard** for outstanding balances and payments and a **Loan List** with one row per cash loan or financed purchase. Each row opens its own details, and **Manage Credit Accounts** opens reusable provider accounts such as SPayLater. Production checks verified the signed-in Loan List and anonymous redirects. [Pay Later and Loans design](pay-later-and-loans-session.md) · [Production rollout](../README.md#loans-production-rollout)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 

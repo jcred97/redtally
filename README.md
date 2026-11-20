@@ -23,7 +23,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 
 Implemented source includes:
 
-- **Loans** supports cash loans with an optional expense-group link, Pay Later plans from **New Expense**, credit accounts, and a single bill payment allocated across multiple purchase plans. Apply the `20261120120000_loans` migration before deploying this version. Receiving and funding account names are entered manually until the financial-account ledger is available.
+- **Loans** supports cash loans with an optional expense-group link, Pay Later plans from **New Expense**, credit accounts, and a single bill payment allocated across multiple purchase plans. Receiving and funding account names are entered manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
 - Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
 - Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
@@ -131,6 +131,14 @@ For future installations or releases that change authentication storage, coordin
 3. Restrict traffic during transitions where an older release lacks the required access controls or schema support; it must not serve newly private records.
 4. Apply committed migrations with `npx prisma migrate deploy`, generate the client, and deploy the matching code. This release is not activated by merely pushing the schema file.
 5. Verify anonymous redirects, two independent users, rejected cross-user IDs, sign-out/revocation, and preserved unclaimed legacy records. Any later assignment of legacy groups must target a specifically verified account ID, never the first account to sign up.
+
+### Loans production rollout
+
+On November 20, 2026, migration `20261120120000_loans` was applied to production for commit `e629b71`. The rollout used a verified Windows DPAPI-encrypted backup of 10 business tables and the Prisma migration history. The backup excluded authentication tables and credentials. [Loans migration](server/db/migrations/20261120120000_loans/migration.sql)
+
+After migration, row fingerprints matched the backup across all 10 existing business tables. All six new Loans tables had row-level security enabled with zero policies. The Loan List loaded while signed in, and anonymous requests to Loans redirected to sign-in. Production verification was read-only.
+
+Apply `20261120120000_loans` before deploying the matching application to any other existing database.
 
 ### Database connection troubleshooting
 
