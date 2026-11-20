@@ -84,10 +84,11 @@ test("suggests explicitly shown payment methods and banks from OCR text", () => 
   assert.deepEqual(suggestReceiptFields("Payment Method: Bank Payment - GoTyme"), { paymentMethod: "BANK_PAYMENT", bank: "GoTyme" });
   assert.deepEqual(suggestReceiptFields("Payment Method: Cash on Delivery\nBank: BDO"), { paymentMethod: "CASH" });
   assert.deepEqual(suggestReceiptFields("Payment Method: Credit/Debit Card\nIssuing Bank: BPI"), { bank: "BPI" });
+  assert.deepEqual(suggestReceiptFields("Payment Method: SPayLater\nBank: BPI"), { paymentMethod: "PAY_LATER" });
 });
 
 test("omits ambiguous methods and unsupported payment and bank evidence", () => {
-  for (const method of ["Visa", "PayLater", "GCash", "Online Banking", "Credit or Debit Card", "Credit & Debit Card", "Bank Transfer or Cash"]) {
+  for (const method of ["Visa", "GCash", "Online Banking", "Credit or Debit Card", "Credit & Debit Card", "Bank Transfer or Cash"]) {
     assert.deepEqual(suggestReceiptFields(`Payment Method: ${method}`), {});
   }
   assert.deepEqual(suggestReceiptFields("Payment Method: Credit Card\nPaid via: Bank Transfer"), {});
@@ -96,6 +97,31 @@ test("omits ambiguous methods and unsupported payment and bank evidence", () => 
   assert.deepEqual(suggestReceiptFields("Card Issuer: Visa Debit Card"), {});
   assert.deepEqual(suggestReceiptFields("Bank: BPI\nIssuing Bank: BDO"), {});
   assert.deepEqual(suggestReceiptFields("Title\nPayment Method: Cash"), { paymentMethod: "CASH" });
+});
+
+test("reads shop, item, order total and Pay Later from Shopee checkout OCR", () => {
+  const text = [
+    "5 11/17/2026 04:43 Order placed", "Order is placed",
+    "[EZ] WV Online Store Ex © View Shop ®",
+    "Merchandise Subtotal P2802", "Shipping Fee P34", "«fy Shipping Discount Subtotal £34",
+    "Shopee Voucher Applied -P281", "Order Total", "« You've saved extra P34 on this order £2,521", "Payment Method SPayLater",
+  ].join("\n");
+  const footer = [
+    "] VV Online Store © View Shop", "-", "Ko",
+    "SINGEN Lysine Oral Solution VS3 100 ml (EXP: APRIL 19 2029)", "Shop Rating", "Merchandise Subtotal",
+    "Order Total", "£2,521", "You've saved extra P34 on this order", "Payment Method", "SPayLater",
+  ].join("\n");
+  assert.deepEqual(suggestReceiptFields(text, footer), {
+    merchant: "VV Online Store", title: "SINGEN Lysine Oral Solution VS3 100 ml",
+    amount: "2521.00", date: "2026-11-17", time: "04:43", paymentMethod: "PAY_LATER",
+  });
+  assert.equal(suggestReceiptFields(text.replace("P2802", "P2803"), footer).amount, undefined);
+  assert.equal(suggestReceiptFields("Currency: GBP\n" + text, footer).amount, undefined);
+  assert.equal(suggestReceiptFields(text + "\nItem converted at £8.00", footer).amount, undefined);
+  assert.equal(suggestReceiptFields("Order Total: £2,521").amount, undefined);
+  assert.equal(suggestReceiptFields("Order Total\nYou've saved extra P34 on this order").amount, undefined);
+  assert.equal(suggestReceiptFields("Order Total\nYou've saved extra P34 on this order P2, 521").amount, "2521.00");
+  assert.equal(suggestReceiptFields(text, footer.replace("Shop Rating", "Another product title\nShop Rating")).title, undefined);
 });
 
 test("suggests the labeled title and merchant independently", () => {

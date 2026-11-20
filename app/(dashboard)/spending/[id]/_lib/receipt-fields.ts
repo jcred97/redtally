@@ -6,6 +6,14 @@ import type { PaymentMethod } from "@/generated/prisma/enums";
 const titleLabel = /^(?:(?:expense|transaction|payment|purchase) (?:title|description)(?=$|[\s:=])|title(?=$|\s*[:=])|description(?=\s*[:=]))/i;
 const merchantLabel = /^(?:merchant(?: name)?|payee(?: name)?|vendor(?: name)?|store(?: name)?|biller(?: name)?|paid to)(?=$|[\s:=])/i;
 const totalLabel = /^(?:total amount paid|amount paid|total paid|amount charged|grand total|total amount|net total|total|kabuuang halaga|halagang binayaran)\b/i;
+const orderTotalLabel = /^order total\b/i;
+const shopLink = /\bview shop\b/i;
+const shopeeCheckoutLabels = [
+  /^merchandise subtotal\b/i,
+  /^shipping fee\b/i,
+  /\bshipping discount subtotal(?:\s*\([^)]*\))?/i,
+  /^shopee voucher applied\b/i,
+] as const;
 const dateLabel = /^(?:(?:(?:transaction|purchase|payment|receipt|invoice) )?date(?:\s*(?:and|[&/])\s*time)?|paid on)\b/i;
 const timeLabel = /^(?:(?:transaction|purchase|receipt|invoice|payment) time|time of (?:transaction|purchase|payment)|time|paid at)(?=$|\s*[:=]|\s+\d)/i;
 const orderTimestampLabel = /^(?:order\s+(?:date(?:\s*(?:and|[&/])\s*time)?|time|(?:placed|created)(?:\s+(?:date|time|on|at))?)|ordered\s+(?:on|at)|placed\s+on|(?:date|time)\s+ordered)\b/i;
@@ -29,6 +37,7 @@ const paymentPatterns = [
   ["CREDIT_CARD", /\bcredit\s+card\b/i],
   ["BANK_TRANSFER", /\bbank\s+transfer\b/i],
   ["BANK_PAYMENT", /\bbank\s+payment\b/i],
+  ["PAY_LATER", /^(?:s\s*pay\s*later|shopee\s+pay\s*later|pay\s*later|buy now,?\s+pay later|bnpl)$/i],
 ] as const satisfies readonly (readonly [PaymentMethod, RegExp])[];
 
 function singleValue<Value extends string>(values: Iterable<Value>) {
@@ -86,6 +95,57 @@ function readAmount(value: string) {
   } catch {
     return undefined;
   }
+}
+
+function readShopItems(lines: string[]) {
+  const shopIndex = lines.findIndex((line) => shopLink.test(line));
+  if (shopIndex < 0) return {};
+  const shop = lines[shopIndex].split(shopLink)[0]
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}.]+$/gu, "").replace(/^preferred\s+/i, "").replace(/\s+chat$/i, "");
+  const end = lines.findIndex((line, index) => index > shopIndex && /^(?:shop rating|merchandise subtotal)\b/i.test(line));
+  const products = end < 0 ? [] : lines.slice(shopIndex + 1, end)
+    .map((line) => line.replace(/\s*\(exp(?:iry)?\s*:[^)]*\)$/i, "").trim())
+    .filter((line) => isExpenseText(line) && (line.match(/\b\p{L}{2,}\b/gu)?.length ?? 0) >= 3);
+  return { merchant: isExpenseText(shop) ? shop : undefined, title: products.length === 1 ? products[0] : undefined };
+}
+
+function orderTotalValue(value: string) {
+  const total = /^.*\byou['’]ve saved\b.*\bon this order\s+(.+)$/i.exec(value)?.[1] ?? value;
+  return total.replace(/,\s+(?=\d{3}\b)/g, ",");
+}
+
+function readShopeeTotal(lines: string[], totalValues: string[]) {
+  // OCR can confuse the peso sign with £. Verify the total against the peso checkout breakdown.
+  const rows = shopeeCheckoutLabels.map((label) => lines.flatMap((line) => {
+    const match = label.exec(line);
+    return match ? [{ line, value: line.slice(match.index + match[0].length).trim().replace(/^-\s*/, "") }] : [];
+  }));
+  if (rows.some((matches) => matches.length !== 1)) return undefined;
+  const [subtotal, shipping, discount, voucher] = rows.map(([row]) => row);
+  if (![subtotal, shipping].every(({ value }) => /^(?:₱|P(?:HP)?)\s*\d/i.test(value))) return undefined;
+
+  const normalizedLines = lines.map((line) => {
+    if (line === discount.line || orderTotalLabel.test(line) || totalValues.includes(orderTotalValue(line))) {
+      return line.replace(/£(?=\s*\d)/g, "₱");
+    }
+    return line;
+  });
+  if (hasForeignCurrency(normalizedLines)) return undefined;
+  const amounts = [subtotal, shipping, discount, voucher].map(({ value }) => readAmount(value.replace(/^£/, "₱")));
+  const total = singleValue(validValues(totalValues.map((value) => value.replace(/^£/, "₱")), readAmount));
+  if (!total || !amounts.every((amount) => amount !== undefined)) return undefined;
+  const [merchandiseAmount, shippingAmount, shippingDiscount, voucherAmount] = amounts.map(parsePesoAmount);
+  if (parsePesoAmount(total) === merchandiseAmount + shippingAmount - shippingDiscount - voucherAmount) return total;
+}
+
+function suggestAmount(lines: string[], footer: string[]) {
+  const primaryOrderTotals = getLabeledValues(lines, orderTotalLabel);
+  const orderTotals = [...primaryOrderTotals, ...getLabeledValues(footer, orderTotalLabel)].map(orderTotalValue);
+  if (orderTotals.length) {
+    if (hasForeignCurrency(lines)) return readShopeeTotal(lines, orderTotals);
+    return singleValue(validValues(orderTotals, readAmount));
+  }
+  if (!hasForeignCurrency(lines)) return singleValue(validValues(getLabeledValues(lines, totalLabel), readAmount));
 }
 
 function isoDate(year: string, month: string, day: string) {
@@ -228,7 +288,7 @@ function suggestPayment(lines: string[]) {
   const values = getLabeledValues(lines, paymentLabel).map(withoutMaskedCard);
   const methods = values.map(readPaymentMethod).filter((method) => method !== undefined);
   const paymentMethod = methods.length === values.length ? singleValue(methods) : undefined;
-  if (paymentMethod === "CASH") return { paymentMethod };
+  if (paymentMethod === "CASH" || paymentMethod === "PAY_LATER") return { paymentMethod };
 
   const labeledBanks = getLabeledValues(lines, bankLabel).map(withoutMaskedCard);
   const methodPattern = paymentPatterns.find(([method]) => method === paymentMethod)?.[1];
@@ -252,15 +312,24 @@ function validValues(values: string[], read: (value: string) => string | undefin
   });
 }
 
-export function suggestReceiptFields(text: string): ReceiptSuggestions {
-  const lines = text.normalize("NFKC").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+function receiptLines(text: string) {
+  return text.normalize("NFKC").split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+
+export function suggestReceiptFields(text: string, shopFooter = ""): ReceiptSuggestions {
+  const lines = receiptLines(text);
   if (lines.some((line) => nonExpenseStatus.test(line))) return {};
 
-  const title = singleValue(getLabeledValues(lines, titleLabel).filter(isExpenseText));
-  const merchant = readMerchant(lines);
-  const amount = hasForeignCurrency(lines) ? undefined : singleValue(validValues(getLabeledValues(lines, totalLabel), readAmount));
+  const footer = receiptLines(shopFooter);
+  const shop = readShopItems(footer);
+  const title = singleValue(getLabeledValues(lines, titleLabel).filter(isExpenseText)) ?? shop.title;
+  const merchant = readMerchant(lines) ?? shop.merchant;
+  const amount = suggestAmount(lines, footer);
   const { date, time } = suggestTimestamp(lines);
-  const { paymentMethod, bank } = suggestPayment(lines);
+  const payment = suggestPayment(lines);
+  const focusedPayment = payment.paymentMethod ? payment : suggestPayment(footer);
+  const paymentMethod = payment.paymentMethod ?? focusedPayment.paymentMethod;
+  const bank = paymentMethod === "CASH" || paymentMethod === "PAY_LATER" ? undefined : payment.bank ?? focusedPayment.bank;
 
   return {
     ...(title ? { title } : {}),

@@ -159,11 +159,12 @@ export default function ReceiptImageInput({
         if (signal.aborted) return;
         // Enlarge small screenshots so OCR can distinguish fine text and date separators.
         const scale = Math.max(1, Math.min(2, 1800 / Math.max(width, height)));
+        const ocrSize = { width: Math.round(width * scale), height: Math.round(height * scale) };
         const ocrImage = scale > 1 || blob.type === "image/webp"
-          ? await toPng(image, Math.round(width * scale), Math.round(height * scale)) : blob;
+          ? await toPng(image, ocrSize.width, ocrSize.height) : blob;
         if (signal.aborted) return;
-        const text = await readReceiptText(ocrImage, signal);
-        if (!signal.aborted) setLocalSuggestions(suggestReceiptFields(text));
+        const { text, shopFooter } = await readReceiptText(ocrImage, ocrSize, signal);
+        if (!signal.aborted) setLocalSuggestions(suggestReceiptFields(text, shopFooter));
       } catch {
         if (!signal.aborted) setError("The receipt could not be read. Enter the expense details below or try another image.");
       }

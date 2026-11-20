@@ -16,8 +16,8 @@ const extractionPrompt = [
   "For an order, use the date and time the order was placed, such as Order Time, Order Date, Order Created, or Placed on. Use orderDate and orderTime even if payment occurred later. If the order timestamp is missing, leave its date or time null.",
   "For a purchase or payment receipt use the explicit transaction, purchase, or payment timestamp in transactionDate and transactionTime.",
   "Never use shipment, delivery, received, completion, ETA, tracking, refund, or screenshot status bar timestamps. A date and time must come from the same event. Use YYYY-MM-DD for the date and HH:mm in 24-hour Manila time.",
-  "Use the payment method actually shown. Map explicit cash or cash on delivery to CASH, and use DEBIT_CARD, CREDIT_CARD, BANK_TRANSFER, or BANK_PAYMENT only when the receipt distinguishes that method. Leave generic card, wallet, pay-later, and ambiguous methods null.",
-  "For bank, use the bank or card issuer explicitly identified for the payment. Leave it null for cash, generic card networks, an unrelated merchant bank, or when no institution is identified. Do not include account or card numbers.",
+  "Use the payment method actually shown. Map explicit cash or cash on delivery to CASH and explicit Pay Later methods such as SPayLater to PAY_LATER. Use DEBIT_CARD, CREDIT_CARD, BANK_TRANSFER, or BANK_PAYMENT only when the receipt distinguishes that method. Leave generic card, wallet, and ambiguous methods null.",
+  "For bank, use the bank or card issuer explicitly identified for the payment. Leave it null for cash, Pay Later, generic card networks, an unrelated merchant bank, or when no institution is identified. Do not include account or card numbers.",
 ].join(" ");
 
 const schema = {
