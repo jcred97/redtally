@@ -68,9 +68,9 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 ### Purpose and navigation
 
-**Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups retain their existing Dashboard, Expenses, Recurring, Categories, and Banks views. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
+**Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Banks views, plus a link to shared Credit Accounts beside Banks. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
-The first Phase 2 release added **Loans**. Its tabs are **Dashboard** for balances and payments, **Loan List** for cash loans and financed purchases, and **Credit Accounts** for reusable provider accounts such as SPayLater. [Loans and Pay Later workflows](workflows.md#loans-and-pay-later) · [Production rollout](../README.md#loans-production-rollout)
+**Loans** lists cash loans and their balances and payments. **Expense Groups → Credit Accounts** shows upcoming and overdue Pay Later bills and manages reusable provider accounts such as SPayLater. [Loans and Pay Later workflows](workflows.md#loans-and-pay-later) · [Production rollout](../README.md#loans-production-rollout)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 

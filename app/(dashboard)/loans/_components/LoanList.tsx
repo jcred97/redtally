@@ -11,17 +11,27 @@ export type LoanListRow = {
   next?: { balance: number; dueDate: Date };
 };
 
-export default function LoanList({ rows, emptyMessage }: { rows: LoanListRow[]; emptyMessage: string }) {
+export default function LoanList({
+  rows,
+  emptyMessage,
+  caption = "Loans and financed purchases",
+  providerLabel = "Type or Provider",
+}: {
+  rows: LoanListRow[];
+  emptyMessage: string;
+  caption?: string;
+  providerLabel?: string;
+}) {
   if (!rows.length) return <p className={`${loanPanel} text-sm text-gray-300`}>{emptyMessage}</p>;
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-800">
       <table className="w-full table-fixed text-sm sm:table-auto">
-        <caption className="sr-only">Loans and financed purchases</caption>
+        <caption className="sr-only">{caption}</caption>
         <thead className="bg-gray-900 text-left text-gray-400">
           <tr>
             <th scope="col" className="w-[36%] px-3 py-3 font-medium sm:w-auto sm:px-4">Name</th>
-            <th scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">Type or Provider</th>
+            <th scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">{providerLabel}</th>
             <th scope="col" className="px-2 py-3 text-right font-medium sm:px-4">Outstanding</th>
             <th scope="col" className="px-3 py-3 text-right font-medium sm:px-4">Next Payment</th>
           </tr>

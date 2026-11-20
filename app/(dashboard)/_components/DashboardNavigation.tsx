@@ -5,14 +5,18 @@ import { usePathname } from "next/navigation";
 
 export default function DashboardNavigation() {
   const pathname = usePathname();
+  const viewingFinancedPurchase = pathname.startsWith("/loans/plans/");
   const tabs = [
     { label: "Dashboard", href: "/", current: pathname === "/" },
     {
       label: "Expense Groups",
       href: "/expense-groups",
-      current: pathname === "/expense-groups" || pathname.startsWith("/spending/"),
+      current: pathname === "/expense-groups"
+        || pathname.startsWith("/expense-groups/")
+        || pathname.startsWith("/spending/")
+        || viewingFinancedPurchase,
     },
-    { label: "Loans", href: "/loans", current: pathname === "/loans" || pathname.startsWith("/loans/") },
+    { label: "Loans", href: "/loans", current: pathname === "/loans" || (pathname.startsWith("/loans/") && !viewingFinancedPurchase) },
   ];
 
   return (

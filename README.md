@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. **Loans** has **Dashboard**, **Loan List**, and **Credit Accounts** tabs. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list and provides access to shared **Credit Accounts**. Inside a group, **Credit Accounts** is beside **Banks**. **Loans** opens the cash loan list. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -23,7 +23,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 
 Implemented source includes:
 
-- **Loans** supports cash loans with an optional expense-group link, Pay Later plans from **New Expense**, credit accounts, and a single bill payment allocated across multiple purchase plans. Receiving and funding account names are entered manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
+- **Loans** supports cash loans with an optional expense-group link. **Credit Accounts** shows Pay Later plans from **New Expense** and supports allocating one provider bill payment across multiple purchases. Receiving and funding account names are entered manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
 - Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
 - Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
@@ -156,9 +156,9 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/layout.tsx` | Shared navigation for signed-in pages |
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
 | `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Dashboard route and cross-group reporting feature |
-| `app/(dashboard)/expense-groups/` | Expense Groups list and its private `_components/` |
+| `app/(dashboard)/expense-groups/` | Expense Groups list and shared Credit Accounts, including account settings and provider bills |
 | `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
-| `app/(dashboard)/loans/` | Loans dashboard, cash loans, financed purchases, credit accounts, and repayment forms |
+| `app/(dashboard)/loans/` | Cash loan list and details, financed-purchase plans, and repayment forms |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |

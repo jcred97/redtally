@@ -47,7 +47,7 @@ export async function createFinancedPurchase(
     WHERE id = ${creditAccountId}::uuid AND "userId" = ${userId} AND enabled
     FOR SHARE
   `;
-  if (!account) throw new TypeError("This credit account is unavailable for new purchases. Review Credit Accounts in Loans.");
+  if (!account) throw new TypeError("This credit account is unavailable for new purchases. Review Credit Accounts in Expense Groups.");
 
   return tx.repaymentPlan.create({
     data: { expenseId, creditAccountId: account.id, installments: { create: financing.installments } },

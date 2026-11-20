@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import TextInput from "@/app/components/forms/TextInput";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
+import { creditAccountHref } from "@/app/lib/loans/credit-account-links";
 import { createCreditAccount } from "@/app/lib/loans/mutations";
-import { primaryAction } from "./LoanPage";
+import { primaryAction } from "@/app/(dashboard)/loans/_components/LoanPage";
 
 export default function CreditAccountForm() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function CreditAccountForm() {
     if (!saved.success || !saved.id) {
       return { error: saved.error ?? "Unable to create the credit account." };
     }
-    router.replace(`/loans/accounts/${saved.id}`);
+    router.replace(creditAccountHref(saved.id));
     return { success: true } as const;
   }
 

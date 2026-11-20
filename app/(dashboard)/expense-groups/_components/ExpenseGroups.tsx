@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
+import { creditAccountsHref } from "@/app/lib/loans/credit-account-links";
 import { getExpenseGroupOptions, getExpenseGroups } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
 import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
@@ -10,7 +12,7 @@ import ExpenseGroupsSkeleton from "./ExpenseGroupsSkeleton";
 export default function ExpenseGroups() {
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10">
-      <div className="mb-8 flex items-center gap-2 sm:gap-4">
+      <div className="mb-8 flex flex-wrap items-center gap-2 sm:gap-4">
         <Suspense
           fallback={
             <h1 className="min-w-0 wrap-anywhere text-lg font-bold tracking-tight sm:text-3xl">
@@ -20,7 +22,13 @@ export default function ExpenseGroups() {
         >
           <AllExpenseGroupsSwitcher />
         </Suspense>
-        <div className="ml-auto shrink-0 whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
+          <Link
+            href={creditAccountsHref}
+            className="button-secondary inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-medium max-sm:px-2.5 max-sm:text-xs"
+          >
+            Credit Accounts
+          </Link>
           <NewExpenseGroupButton />
         </div>
       </div>

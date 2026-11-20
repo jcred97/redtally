@@ -123,15 +123,13 @@ function previousSubmission(previous: { id: string; payloadHash: string }, paylo
 
 export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
   return {
-    async getLoans() {
+    async getCashLoans() {
       const userId = await requireUserId();
-      const [cashLoans, plans] = await Promise.all([
-        db.loan.findMany({ where: { userId }, include: loanInclude(userId), orderBy: { createdAt: "desc" } }),
-        db.repaymentPlan.findMany({
-          where: ownedPlan(userId), include: planInclude(userId), orderBy: { createdAt: "desc" },
-        }),
-      ]);
-      return { cashLoans, plans };
+      return db.loan.findMany({
+        where: { userId },
+        select: { id: true, title: true, lender: true, installments: installmentsFor(userId) },
+        orderBy: { createdAt: "desc" },
+      });
     },
 
     async getCashLoansForExpenseGroup(expenseGroupId: number) {
@@ -159,7 +157,14 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
     async getCreditAccounts() {
       const userId = await requireUserId();
       return db.payLaterAccount.findMany({
-        where: { userId }, select: { ...creditAccountSelect, key: true, enabled: true }, orderBy: { name: "asc" },
+        where: { userId },
+        select: {
+          ...creditAccountSelect,
+          key: true,
+          enabled: true,
+          plans: { where: ownedPlan(userId), select: { installments: installmentsFor(userId) } },
+        },
+        orderBy: { name: "asc" },
       });
     },
 

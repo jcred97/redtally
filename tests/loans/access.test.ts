@@ -24,6 +24,10 @@ test("cash loans remain private and a provider bill applies once across purchase
       data: { name: "Renovation", userId: "alice", categories: { create: { name: "Tools" } } },
       include: { categories: true },
     });
+    const secondGroup = await client.expenseGroup.create({
+      data: { name: "Household", userId: "alice", categories: { create: { name: "Appliances" } } },
+      include: { categories: true },
+    });
     const otherGroup = await client.expenseGroup.create({ data: { name: "Private group", userId: "bob" } });
     const loans = createLoanAccess(client, async () => "alice");
     const otherLoans = createLoanAccess(client, async () => "bob");
@@ -38,6 +42,8 @@ test("cash loans remain private and a provider bill applies once across purchase
     const { id: loanId } = await loans.createCashLoan(cashDraft);
     assert.equal((await loans.createCashLoan(cashDraft)).id, loanId);
     assert.equal(await otherLoans.getCashLoan(loanId), null);
+    assert.deepEqual((await loans.getCashLoans()).map(({ id }) => id), [loanId]);
+    assert.deepEqual(await otherLoans.getCashLoans(), []);
     assert.deepEqual((await loans.getCashLoansForExpenseGroup(group.id)).map(({ id }) => id), [loanId]);
     assert.equal(await client.loan.count(), 1);
 
@@ -48,8 +54,8 @@ test("cash loans remain private and a provider bill applies once across purchase
     assert.deepEqual(await loans.getEnabledCreditAccounts(), [{ id: account.id, name: account.name }]);
     const otherAccount = await client.payLaterAccount.create({ data: { userId: "bob", name: "Other", key: "other" } });
     const expenses = createExpenseAccess(client, async () => "alice");
-    const createPurchase = (title: string, amount: string, accountId: string, submissionId: string) => expenses.create(
-      group.id, group.categories[0].id,
+    const createPurchase = (title: string, amount: string, accountId: string, submissionId: string, expenseGroup = group) => expenses.create(
+      expenseGroup.id, expenseGroup.categories[0].id,
       { title, amount, date: "2026-11-20", paymentMethod: "PAY_LATER" }, submissionId,
       form([["creditAccountId", accountId], ["installmentDate", "2026-12-15"], ["installmentAmount", amount]]),
     );
@@ -59,13 +65,17 @@ test("cash loans remain private and a provider bill applies once across purchase
     const sprayerDraft = randomUUID();
     const sprayer = await createPurchase("Paint sprayer", "1200", account.id, sprayerDraft);
     assert.equal((await createPurchase("Paint sprayer", "1200", account.id, sprayerDraft)).id, sprayer.id);
-    await createPurchase("Drill set", "450", account.id, randomUUID());
+    await createPurchase("Drill set", "450", account.id, randomUUID(), secondGroup);
     const installments = await client.loanInstallment.findMany({ where: { plan: { creditAccountId: account.id } } });
     assert.equal(installments.length, 2);
 
     await loans.setCreditProductEnabled(disableProduct);
     assert.deepEqual(await loans.getEnabledCreditAccounts(), []);
     assert.equal((await loans.getCreditAccount(account.id))?.plans.length, 2);
+    const visibleAccounts = await loans.getCreditAccounts();
+    assert.deepEqual(visibleAccounts.map(({ id, enabled }) => ({ id, enabled })), [{ id: account.id, enabled: false }]);
+    assert.deepEqual(visibleAccounts[0].plans.flatMap(({ installments }) => installments.map(({ amountCentavos }) => amountCentavos)).sort((a, b) => a - b), [45000, 120000]);
+    assert.deepEqual((await otherLoans.getCreditAccounts()).map(({ id }) => id), [otherAccount.id]);
     assert.deepEqual(await otherLoans.getEnabledCreditAccounts(), [{ id: otherAccount.id, name: otherAccount.name }]);
     await assert.rejects(createPurchase("Disabled account", "10", account.id, randomUUID()), /credit account/i);
     await assert.rejects(expenses.create(
@@ -96,7 +106,7 @@ test("cash loans remain private and a provider bill applies once across purchase
 
     const expenseGroups = createExpenseGroupAccess(client, async () => "alice");
     await expenseGroups.duplicate(group.id);
-    assert.equal(await client.expense.count(), 4);
+    assert.equal(await client.expense.count(), 3);
     assert.equal(await client.loan.count(), 1);
     assert.equal(await client.repaymentPlan.count(), 2);
 

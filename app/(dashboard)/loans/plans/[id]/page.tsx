@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { creditAccountHref } from "@/app/lib/loans/credit-account-links";
 import { getRepaymentPlan } from "@/app/lib/loans/queries";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import LoanDetail from "../../_components/LoanDetail";
-import LoanPage, { backToLoanList, loanLink, secondaryAction } from "../../_components/LoanPage";
+import LoanPage, { loanLink, secondaryAction } from "../../_components/LoanPage";
 import { paymentFormId } from "../../_lib/display";
 
 export default async function RepaymentPlanPage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,11 +15,11 @@ export default async function RepaymentPlanPage({ params }: { params: Promise<{ 
 
   const { expense, creditAccount, installments } = plan;
   const group = expense.category.expenseGroup;
-  const accountHref = `/loans/accounts/${creditAccount.id}`;
+  const accountHref = creditAccountHref(creditAccount.id);
   const expenseHref = `/spending/${group.publicId}?allMonths=1&expense=${expense.id}#expense-history-title`;
 
   return (
-    <LoanPage title={expense.title} back={backToLoanList}>
+    <LoanPage title={expense.title} back={{ href: accountHref, label: "Back to Credit Account" }}>
       <LoanDetail
         title={expense.title}
         installments={installments}

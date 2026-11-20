@@ -11,21 +11,26 @@ export default function LoanPage({
   title,
   children,
   back,
+  action,
 }: {
   title: string;
   children: ReactNode;
   back?: { href: string; label: string };
+  action?: ReactNode;
 }) {
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 text-white sm:px-6 sm:py-8">
       {back && <Link href={back.href} className={`${loanLink} mb-2 inline-block text-sm`}>{back.label}</Link>}
-      <h1 className="wrap-anywhere text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="wrap-anywhere min-w-0 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        {action}
+      </div>
       {children}
     </main>
   );
 }
 
-export const backToLoanList = { href: loanListHref, label: "Back to Loan List" };
+export const backToLoanList = { href: loanListHref, label: "Back to Loans" };
 
 export function LoanFacts({ facts }: { facts: { label: string; value: ReactNode }[] }) {
   return (

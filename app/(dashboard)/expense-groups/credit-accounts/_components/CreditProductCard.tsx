@@ -5,8 +5,9 @@ import { useState } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
+import { creditAccountHref } from "@/app/lib/loans/credit-account-links";
 import { setCreditProductEnabled } from "@/app/lib/loans/mutations";
-import { secondaryAction } from "./LoanPage";
+import { secondaryAction } from "@/app/(dashboard)/loans/_components/LoanPage";
 
 const saveError = "Unable to save credit account settings. Please try again.";
 
@@ -63,7 +64,7 @@ export default function CreditProductCard({
         </label>
       </FormDialog>
       {account && (
-        <Link href={`/loans/accounts/${account.id}`} aria-label={`View account for ${title}`} className={`${secondaryAction} m-2`}>
+        <Link href={creditAccountHref(account.id)} aria-label={`View account for ${title}`} className={`${secondaryAction} m-2`}>
           View Account
         </Link>
       )}

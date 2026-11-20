@@ -29,19 +29,18 @@ RedTally stores the user’s provider key encrypted and retains its last four ch
 
 ## Loans and Pay Later
 
-Use **Loans** for cash loans, financed purchases, and repayments. The feature went live on November 20, 2026. Enter receiving and funding account names as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Financial accounts roadmap](roadmap.md#phase-2-financial-accounts-income-and-bills)
+Use **Loans** for cash loans and their repayments. Use **Credit Accounts** for Pay Later purchases and provider bills. Enter receiving and funding account names as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Financial accounts roadmap](roadmap.md#phase-2-financial-accounts-income-and-bills)
 
-### Loans navigation
+### Where to find loans and bills
 
-- **Dashboard** shows total outstanding, upcoming and overdue payments, and recent payments.
-- **Loan List** shows one row per cash loan or financed purchase, with the name, type or provider, outstanding balance, and next payment. Select a name to open the loan or repayment plan.
-- **Credit Accounts** shows provider settings and reusable accounts in a grid like the **Banks** tab. Open an account to see its bills and linked purchase plans or record a combined bill payment. Its balance summarizes those plans. Each plan counts once in the Loans Dashboard total.
+- **Loans** opens the cash loan list with outstanding balances and payment information. Select a loan to see its repayment schedule and history.
+- **Credit Accounts** is available from **Expense Groups** and beside **Banks** inside each group. It shows upcoming and overdue Pay Later bills across your groups. Open an account to see its linked purchase plans or record a combined bill payment.
 
 Cash loan details show the lender, amount borrowed, receiving account, optional expense group, repayment frequency and term, installments, and payment history. A financed purchase shows its provider, original expense and expense group, purchase amount, outstanding balance, and schedule.
 
 ### Managing credit accounts
 
-Open **Loans → Credit Accounts** and select the **Shopee · SPayLater** card to open its settings. Check **Enable SPayLater** and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
+Open **Expense Groups → Credit Accounts** and select the **Shopee · SPayLater** card to open its settings. Check **Enable SPayLater** and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
 
 Clear **Enable SPayLater** in settings and save to hide it from new expenses. Once an SPayLater account exists, **View Account** opens its repayment plans and payment history and lets you record a payment even when the account is disabled. Re-enabling SPayLater uses the same account.
 
@@ -52,20 +51,20 @@ To add an account for another provider, select **New Credit Account**, enter the
 1. Open **New Expense** in the appropriate expense group and enter the full purchase amount, date, and category.
 2. Choose **Pay Later** as the payment method or apply it from a receipt suggestion. Under **Credit account**, select an enabled account or choose **Add credit account** and enter the new account name. The **Bank** field is hidden for Pay Later purchases.
 3. Choose the **Term** and enter the due dates and amounts shown by the provider.
-4. Select **Save expense**. RedTally saves the purchase, its linked repayment plan, and any new credit account together. The full purchase counts once toward the expense group’s spending. Find its repayment plan in **Loans → Loan List**.
+4. Select **Save expense**. RedTally saves the purchase, its linked repayment plan, and any new credit account together. The full purchase counts once toward the expense group’s spending. Select **View plan** in expense history or open the account in **Credit Accounts** to see the schedule.
 
 Use the provider’s billing details when entering the schedule. [Shopee billing guide](https://help.shopee.ph/portal/4/article/81111) · [Monee Credit terms](https://help.shopee.ph/portal/4/article/166075-Monee-Credit-Terms-and-Conditions)
 
 ### Recording a cash loan
 
-Open **Loans → Loan List → Add Loan**. Record the lender, amount borrowed, disbursement date, receiving bank account or wallet, and repayment schedule. Leave **Expense Group** blank for a general loan or select a group such as **Renovation** when the loan funds a specific purpose. A linked group opens the same record through **View Loan**. Deleting an empty expense group removes its link and preserves the loan and payments.
+Open **Loans → Add Loan**. Record the lender, amount borrowed, disbursement date, receiving bank account or wallet, and repayment schedule. Leave **Expense Group** blank for a general loan or select a group such as **Renovation** when the loan funds a specific purpose. A linked group opens the same record through **View Loan**. Deleting an empty expense group removes its link and preserves the loan and payments.
 
 Purchases funded with cash-loan proceeds count toward group spending as they occur. See the [loan and financed-purchase relationships](data-model.md#loan-and-financed-purchase-relationships) for ownership, history, and planned cash-flow handling.
 
 ### Recording repayments
 
-Use **Record Payment** from a cash loan or financed purchase. To record a provider bill payment, open **Loans → Credit Accounts**, select **View Account** for SPayLater or open a custom account card, then choose **Record Bill Payment**. Enter the funding bank account or wallet name. If one provider bill covers multiple purchases, record the payment once and allocate it to the installments it covers. The allocations reduce outstanding balances and preserve the original expense amounts.
+Use **Record Payment** from a cash loan or financed purchase. To record a provider bill payment, open **Expense Groups → Credit Accounts**, select **View Account** for SPayLater or open a custom account card, then choose **Record Bill Payment**. Enter the funding bank account or wallet name. If one provider bill covers purchases from several expense groups, record the payment once and allocate it to the installments it covers. The allocations reduce outstanding balances and preserve the original expense amounts.
 
-For example, a ₱3,600 paint sprayer bought with SPayLater appears once in Renovation spending. A ₱1,650 provider bill payment can cover a ₱1,200 sprayer installment and a ₱450 drill installment. The cash loan used for Renovation stays a separate entry in **Loan List**.
+For example, a ₱3,600 paint sprayer bought with SPayLater appears once in Renovation spending. A ₱1,650 provider bill payment can cover a ₱1,200 sprayer installment and a ₱450 drill installment. The cash loan used for Renovation appears in **Loans**.
 
 Editing a financed expense can change its descriptive fields. The existing payment records and schedule remain linked to the original plan. Duplicating an expense group copies expense history without creating new payable balances.

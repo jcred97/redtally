@@ -1,7 +1,7 @@
 import { formatExpenseDate, parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount, sumCentavos } from "@/app/lib/expenses/money";
 
-export const loanListHref = "/loans?view=list";
+export const loanListHref = "/loans";
 export const paymentFormId = "record-payment";
 
 export type Installment = {

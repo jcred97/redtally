@@ -7,7 +7,7 @@ import { createLoanAccess } from "./access";
 const access = createLoanAccess(prisma, requireUserId);
 
 export const {
-  getLoans,
+  getCashLoans,
   getCashLoansForExpenseGroup,
   getCashLoan,
   getRepaymentPlan,

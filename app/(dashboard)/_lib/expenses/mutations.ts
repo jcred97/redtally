@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/server/db/client";
 import { requireUserId } from "@/app/lib/auth/session";
+import { creditAccountsHref } from "@/app/lib/loans/credit-account-links";
 import { createExpenseAccess } from "./access";
 
 const access = createExpenseAccess(prisma, requireUserId);
@@ -71,7 +72,10 @@ export async function createExpense(
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
-  if (formData.get("paymentMethod") === "PAY_LATER") revalidatePath("/loans", "layout");
+  if (formData.get("paymentMethod") === "PAY_LATER") {
+    revalidatePath(creditAccountsHref);
+    revalidatePath(`${creditAccountsHref}/[id]`, "page");
+  }
 
   return { success: true };
 }
@@ -114,7 +118,11 @@ export async function updateExpense(
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
-  if (formData.get("paymentMethod") === "PAY_LATER") revalidatePath("/loans", "layout");
+  if (formData.get("paymentMethod") === "PAY_LATER") {
+    revalidatePath(creditAccountsHref);
+    revalidatePath(`${creditAccountsHref}/[id]`, "page");
+    revalidatePath("/loans/plans/[id]", "page");
+  }
 
   return { success: true };
 }

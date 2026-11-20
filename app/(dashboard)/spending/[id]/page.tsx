@@ -11,6 +11,7 @@ import ExpensesTab from "./_components/expenses/ExpensesTab";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
+import { creditAccountsHref } from "@/app/lib/loans/credit-account-links";
 import { getCashLoansForExpenseGroup } from "@/app/lib/loans/queries";
 import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "./_components/categories/ExpenseCategories";
@@ -103,6 +104,7 @@ export default async function ExpenseGroupPage({
               { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Banks", href: groupPath + banksTab, current: showBanks },
+              { label: "Credit Accounts", href: creditAccountsHref, current: false },
             ].map(({ label, href, current }) => (
               <Link
                 key={label}
