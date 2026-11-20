@@ -43,6 +43,51 @@ test("can use a business header and an unambiguous day-first date", () => {
   ].join("\n")), { merchant: "PINE STREET CAFE", amount: "200.00", date: "2026-11-16" });
 });
 
+test("uses the order timestamp over payment, shipment, and delivery timestamps", () => {
+  assert.deepEqual(suggestReceiptFields([
+    "Shopee Order Details", "Date Delivered: 2026-11-19 4:43 AM",
+    "Order Time", "Nov 13, 2026 4:22 PM", "Paid on: 2026-11-14 09:00", "Shipped on: 2026-11-16",
+  ].join("\n")), { date: "2026-11-13", time: "16:22" });
+  assert.deepEqual(suggestReceiptFields("Order Date: 2026-11-13\nOrder Time: 16:22"), { date: "2026-11-13", time: "16:22" });
+  assert.deepEqual(suggestReceiptFields("Order Created Time: Nov 13, 2026 4:22 PM"), { date: "2026-11-13", time: "16:22" });
+  assert.deepEqual(suggestReceiptFields("Order Date: 2026-11-13\nPayment Time: 9:00 AM\nDelivered 2026-11-19"), { date: "2026-11-13" });
+  assert.deepEqual(suggestReceiptFields("Order Placed: unknown\nDate Delivered: 2026-11-19"), {});
+  assert.deepEqual(suggestReceiptFields("Order Date: 2026-11-13\nOrdered on: 2026-11-14 9:05 AM"), {});
+  assert.deepEqual(suggestReceiptFields("Order Time: 2026-11-13 16:22\nTimezone: UTC"), { date: "2026-11-13" });
+});
+
+test("keeps ordinary payment timestamps and ignores delivery-only dates and clocks", () => {
+  assert.deepEqual(suggestReceiptFields("Delivery Date\n2026-11-19 04:43\nTime: 04:43"), {});
+  assert.deepEqual(suggestReceiptFields("Delivery Date & Time\nNov 19, 2026 4:43 AM"), {});
+  assert.deepEqual(suggestReceiptFields("Delivered\nDate: 2026-11-19\nTime: 04:43"), {});
+  assert.deepEqual(suggestReceiptFields("Delivered\nTime\n04:43\nDate\n2026-11-19"), {});
+  assert.deepEqual(suggestReceiptFields("Delivered\nTime: 04:43\nDate: 2026-11-19\nPayment Date: 2026-11-13"), { date: "2026-11-13" });
+  assert.deepEqual(suggestReceiptFields("Date of delivery: 2026-11-19 04:43"), {});
+  assert.deepEqual(suggestReceiptFields("Delivery Date: 2026-11-19\nPayment Date: 2026-11-13\nPayment Time: 16:22"), { date: "2026-11-13", time: "16:22" });
+});
+
+test("suggests explicitly shown payment methods and banks from OCR text", () => {
+  assert.deepEqual(suggestReceiptFields("Payment Method\nBDO Debit Card"), { paymentMethod: "DEBIT_CARD", bank: "BDO" });
+  assert.deepEqual(suggestReceiptFields("Payment Method: BDO Debit Card ending in 1234"), { paymentMethod: "DEBIT_CARD", bank: "BDO" });
+  assert.deepEqual(suggestReceiptFields("Paid with: Credit Card (BPI)"), { paymentMethod: "CREDIT_CARD", bank: "BPI" });
+  assert.deepEqual(suggestReceiptFields("Mode of Payment: Bank Transfer\nBank Name\nUnionBank"), { paymentMethod: "BANK_TRANSFER", bank: "UnionBank" });
+  assert.deepEqual(suggestReceiptFields("Payment Method: Bank Payment - GoTyme"), { paymentMethod: "BANK_PAYMENT", bank: "GoTyme" });
+  assert.deepEqual(suggestReceiptFields("Payment Method: Cash on Delivery\nBank: BDO"), { paymentMethod: "CASH" });
+  assert.deepEqual(suggestReceiptFields("Payment Method: Credit/Debit Card\nIssuing Bank: BPI"), { bank: "BPI" });
+});
+
+test("omits ambiguous methods and unsupported payment and bank evidence", () => {
+  for (const method of ["Visa", "PayLater", "GCash", "Online Banking", "Credit or Debit Card", "Credit & Debit Card", "Bank Transfer or Cash"]) {
+    assert.deepEqual(suggestReceiptFields(`Payment Method: ${method}`), {});
+  }
+  assert.deepEqual(suggestReceiptFields("Payment Method: Credit Card\nPaid via: Bank Transfer"), {});
+  assert.deepEqual(suggestReceiptFields("Payment Method: Debit Card - Visa\nCard Issuer: VISA"), { paymentMethod: "DEBIT_CARD" });
+  assert.deepEqual(suggestReceiptFields("Bank: BPI 1234\nRecipient Bank: BDO"), {});
+  assert.deepEqual(suggestReceiptFields("Card Issuer: Visa Debit Card"), {});
+  assert.deepEqual(suggestReceiptFields("Bank: BPI\nIssuing Bank: BDO"), {});
+  assert.deepEqual(suggestReceiptFields("Title\nPayment Method: Cash"), { paymentMethod: "CASH" });
+});
+
 test("suggests the labeled title and merchant independently", () => {
   assert.deepEqual(suggestReceiptFields("Merchant: Pine Street Cafe\nTitle: Team lunch"), { title: "Team lunch", merchant: "Pine Street Cafe" });
   assert.deepEqual(suggestReceiptFields("Transaction Description\nMonthly internet bill"), { title: "Monthly internet bill" });

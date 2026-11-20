@@ -1,23 +1,35 @@
 import { parseExpenseDay, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoInput, parsePesoAmount } from "@/app/lib/expenses/money";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
+import type { PaymentMethod } from "@/generated/prisma/enums";
 
 const titleLabel = /^(?:(?:expense|transaction|payment|purchase) (?:title|description)(?=$|[\s:=])|title(?=$|\s*[:=])|description(?=\s*[:=]))/i;
 const merchantLabel = /^(?:merchant(?: name)?|payee(?: name)?|vendor(?: name)?|store(?: name)?|biller(?: name)?|paid to)(?=$|[\s:=])/i;
 const totalLabel = /^(?:total amount paid|amount paid|total paid|amount charged|grand total|total amount|net total|total|kabuuang halaga|halagang binayaran)\b/i;
-const dateLabel = /^(?:(?:(?:transaction|purchase|receipt|invoice) )?date(?:\s*(?:and|[&/])\s*time)?|paid on)\b/i;
+const dateLabel = /^(?:(?:(?:transaction|purchase|payment|receipt|invoice) )?date(?:\s*(?:and|[&/])\s*time)?|paid on)\b/i;
 const timeLabel = /^(?:(?:transaction|purchase|receipt|invoice|payment) time|time of (?:transaction|purchase|payment)|time|paid at)(?=$|\s*[:=]|\s+\d)/i;
+const orderTimestampLabel = /^(?:order\s+(?:date(?:\s*(?:and|[&/])\s*time)?|time|(?:placed|created)(?:\s+(?:date|time|on|at))?)|ordered\s+(?:on|at)|placed\s+on|(?:date|time)\s+ordered)\b/i;
+const fulfillmentLabel = /^(?:(?:date|time)\s+(?:of\s+)?)?(?:deliver(?:y|ed)|ship(?:ped|ment|ping)|dispatch(?:ed)?|received|completed|completion|tracking|estimated delivery|eta)(?:\s+(?:date(?:\s*(?:and|[&/])\s*time)?|time|on|at))?(?=$|\s*[:=]|\s+\d|\s+[a-z]{3,9}\.?\s+\d)/i;
+const paymentLabel = /^(?:payment\s+method|(?:mode|method)\s+of\s+payment|payment\s+mode|tender\s+type|paid\s+(?:by|with|via))(?=$|[\s:=])/i;
+const bankLabel = /^(?:(?:bank\s+name|issuing\s+bank|payment\s+bank|card\s+issuer)(?=$|[\s:=])|bank(?=$|\s*[:=]))/i;
 const timeZoneLabel = /^(?:(?:transaction|receipt) )?(?:time\s*zone|tz)(?=$|[\s:=])/i;
 const manilaTimeZone = /^(?:pht|phst|asia\/manila|manila(?: time)?|philippine standard time|(?:utc|gmt)?\s*\+\s*0?8(?::?00)?)$/i;
-const dateAndClock = /^(.+?)(?:\s*[,·|]\s*|\s+|(?<=\d)T)(?:at\s+|time\s*[:=]\s*)?(\d{1,2}:\d{2}.*)$/i;
+const dateAndClock = /^(.+?)(?:\s*[,·|]\s*|\s+|(?<=\d)T)(?:at\s+|(?:order\s+)?time\s*[:=]\s*)?(\d{1,2}:\d{2}.*)$/i;
 const ambiguousNumericDate = /^(?:0?[1-9]|1[0-2])([-/.])(?:0?[1-9]|1[0-2])\1(?!0000)\d{4}$/;
 const currencyLabel = /^(?:(?:transaction|account|receipt)\s+)?(?:currency|ccy)(?=$|[\s:=])/i;
 const nonExpenseStatus = /^(?:(?:full |partial )?refund(?:ed)?(?:\s+(?:successful|processed|completed|receipt))?|(?:payment|transaction)\s+(?:failed|cancelled|canceled|pending|declined)|(?:payment|transaction)\s+status\s*:\s*(?:failed|cancelled|canceled|pending|declined)|money received|payment received|(?:cash[ -]?in)\s+(?:successful|completed|receipt))\b/i;
 const foreignMoney = /(?:[$€£¥₩฿₹₫₽]\s*\d|\d[\d,.]*\s*[$€£¥₩฿₹₫₽])/;
 const currencyCodes = new Set(Intl.supportedValuesOf("currency"));
 const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const paymentPatterns = [
+  ["CASH", /\b(?:cash(?:\s+on\s+delivery)?|cod)\b/i],
+  ["DEBIT_CARD", /\bdebit\s+card\b/i],
+  ["CREDIT_CARD", /\bcredit\s+card\b/i],
+  ["BANK_TRANSFER", /\bbank\s+transfer\b/i],
+  ["BANK_PAYMENT", /\bbank\s+payment\b/i],
+] as const satisfies readonly (readonly [PaymentMethod, RegExp])[];
 
-function singleValue(values: Iterable<string>) {
+function singleValue<Value extends string>(values: Iterable<Value>) {
   const distinct = new Set(values);
   if (distinct.size === 1) return distinct.values().next().value;
 }
@@ -34,7 +46,9 @@ function getLabeledValues(lines: string[], label: RegExp) {
 function isExpenseText(value: string): boolean {
   return value.length <= 100 && /\p{L}.*\p{L}/u.test(value) &&
     !titleLabel.test(value) && !dateLabel.test(value) &&
-    !timeLabel.test(value) && !timeZoneLabel.test(value) && !totalLabel.test(value) && !currencyLabel.test(value) &&
+    !timeLabel.test(value) && !orderTimestampLabel.test(value) && !fulfillmentLabel.test(value) &&
+    !paymentLabel.test(value) && !bankLabel.test(value) &&
+    !timeZoneLabel.test(value) && !totalLabel.test(value) && !currencyLabel.test(value) &&
     !/^(?:gcash|maya|(?:merchant|vendor|payee|biller|store)(?: name)?|paid to|receipt|invoice|transaction|info|details|n\/?a|(?:payment|transaction) successful)$/i.test(value) &&
     !/^(?:merchant|vendor|payee|biller|store|paid to|receipt|invoice|transaction|date|total|ref(?:erence)?)(?:\s*[:=]|\s+(?:name\b|no\.?|number|date|\d))/i.test(value);
 }
@@ -127,16 +141,93 @@ function readClock(value: string) {
   }
 }
 
-function suggestTime(lines: string[], timestamps: ReturnType<typeof readTimestamp>[]) {
+function suggestTime(lines: string[], values: string[]) {
   const zones = getLabeledValues(lines, timeZoneLabel);
   if (zones.some((zone) => !isManilaTimeZone(zone))) return undefined;
 
-  const values = [
-    ...getLabeledValues(lines, timeLabel),
-    ...timestamps.flatMap(({ clock }) => clock ? [clock] : []),
-  ];
   const times = validValues(values, readClock);
   if (times.length === values.length) return singleValue(times);
+}
+
+function suggestTimestamp(lines: string[]) {
+  const orderValues = getLabeledValues(lines, orderTimestampLabel);
+  if (orderValues.length) {
+    const timestamps = orderValues.map(readTimestamp);
+    const dates = timestamps.flatMap(({ date }) => date ? [date] : []);
+    const date = singleValue(dates);
+    if (dates.length && !date) return {};
+    const clocks = orderValues.flatMap((value, index) => {
+      const clock = timestamps[index].clock ?? (/^\d{1,2}:\d{2}\b/.test(value) ? value : undefined);
+      return clock ? [clock] : [];
+    });
+    return { date, time: suggestTime(lines, clocks) };
+  }
+
+  const hasFulfillment = lines.some((line) => fulfillmentLabel.test(line));
+  let inFulfillmentSection = false;
+  // Preserve indexes so a split label cannot pick up a value across a removed line.
+  const transactionLines = hasFulfillment ? lines.map((line) => {
+    const lifecycle = fulfillmentLabel.exec(line);
+    if (lifecycle) {
+      inFulfillmentSection = /^\s*[:=]?\s*$/.test(line.slice(lifecycle[0].length));
+      return "";
+    }
+    if (inFulfillmentSection && (/^(?:date|time)\b/i.test(line) || readTimestamp(line).date || readClock(line))) return "";
+    inFulfillmentSection = false;
+    return line;
+  }) : lines;
+  const labeledDates = getLabeledValues(transactionLines, dateLabel);
+  // Unlabeled timestamps near shipping or delivery events are ambiguous.
+  const timestamps = (labeledDates.length ? labeledDates : hasFulfillment ? [] : lines).map(readTimestamp);
+  const timeLines = hasFulfillment ? transactionLines.map((line) => /^time(?=$|\s*[:=]|\s+\d)/i.test(line) ? "" : line) : transactionLines;
+  const date = singleValue(timestamps.flatMap(({ date }) => date ? [date] : []));
+  const time = suggestTime(lines, [
+    ...getLabeledValues(timeLines, timeLabel),
+    ...timestamps.flatMap(({ clock }) => clock ? [clock] : []),
+  ]);
+  return { date, time };
+}
+
+function readPaymentMethod(value: string) {
+  if (/\bor\b|\/|\b(?:credit\s+(?:and|&)\s+debit|debit\s+(?:and|&)\s+credit)\b/i.test(value)) return undefined;
+  if (/^c\.o\.d\.?$/i.test(value)) return "CASH";
+  const matches = paymentPatterns.filter(([, pattern]) => pattern.test(value));
+  if (matches.length !== 1) return undefined;
+  const [method] = matches[0];
+  if (method === "CASH" && !/^(?:cash(?:\s+on\s+delivery)?|cod)$/i.test(value)) return undefined;
+  return method;
+}
+
+function withoutMaskedCard(value: string) {
+  return value.replace(/\s+(?:ending\s+in\s+\d{4}|[x*•]{2,}[-\s]*\d{4})\)?$/i, "");
+}
+
+function readBankName(value: string) {
+  const name = value.replace(/^[\s:=(–—-]+|[\s)=–—-]+$/g, "");
+  if (!isExpenseText(name) || !/^\p{L}[\p{L}\p{M} .&'’-]+$/u.test(name)) return undefined;
+  if (/^(?:(?:visa|master\s*card|jcb|amex|american express|unionpay)(?:\s+(?:credit|debit))?(?:\s+card)?|bank|card|(?:credit|debit)(?:\s+card)?|none|unknown)$/i.test(name)) return undefined;
+  return name;
+}
+
+function suggestPayment(lines: string[]) {
+  const values = getLabeledValues(lines, paymentLabel).map(withoutMaskedCard);
+  const methods = values.map(readPaymentMethod).filter((method) => method !== undefined);
+  const paymentMethod = methods.length === values.length ? singleValue(methods) : undefined;
+  if (paymentMethod === "CASH") return { paymentMethod };
+
+  const labeledBanks = getLabeledValues(lines, bankLabel).map(withoutMaskedCard);
+  const methodPattern = paymentPatterns.find(([method]) => method === paymentMethod)?.[1];
+  const inlineBanks = methodPattern ? values.flatMap((value) => {
+    const match = methodPattern.exec(value);
+    if (!match) return [];
+    const before = value.slice(0, match.index).trim();
+    const after = value.slice(match.index + match[0].length).trim();
+    // A bank may precede the method or follow it, but two fragments are ambiguous.
+    return before && after ? [] : [before || after];
+  }) : [];
+  const bankNames = validValues(labeledBanks.length ? labeledBanks : inlineBanks, readBankName);
+  const bank = singleValue(bankNames.map((name) => name.toLowerCase())) ? bankNames[0] : undefined;
+  return { paymentMethod, bank };
 }
 
 function validValues(values: string[], read: (value: string) => string | undefined) {
@@ -153,10 +244,8 @@ export function suggestReceiptFields(text: string): ReceiptSuggestions {
   const title = singleValue(getLabeledValues(lines, titleLabel).filter(isExpenseText));
   const merchant = readMerchant(lines);
   const amount = hasForeignCurrency(lines) ? undefined : singleValue(validValues(getLabeledValues(lines, totalLabel), readAmount));
-  const labeledDates = getLabeledValues(lines, dateLabel);
-  const timestamps = (labeledDates.length ? labeledDates : lines).map(readTimestamp);
-  const date = singleValue(timestamps.flatMap(({ date }) => date ? [date] : []));
-  const time = suggestTime(lines, timestamps);
+  const { date, time } = suggestTimestamp(lines);
+  const { paymentMethod, bank } = suggestPayment(lines);
 
   return {
     ...(title ? { title } : {}),
@@ -164,5 +253,7 @@ export function suggestReceiptFields(text: string): ReceiptSuggestions {
     ...(amount ? { amount } : {}),
     ...(date ? { date } : {}),
     ...(time ? { time } : {}),
+    ...(paymentMethod ? { paymentMethod } : {}),
+    ...(bank ? { bank } : {}),
   };
 }
