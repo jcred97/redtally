@@ -4,16 +4,20 @@ import CreditAccountForm from "./_components/CreditAccountForm";
 import CreditAccountTiles from "./_components/CreditAccountTiles";
 import PayLaterSummary from "./_components/PayLaterSummary";
 
-export default async function CreditAccountsPage() {
+export default async function PayLaterBillsPage() {
   const accounts = await getCreditAccounts();
 
   return (
-    <LoanPage title="Credit Accounts" back={{ href: "/expense-groups", label: "Back to Expense Groups" }} action={<CreditAccountForm />}>
+    <LoanPage title="Pay Later Bills" back={{ href: "/expense-groups", label: "Back to Expense Groups" }}>
       <div className="mt-5 space-y-6">
-        <section aria-label="Credit accounts">
+        <PayLaterSummary accounts={accounts} />
+        <section aria-labelledby="accounts-title" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="accounts-title" className="text-lg font-semibold">Accounts</h2>
+            <CreditAccountForm />
+          </div>
           <CreditAccountTiles accounts={accounts} />
         </section>
-        <PayLaterSummary accounts={accounts} />
       </div>
     </LoanPage>
   );

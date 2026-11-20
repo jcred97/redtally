@@ -27,7 +27,7 @@ export default function ExpenseGroups() {
             href={creditAccountsHref}
             className="button-secondary inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-medium max-sm:px-2.5 max-sm:text-xs"
           >
-            Credit Accounts
+            Pay Later Bills
           </Link>
           <NewExpenseGroupButton />
         </div>

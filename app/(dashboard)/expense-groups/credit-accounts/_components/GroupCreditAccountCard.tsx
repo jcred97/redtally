@@ -1,13 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { secondaryAction } from "@/app/(dashboard)/loans/_components/LoanPage";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/SettingsTileLabel";
-import { creditAccountHref } from "@/app/lib/loans/credit-account-links";
 import { setGroupCreditAccountSettings } from "@/app/lib/loans/mutations";
 
 export type GroupCreditAccount = {
@@ -71,12 +68,6 @@ export default function GroupCreditAccountCard({ expenseGroupId, title, initials
           {method}
         </label>
       </fieldset>
-
-      {account && (
-        <Link href={creditAccountHref(account.id)} aria-label={`View account for ${title}`} className={secondaryAction}>
-          View Account
-        </Link>
-      )}
     </FormDialog>
   );
 }

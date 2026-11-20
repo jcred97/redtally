@@ -29,33 +29,30 @@ export default function PayLaterSummary({ accounts }: { accounts: CreditAccount[
   const dueSoon = bills.filter(({ dueAt }) => dueAt >= today && dueAt < weekEnd);
 
   return (
-    <section aria-labelledby="pay-later-title" className="space-y-4">
-      <h2 id="pay-later-title" className="text-lg font-semibold">Pay Later across all expense groups</h2>
+    <section id="pay-later-title" aria-labelledby="pay-later-bills-title" className="space-y-4">
+      <h2 id="pay-later-bills-title" className="text-lg font-semibold">Upcoming and overdue bills</h2>
+      {bills.length ? (
+        <ul className={`${loanPanel} divide-y divide-gray-800`}>
+          {bills.map(({ id, name, dueAt, balance }) => (
+            <li key={`${id}:${dueAt}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm first:pt-0 last:pb-0">
+              <div className="min-w-0">
+                <Link href={creditAccountHref(id)} className={`${loanLink} wrap-anywhere font-medium`}>{name}</Link>
+                <p className={dueAt < today ? "text-red-300" : "text-gray-400"}>
+                  {dueAt < today ? "Overdue since " : "Due "}{formatExpenseDate(new Date(dueAt))}
+                </p>
+              </div>
+              <span className="font-semibold tabular-nums">{formatPesoAmount(balance)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={`${loanPanel} text-sm text-gray-400`}>No upcoming or overdue Pay Later bills.</p>
+      )}
       <LoanFacts facts={[
         { label: "Total outstanding", value: formatPesoAmount(sumCentavos(bills.map(({ balance }) => balance))) },
         { label: "Due in the next 7 days", value: formatPesoAmount(sumCentavos(dueSoon.map(({ balance }) => balance))) },
         { label: "Overdue", value: formatPesoAmount(sumCentavos(overdue.map(({ balance }) => balance))) },
       ]} />
-      <section aria-labelledby="pay-later-bills-title">
-        <h3 id="pay-later-bills-title" className="mb-2 font-semibold">Upcoming and overdue bills</h3>
-        {bills.length ? (
-          <ul className={`${loanPanel} divide-y divide-gray-800`}>
-            {bills.map(({ id, name, dueAt, balance }) => (
-              <li key={`${id}:${dueAt}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm first:pt-0 last:pb-0">
-                <div className="min-w-0">
-                  <Link href={creditAccountHref(id)} className={`${loanLink} wrap-anywhere font-medium`}>{name}</Link>
-                  <p className={dueAt < today ? "text-red-300" : "text-gray-400"}>
-                    {dueAt < today ? "Overdue since " : "Due "}{formatExpenseDate(new Date(dueAt))}
-                  </p>
-                </div>
-                <span className="font-semibold tabular-nums">{formatPesoAmount(balance)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={`${loanPanel} text-sm text-gray-400`}>No upcoming or overdue Pay Later bills.</p>
-        )}
-      </section>
     </section>
   );
 }

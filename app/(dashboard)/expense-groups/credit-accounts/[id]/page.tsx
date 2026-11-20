@@ -32,7 +32,7 @@ export default async function CreditAccountPage({ params }: { params: Promise<{ 
   const nextBill = sumCentavos(payable.filter(({ dueDate }) => dueDate === nextBillDate).map(({ balance }) => balance));
 
   return (
-    <LoanPage title={account.name} back={{ href: creditAccountsHref, label: "Back to Credit Accounts" }}>
+    <LoanPage title={account.name} back={{ href: creditAccountsHref, label: "Back to Pay Later Bills" }}>
       <div className="mt-4 space-y-4">
         <LoanFacts facts={[
           { label: "Total outstanding", value: formatPesoAmount(sumCentavos(rows.map(({ outstanding }) => outstanding))) },
