@@ -168,7 +168,7 @@ export default async function ExpenseGroupPage({
         ) : bankCatalog ? (
           <ExpenseGroupBanks key={expenseGroup.id} expenseGroupId={expenseGroup.id} banks={bankCatalog} />
         ) : showCreditAccounts ? (
-          <CreditAccountsTab />
+          <CreditAccountsTab key={expenseGroup.id} expenseGroupId={expenseGroup.id} />
         ) : (
           <ExpenseCategories expenseGroupId={expenseGroup.id} categories={expenseGroup.categories} />
         )}

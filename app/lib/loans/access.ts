@@ -155,11 +155,19 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       return db.repaymentPlan.findUnique({ where: { id, ...ownedPlan(userId) }, include: planInclude(userId) });
     },
 
-    async getCreditAccountSettings() {
+    async getCreditAccountSettings(expenseGroupId: number) {
       const userId = await requireUserId();
-      return db.payLaterAccount.findMany({
-        where: { userId }, select: creditAccountSettingsSelect, orderBy: { name: "asc" },
+      if (!isExpenseGroupId(expenseGroupId)) return [];
+
+      const accounts = await db.payLaterAccount.findMany({
+        where: { userId, user: { expenseGroups: { some: { id: expenseGroupId } } } },
+        select: {
+          ...creditAccountSettingsSelect,
+          assignments: { where: { expenseGroupId }, select: { active: true, supportsPayLater: true } },
+        },
+        orderBy: { name: "asc" },
       });
+      return accounts.map(({ assignments, ...account }) => ({ ...account, assignment: assignments[0] ?? null }));
     },
 
     async getCreditAccounts() {
@@ -174,10 +182,26 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       });
     },
 
-    async getEnabledCreditAccounts() {
+    async getEnabledCreditAccounts(expenseGroupId?: number) {
       const userId = await requireUserId();
+      if (expenseGroupId === undefined) {
+        return db.payLaterAccount.findMany({
+          where: { userId, enabled: true }, select: creditAccountSelect, orderBy: { name: "asc" },
+        });
+      }
+      if (!isExpenseGroupId(expenseGroupId)) return [];
+
       return db.payLaterAccount.findMany({
-        where: { userId, enabled: true }, select: creditAccountSelect, orderBy: { name: "asc" },
+        where: {
+          userId,
+          user: { expenseGroups: { some: { id: expenseGroupId } } },
+          OR: [
+            { assignments: { some: { expenseGroupId, active: true, supportsPayLater: true } } },
+            { enabled: true, assignments: { none: { expenseGroupId } } },
+          ],
+        },
+        select: creditAccountSelect,
+        orderBy: { name: "asc" },
       });
     },
 
@@ -224,6 +248,63 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
         where: { userId, key: product.key }, data: { enabled: false }, select: { id: true },
       });
       return account ?? {};
+    },
+
+    async setGroupCreditAccountSettings(formData: FormData): Promise<{ id?: string }> {
+      const userId = await requireUserId();
+      const [rawGroupId, extraGroupId] = formData.getAll("expenseGroupId");
+      const [productKey, extraKey] = formData.getAll("productKey");
+      const [accountId, extraAccountId] = formData.getAll("creditAccountId");
+      const [activeValue, extraActive] = formData.getAll("active");
+      const [methodValue, extraMethod] = formData.getAll("supportsPayLater");
+      const expenseGroupId = Number(rawGroupId);
+      const product = creditProducts.find((candidate) => candidate.key === productKey);
+      const active = activeValue === "on";
+      const supportsPayLater = methodValue === "on";
+
+      if (typeof rawGroupId !== "string" || !/^[1-9]\d{0,9}$/.test(rawGroupId) ||
+        !isExpenseGroupId(expenseGroupId) || extraGroupId !== undefined) {
+        throw new TypeError("Choose one of your expense groups.");
+      }
+      if ((productKey === undefined ? !isLoanId(accountId) : !product || accountId !== undefined) ||
+        extraKey !== undefined || extraAccountId !== undefined || extraActive !== undefined || extraMethod !== undefined ||
+        (activeValue !== undefined && !active) || (methodValue !== undefined && !supportsPayLater)) {
+        throw new TypeError("Choose a valid credit account and setting.");
+      }
+      if (active && !supportsPayLater) throw new TypeError("Choose at least one credit method to enable this credit account.");
+
+      return db.$transaction(async (tx) => {
+        const [group] = await tx.$queryRaw<{ id: number }[]>`
+          SELECT id FROM "Spending" WHERE id = ${expenseGroupId} AND "userId" = ${userId} FOR SHARE
+        `;
+        if (!group) throw new TypeError("Choose one of your expense groups.");
+
+        if (product) {
+          // The first group setting must leave other groups at their default availability.
+          await tx.payLaterAccount.createMany({
+            data: { userId, key: product.key, name: product.name, enabled: false },
+            skipDuplicates: true,
+          });
+        }
+
+        // Use the same account lock as financed purchases before changing eligibility.
+        const [account] = product
+          ? await tx.$queryRaw<{ id: string }[]>`
+            SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND key = ${product.key} FOR UPDATE
+          `
+          : await tx.$queryRaw<{ id: string }[]>`
+            SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND id = ${accountId}::uuid FOR UPDATE
+          `;
+        if (!account) throw new TypeError("This credit account is unavailable.");
+
+        const assignment = { expenseGroupId, creditAccountId: account.id };
+        await tx.creditAccountAssignment.upsert({
+          where: { expenseGroupId_creditAccountId: assignment },
+          create: { ...assignment, userId, active },
+          update: active ? { active, supportsPayLater } : { active },
+        });
+        return account;
+      });
     },
 
     async createCashLoan(formData: FormData) {

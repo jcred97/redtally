@@ -11,7 +11,7 @@ export default async function NewExpenseButton({
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
 }) {
-  const creditAccounts = await getEnabledCreditAccounts();
+  const creditAccounts = await getEnabledCreditAccounts(expenseGroupId);
 
   return (
     <ExpenseFormDialog expenseGroupId={expenseGroupId} categories={categories} bankOptions={bankOptions}

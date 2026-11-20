@@ -13,6 +13,7 @@ export type LoanActionState = { error?: string; success?: boolean; id?: string }
 async function submit(operation: () => Promise<{ id?: string }>): Promise<LoanActionState> {
   try {
     const { id } = await operation();
+    revalidatePath("/");
     revalidatePath("/loans");
     revalidatePath(creditAccountsHref);
     revalidatePath(`${creditAccountsHref}/[id]`, "page");
@@ -36,6 +37,10 @@ export async function createCreditAccount(_previous: LoanActionState, formData: 
 
 export async function setCreditProductEnabled(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
   return submit(() => access.setCreditProductEnabled(formData));
+}
+
+export async function setGroupCreditAccountSettings(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
+  return submit(() => access.setGroupCreditAccountSettings(formData));
 }
 
 export async function recordLoanPayment(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {

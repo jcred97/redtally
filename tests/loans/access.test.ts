@@ -50,9 +50,23 @@ test("cash loans remain private and a provider bill applies once across purchase
     const account = await client.payLaterAccount.create({ data: { userId: "alice", name: "SPayLater", key: "spaylater" } });
     const enableProduct = form([["productKey", "spaylater"], ["enabled", "on"]]);
     const disableProduct = form([["productKey", "spaylater"]]);
+    const groupCreditSettings = (expenseGroupId: number, active: boolean) => form([
+      ["expenseGroupId", String(expenseGroupId)], ["productKey", "spaylater"],
+      ...(active ? [["active", "on"], ["supportsPayLater", "on"]] as const : []),
+    ]);
     assert.equal((await loans.setCreditProductEnabled(enableProduct)).id, account.id);
     assert.deepEqual(await loans.getEnabledCreditAccounts(), [{ id: account.id, name: account.name }]);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(group.id), [{ id: account.id, name: account.name }]);
+    await assert.rejects(loans.setGroupCreditAccountSettings(groupCreditSettings(otherGroup.id, true)), /expense group/i);
+    await assert.rejects(loans.setGroupCreditAccountSettings(form([
+      ["expenseGroupId", String(group.id)], ["productKey", "spaylater"], ["active", "on"],
+    ])), /credit method/i);
     const otherAccount = await client.payLaterAccount.create({ data: { userId: "bob", name: "Other", key: "other" } });
+    await assert.rejects(loans.setGroupCreditAccountSettings(form([
+      ["expenseGroupId", String(group.id)], ["creditAccountId", otherAccount.id],
+      ["active", "on"], ["supportsPayLater", "on"],
+    ])), /credit account/i);
+    assert.deepEqual(await loans.getCreditAccountSettings(otherGroup.id), []);
     const expenses = createExpenseAccess(client, async () => "alice");
     const createPurchase = (title: string, amount: string, accountId: string, submissionId: string, expenseGroup = group) => expenses.create(
       expenseGroup.id, expenseGroup.categories[0].id,
@@ -72,12 +86,6 @@ test("cash loans remain private and a provider bill applies once across purchase
     await loans.setCreditProductEnabled(disableProduct);
     assert.deepEqual(await loans.getEnabledCreditAccounts(), []);
     assert.equal((await loans.getCreditAccount(account.id))?.plans.length, 2);
-    assert.deepEqual(await loans.getCreditAccountSettings(), [
-      { id: account.id, name: account.name, key: account.key, enabled: false },
-    ]);
-    assert.deepEqual(await otherLoans.getCreditAccountSettings(), [
-      { id: otherAccount.id, name: otherAccount.name, key: otherAccount.key, enabled: true },
-    ]);
     const visibleAccounts = await loans.getCreditAccounts();
     assert.deepEqual(visibleAccounts.map(({ id, enabled }) => ({ id, enabled })), [{ id: account.id, enabled: false }]);
     assert.deepEqual(visibleAccounts[0].plans.flatMap(({ installments }) => installments.map(({ amountCentavos }) => amountCentavos)).sort((a, b) => a - b), [45000, 120000]);
@@ -90,6 +98,23 @@ test("cash loans remain private and a provider bill applies once across purchase
       form([["creditAccountName", "spaylater"], ["installmentDate", "2026-12-15"], ["installmentAmount", "10"]]),
     ), /credit account/i);
     assert.equal((await createPurchase("Paint sprayer", "1200", account.id, sprayerDraft)).id, sprayer.id);
+    assert.equal(await client.expense.count(), 2);
+
+    assert.equal((await loans.setGroupCreditAccountSettings(groupCreditSettings(secondGroup.id, true))).id, account.id);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(group.id), []);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(secondGroup.id), [{ id: account.id, name: account.name }]);
+    assert.deepEqual((await loans.getCreditAccountSettings(secondGroup.id))[0].assignment, {
+      active: true, supportsPayLater: true,
+    });
+    await loans.setGroupCreditAccountSettings(groupCreditSettings(group.id, false));
+    await loans.setCreditProductEnabled(enableProduct);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(group.id), []);
+    await assert.rejects(createPurchase("Stale account selection", "10", account.id, randomUUID()), /credit account/i);
+    await assert.rejects(expenses.create(
+      group.id, group.categories[0].id,
+      { title: "Disabled locally by name", amount: "10", date: "2026-11-20", paymentMethod: "PAY_LATER" }, randomUUID(),
+      form([["creditAccountName", "SPayLater"], ["installmentDate", "2026-12-15"], ["installmentAmount", "10"]]),
+    ), /credit account/i);
     assert.equal(await client.expense.count(), 2);
 
     const paymentDraft = form([
@@ -111,17 +136,29 @@ test("cash loans remain private and a provider bill applies once across purchase
     assert.deepEqual(await loans.getEnabledCreditAccounts(), [{ id: account.id, name: account.name }]);
 
     const expenseGroups = createExpenseGroupAccess(client, async () => "alice");
-    await expenseGroups.duplicate(group.id);
+    const copiedGroup = await expenseGroups.duplicate(group.id);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(copiedGroup.id), []);
     assert.equal(await client.expense.count(), 3);
     assert.equal(await client.loan.count(), 1);
     assert.equal(await client.repaymentPlan.count(), 2);
 
     const emptyGroup = await client.expenseGroup.create({ data: { name: "Empty group", userId: "alice" } });
+    await loans.setGroupCreditAccountSettings(groupCreditSettings(emptyGroup.id, false));
     cashDraft.set("expenseGroupId", String(emptyGroup.id));
     cashDraft.set("submissionId", randomUUID());
     const secondLoan = await loans.createCashLoan(cashDraft);
     await expenseGroups.delete(emptyGroup.id);
     assert.equal((await loans.getCashLoan(secondLoan.id))?.expenseGroupId, null);
+    assert.equal(await client.creditAccountAssignment.count({ where: { expenseGroupId: emptyGroup.id } }), 0);
+
+    await expenses.create(
+      group.id, group.categories[0].id,
+      { title: "New provider", amount: "10", date: "2026-11-20", paymentMethod: "PAY_LATER" }, randomUUID(),
+      form([["creditAccountName", "New provider"], ["installmentDate", "2026-12-15"], ["installmentAmount", "10"]]),
+    );
+    const provider = await client.payLaterAccount.findFirstOrThrow({ where: { userId: "alice", key: "new provider" } });
+    assert.deepEqual(await loans.getEnabledCreditAccounts(group.id), [{ id: provider.id, name: provider.name }]);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(secondGroup.id), [{ id: account.id, name: account.name }]);
   } finally {
     await fixture.close();
   }

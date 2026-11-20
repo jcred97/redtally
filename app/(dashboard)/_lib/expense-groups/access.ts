@@ -499,6 +499,7 @@ export function createExpenseGroupAccess(
           include: {
             budgets: true,
             bankAssignments: true,
+            creditAccountAssignments: { select: { creditAccountId: true, active: true, supportsPayLater: true } },
             categories: { orderBy: { id: "asc" } },
           },
         });
@@ -537,6 +538,14 @@ export function createExpenseGroupAccess(
             publicId: true,
           },
         });
+
+        if (source.creditAccountAssignments.length > 0) {
+          await tx.creditAccountAssignment.createMany({
+            data: source.creditAccountAssignments.map((assignment) => ({
+              ...assignment, expenseGroupId: copy.id, userId,
+            })),
+          });
+        }
 
         for (const category of source.categories) {
           // Map by source ID so categories with identical names remain distinct.
@@ -581,7 +590,7 @@ export function createExpenseGroupAccess(
       const where = ownedGroup(id, userId);
       try {
         await db.$transaction(async (tx) => {
-          // Lock the owned group before touching its bank settings, in the same order as bank saves.
+          // Lock the owned group before changing its settings or unlinking its loans.
           const [group] = await tx.$queryRaw<{ hasRecords: boolean }[]>`
             SELECT EXISTS (SELECT 1 FROM "Category" WHERE "spendingId" = g.id)
                 OR EXISTS (SELECT 1 FROM "Budget" WHERE "expenseGroupId" = g.id) AS "hasRecords"

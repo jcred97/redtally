@@ -11,7 +11,7 @@ export default async function CreditAccountsPage() {
     <LoanPage title="Credit Accounts" back={{ href: "/expense-groups", label: "Back to Expense Groups" }} action={<CreditAccountForm />}>
       <div className="mt-5 space-y-6">
         <section aria-label="Credit accounts">
-          <CreditAccountTiles accounts={accounts} standalone />
+          <CreditAccountTiles accounts={accounts} />
         </section>
         <PayLaterSummary accounts={accounts} />
       </div>

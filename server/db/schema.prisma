@@ -43,6 +43,7 @@ model ExpenseGroup {
   categories         Category[]
   budgets            Budget[]
   bankAssignments    BankAssignment[]
+  creditAccountAssignments CreditAccountAssignment[]
   expenseSubmissions ExpenseSubmission[]
   recurringExpenses  RecurringExpense[]
   recurringExpenseSubmissions RecurringExpenseSubmission[]
@@ -234,9 +235,24 @@ model PayLaterAccount {
   key       String          @db.VarChar(120)
   enabled   Boolean         @default(true)
   plans     RepaymentPlan[]
+  assignments CreditAccountAssignment[]
   createdAt DateTime        @default(now())
 
   @@unique([userId, key])
+  @@unique([id, userId])
+}
+
+model CreditAccountAssignment {
+  expenseGroupId   Int
+  creditAccountId  String          @db.Uuid
+  userId           String
+  expenseGroup     ExpenseGroup    @relation(fields: [expenseGroupId, userId], references: [id, userId], onDelete: Cascade)
+  creditAccount    PayLaterAccount @relation(fields: [creditAccountId, userId], references: [id, userId], onDelete: Cascade)
+  active           Boolean         @default(true)
+  supportsPayLater Boolean         @default(true)
+
+  @@id([expenseGroupId, creditAccountId])
+  @@index([creditAccountId, userId])
 }
 
 model RepaymentPlan {

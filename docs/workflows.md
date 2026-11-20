@@ -40,16 +40,16 @@ Cash loan details show the lender, amount borrowed, receiving account, optional 
 
 ### Managing credit accounts
 
-Open **Expense Groups → Credit Accounts** and select the **Shopee · SPayLater** card to open its settings. Check **Enable SPayLater** and select **Save changes** to make the account available in **New Expense → Pay Later**. This setting applies across your expense groups. Each purchase has its own repayment term and schedule.
+Open an expense group, select **Credit Accounts**, and open the **Shopee · SPayLater** card. Check **Enable for this expense group**, select **SPayLater** under **Credit methods**, and save. That group can then use it in **New Expense → Pay Later**. For custom accounts, the credit method is **Pay Later**.
 
-Clear **Enable SPayLater** in settings and save to hide it from new expenses. Once an SPayLater account exists, **View Account** opens its repayment plans and payment history and lets you record a payment even when the account is disabled. In the group tab, **View Account** is inside the card's settings dialog. Re-enabling SPayLater uses the same account.
+Clear **Enable for this expense group** and save to hide the account from new expenses in that group. **View Account** in the settings dialog opens the shared repayment plans, payment history, and bill payment form. The SPayLater setting on **All Expense Groups → Credit Accounts** sets the default for groups that have yet to save their own settings.
 
 To add an account for another provider, open **All Expense Groups → Credit Accounts** and select **New Credit Account**. Enter the account name in the dialog and select **Create account**. Select the new account's card to open it.
 
 ### Recording a financed purchase
 
 1. Open **New Expense** in the appropriate expense group and enter the full purchase amount, date, and category.
-2. Choose **Pay Later** as the payment method or apply it from a receipt suggestion. Under **Credit account**, select an enabled account or choose **Add credit account** and enter the new account name. The **Bank** field is hidden for Pay Later purchases.
+2. Choose **Pay Later** as the payment method or apply it from a receipt suggestion. Under **Credit account**, select an account enabled for this group. You can also choose **Add credit account** and enter a new name. The new account starts out enabled only in the current group. The **Bank** field is hidden for Pay Later purchases.
 3. Choose the **Term** and enter the due dates and amounts shown by the provider.
 4. Select **Save expense**. RedTally saves the purchase, its linked repayment plan, and any new credit account together. The full purchase counts once toward the expense group’s spending. Select **View plan** in expense history or open the account in **Credit Accounts** to see the schedule.
 
