@@ -92,7 +92,7 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 - [ ] Extend recurring scheduling into a bills and payday timeline with planned, due, overdue, and paid states, reminders, and matching between expected items and actual transactions. Include subscriptions and annual renewals.
 - [ ] Add account balances, income, expenses, and net cash flow to Dashboard. Internal transfers and credit-card repayments must not count purchases as expenses twice.
 - [ ] Add credit-card statement/current balances, minimum payments, due dates, installments, and debt payoff progress.
-- [x] Add Pay Later to **New Expense**. Let users choose an enabled **Credit provider** and show the saved provider in expense history.
+- [x] Add Pay Later to **New Expense**. Let users choose an enabled Pay Later provider in **Payment Provider** and show the saved provider in expense history.
 - [ ] Link disbursements and repayments to the financial-account ledger. Track principal, interest, and fees separately when the underlying transactions support that breakdown.
 
 ### Phase 3: goals, forecasts, and net worth

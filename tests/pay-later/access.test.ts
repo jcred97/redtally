@@ -33,7 +33,7 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   });
   assert.deepEqual(await getExpenseGroupPayLater("bob", household.id), { providers: [] });
   await assert.rejects(setGroupPayLaterProvider("bob", enableShopee), /expense groups/i);
-  await assert.rejects(resolveProvider("alice", household.id, null), /choose a credit provider/i);
+  await assert.rejects(resolveProvider("alice", household.id, null), /choose a Pay Later provider/i);
   await assert.rejects(resolveProvider("alice", household.id, "shopee"), /unavailable/i);
 
   await setGroupPayLaterProvider("alice", enableShopee);

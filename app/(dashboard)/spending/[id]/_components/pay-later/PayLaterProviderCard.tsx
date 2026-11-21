@@ -8,7 +8,7 @@ import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/Set
 import { setGroupPayLaterProvider } from "@/app/lib/pay-later/mutations";
 import type { PayLaterProviderSetting } from "@/app/lib/pay-later/providers";
 
-const saveError = "Unable to save credit provider settings. Please try again.";
+const saveError = "Unable to save Pay Later provider settings. Please try again.";
 
 export default function PayLaterProviderCard({ expenseGroupId, provider }: {
   expenseGroupId: number;

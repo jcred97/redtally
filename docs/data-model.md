@@ -39,7 +39,6 @@ Application names are mapped to the existing database identifiers. These naming 
 | --- | --- |
 | `ExpenseGroup` | `Spending` table |
 | `BankAssignment` | `ExpenseGroupBank` table |
-| `PayLaterProviderAssignment` | `ExpenseGroupPayLaterProvider` table |
 | `PaymentMethod` | `TransactionType` enum |
 | `Expense.paymentMethod` | `Expense.transactionType` column |
 | `Expense.legacyBankName` | `Expense.bank` column |
@@ -62,7 +61,7 @@ Migration `20261115120000_recurring_expenses` adds the schedule and occurrence t
 
 ## Pay Later
 
-Each expense group enables preset or custom providers through `PayLaterProviderAssignment`. TypeScript uses `PayLaterProviderSetting` for settings and `PayLaterProviderOption` for expense entry. Both expose the assignment’s `providerKey` and a resolved `providerName`. A Pay Later purchase stores its full amount in a single `Expense` and its selected provider in `payLaterProviderKey` and `payLaterProviderName`. The stored name is optional for built-in providers, whose labels come from the preset catalog. Older Pay Later expenses without a known provider keep empty provider fields. Disabling a provider preserves the saved choice on existing expenses. Group duplication copies both provider settings and saved expense details. [Pay Later setup](workflows.md#pay-later-setup-and-purchases)
+Each expense group enables preset or custom providers through `PayLaterProviderAssignment`, the name used in both Prisma and PostgreSQL. TypeScript uses `PayLaterProviderSetting` for settings and `PayLaterProviderOption` for expense entry. Both expose the assignment’s `providerKey` and a resolved `providerName`. A Pay Later purchase stores its full amount in a single `Expense` and its selected provider in `payLaterProviderKey` and `payLaterProviderName`. The stored name is optional for built-in providers, whose labels come from the preset catalog. Older Pay Later expenses without a known provider keep empty provider fields. Disabling a provider preserves the saved choice on existing expenses. Group duplication copies both provider settings and saved expense details. [Pay Later setup](workflows.md#pay-later-setup-and-purchases)
 
 The cleanup migration copies known providers onto existing Pay Later expenses before dropping the financial account, loan, and repayment tables. It preserves expense rows, group provider settings, and sign-in records. [Cleanup migration](../server/db/migrations/20261121120000_remove_accounts_and_loans/migration.sql)
 

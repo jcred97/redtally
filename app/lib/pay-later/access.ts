@@ -30,17 +30,17 @@ async function lockOwnedExpenseGroup(tx: Prisma.TransactionClient, expenseGroupI
 export async function requireEnabledPayLaterProvider(
   tx: Prisma.TransactionClient, userId: string, expenseGroupId: number, providerKey: unknown,
 ) {
-  if (!validProviderKey(providerKey)) throw new TypeError("Choose a credit provider.");
+  if (!validProviderKey(providerKey)) throw new TypeError("Choose a Pay Later provider.");
 
   // Hold the setting until the expense transaction commits so a save and a disable cannot race.
   const [provider] = await tx.$queryRaw<Pick<PayLaterProviderAssignment, "providerKey" | "providerName">[]>`
-    SELECT "providerKey", "providerName" FROM "ExpenseGroupPayLaterProvider"
+    SELECT "providerKey", "providerName" FROM "PayLaterProviderAssignment"
     WHERE "expenseGroupId" = ${expenseGroupId} AND "userId" = ${userId}
       AND "providerKey" = ${providerKey} AND active
     FOR SHARE
   `;
   if (!provider) {
-    throw new TypeError("This credit provider is unavailable for new purchases in this expense group. Review Pay Later in the Payment Provider tab.");
+    throw new TypeError("This Pay Later provider is unavailable for new purchases in this expense group. Review Pay Later in the Payment Provider tab.");
   }
   return provider;
 }
@@ -71,7 +71,7 @@ export function createPayLaterAccess(db: PrismaClient) {
       const active = activeValue === "on";
       if (!validProviderKey(providerKey) || extraKey !== undefined || extraActive !== undefined ||
         (activeValue !== undefined && !active)) {
-        throw new TypeError("Choose a valid credit provider and setting.");
+        throw new TypeError("Choose a valid Pay Later provider and setting.");
       }
 
       return db.$transaction(async (tx) => {
@@ -83,7 +83,7 @@ export function createPayLaterAccess(db: PrismaClient) {
         }
 
         const { count } = await tx.payLaterProviderAssignment.updateMany({ where: { ...key, userId }, data: { active } });
-        if (!count) throw new TypeError("This credit provider is unavailable.");
+        if (!count) throw new TypeError("This Pay Later provider is unavailable.");
       });
     },
 
@@ -92,10 +92,10 @@ export function createPayLaterAccess(db: PrismaClient) {
       const [name, extraName] = formData.getAll("name");
       const providerName = typeof name === "string" ? name.trim().replace(/\s+/g, " ") : "";
       if (!providerName || providerName.length > 120 || extraName !== undefined) {
-        throw new TypeError("Enter a credit provider name up to 120 characters.");
+        throw new TypeError("Enter a Pay Later provider name up to 120 characters.");
       }
       const providerKey = customPayLaterProviderKey(providerName);
-      if (!validProviderKey(providerKey)) throw new TypeError("Enter a shorter credit provider name.");
+      if (!validProviderKey(providerKey)) throw new TypeError("Enter a shorter Pay Later provider name.");
       if (presetPayLaterProviders.some((provider) => customPayLaterProviderKey(provider.providerName) === providerKey)) {
         throw new TypeError("Choose this provider from the Pay Later settings list.");
       }

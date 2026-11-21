@@ -136,6 +136,10 @@ For future installations or releases that change authentication storage, coordin
 
 The cleanup migration copies known Pay Later providers onto their original expenses, then permanently removes financial accounts, cash loans, repayment plans, installments, payments, and allocations. It preserves expenses, expense-group Pay Later settings, and sign-in records. Take a verified backup and apply pending migrations in order during a coordinated release with the matching application. [Cleanup migration](server/db/migrations/20261121120000_remove_accounts_and_loans/migration.sql)
 
+### Pay Later provider table rename
+
+The rename migration updates the existing Pay Later provider table and constraints to match the Prisma model `PayLaterProviderAssignment`. Pause traffic, apply the migration, and deploy the matching app before resuming traffic. Older releases still query `ExpenseGroupPayLaterProvider`. [Rename migration](server/db/migrations/20261121130000_rename_pay_later_provider_assignment/migration.sql)
+
 ### Database connection troubleshooting
 
 If a Supabase connection returns `(ENOTFOUND) tenant/user ... not found`, the shared pooler could not match the configured host and username to a project. This response can arrive after successful DNS resolution; it does not by itself mean a local DNS failure or an incorrect password. See [Supabase's troubleshooting guide](https://supabase.com/kb/troubleshooting/tenant-or-user-not-found).

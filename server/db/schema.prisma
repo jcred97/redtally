@@ -215,7 +215,6 @@ model PayLaterProviderAssignment {
   expenseGroup   ExpenseGroup @relation(fields: [expenseGroupId, userId], references: [id, userId], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([expenseGroupId, providerKey])
-  @@map("ExpenseGroupPayLaterProvider")
 }
 
 model User {

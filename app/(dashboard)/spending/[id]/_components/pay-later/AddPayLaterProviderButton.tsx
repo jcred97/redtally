@@ -3,7 +3,7 @@
 import CreateNameDialog from "@/app/components/dialogs/CreateNameDialog";
 import { createGroupPayLaterProvider } from "@/app/lib/pay-later/mutations";
 
-const failureMessage = "Unable to add the credit provider. Please try again.";
+const failureMessage = "Unable to add the Pay Later provider. Please try again.";
 
 export default function AddPayLaterProviderButton({ expenseGroupId }: { expenseGroupId: number }) {
   async function addProvider(formData: FormData) {
@@ -13,8 +13,8 @@ export default function AddPayLaterProviderButton({ expenseGroupId }: { expenseG
 
   return (
     <CreateNameDialog
-      triggerLabel="Add credit provider"
-      title="Add credit provider"
+      triggerLabel="Add Pay Later provider"
+      title="Add Pay Later provider"
       description="Add and enable a provider for this expense group."
       placeholder="e.g. Store installments"
       failureMessage={failureMessage}

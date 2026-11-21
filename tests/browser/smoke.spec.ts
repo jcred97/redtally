@@ -405,8 +405,8 @@ test("New Expense lists enabled Pay Later providers for the group", async ({ pag
   await expect(page.getByRole("button", { name: "Lazada Enabled", exact: true })).toBeVisible();
 
   const customProvider = "Neighborhood Shop Pay Later";
-  await page.getByRole("button", { name: "Add credit provider", exact: true }).click();
-  const createProvider = page.getByRole("dialog", { name: "Add credit provider", exact: true });
+  await page.getByRole("button", { name: "Add Pay Later provider", exact: true }).click();
+  const createProvider = page.getByRole("dialog", { name: "Add Pay Later provider", exact: true });
   await createProvider.getByLabel("Name", { exact: true }).fill(customProvider);
   await createProvider.getByRole("button", { name: "Create", exact: true }).click();
   await expect(createProvider).toBeHidden();
@@ -428,8 +428,8 @@ test("New Expense lists enabled Pay Later providers for the group", async ({ pag
   await expense.getByRole("option", { name: customProvider, exact: true }).click();
   await expect(paymentMethod).toHaveText("Pay Later");
   await expect(paymentProvider).toHaveText(customProvider);
-  await expect(expense.getByRole("combobox", { name: "Credit provider", exact: true })).toHaveCount(0);
-  await expect(expense.getByRole("button", { name: "How to enable a credit provider" })).toHaveCount(0);
+  await expect(expense.getByRole("combobox", { name: "Pay Later provider", exact: true })).toHaveCount(0);
+  await expect(expense.getByRole("button", { name: /how to enable/i })).toHaveCount(0);
   await expect(saveExpense).toBeEnabled();
 
   await page.goto(groupPath(data.olderHistory.publicId));
@@ -451,7 +451,7 @@ test("the retired Accounts and Loans pages are unavailable", async ({ page }) =>
   }
 });
 
-test("Pay Later expenses save and edit with only a credit provider", async ({ page }) => {
+test("Pay Later purchases retain their provider after it is disabled", async ({ page }) => {
   await page.setViewportSize({ width: 1185, height: 844 });
   await page.goto("/expense-groups");
   await page.getByRole("button", { name: /New.*Group/ }).click();

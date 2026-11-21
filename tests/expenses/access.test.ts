@@ -672,8 +672,8 @@ test("expense writes validate money, dates, category membership, and current own
       const payLater = { ...validInput, title: "Pay Later purchase", paymentMethod: "PAY_LATER" };
       const createPurchase = (payLaterProviderKey?: string) =>
         alice.create(aliceGroup.id, aliceCategory.id, { ...payLater, payLaterProviderKey }, submissionId);
-      await assert.rejects(createPurchase(), /Choose a credit provider/);
-      await assert.rejects(createPurchase("shopee"), /credit provider/i);
+      await assert.rejects(createPurchase(), /Choose a Pay Later provider/);
+      await assert.rejects(createPurchase("shopee"), /Pay Later provider.*unavailable/i);
 
       const provider = await client.payLaterProviderAssignment.create({
         data: { expenseGroupId: aliceGroup.id, userId: "alice", providerKey: "custom:shop credit", providerName: "Shop Credit", active: true },
@@ -699,7 +699,7 @@ test("expense writes validate money, dates, category membership, and current own
       });
       await assert.rejects(
         alice.create(aliceGroup.id, aliceCategory.id, { ...payLater, payLaterProviderKey: provider.providerKey }, randomUUID()),
-        /credit provider/i,
+        /Pay Later provider.*unavailable/i,
       );
       const edited = await alice.update(
         aliceGroup.id, purchase.id, aliceCategory.id,
@@ -709,7 +709,7 @@ test("expense writes validate money, dates, category membership, and current own
       assert.equal(edited.payLaterProviderName, "Shop Credit");
       await assert.rejects(
         alice.update(aliceGroup.id, edited.id, aliceCategory.id, { ...payLater, payLaterProviderKey: "shopee" }, edited.updatedAt.toISOString()),
-        /credit provider/i,
+        /Pay Later provider.*unavailable/i,
       );
 
       const cash = await alice.update(
@@ -720,7 +720,7 @@ test("expense writes validate money, dates, category membership, and current own
       assert.equal(cash.payLaterProviderName, null);
       await assert.rejects(
         alice.update(aliceGroup.id, cash.id, aliceCategory.id, payLater, cash.updatedAt.toISOString()),
-        /Choose a credit provider/,
+        /Choose a Pay Later provider/,
       );
 
       const legacy = await client.expense.update({ where: { id: purchase.id }, data: { paymentMethod: "PAY_LATER" } });

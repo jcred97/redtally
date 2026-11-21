@@ -6,11 +6,12 @@ import { PGlite } from "@electric-sql/pglite";
 
 const providerMigration = "20261121110000_pay_later_providers";
 const cleanupMigration = "20261121120000_remove_accounts_and_loans";
+const renameMigration = "20261121130000_rename_pay_later_provider_assignment";
 const spayLaterId = "11111111-1111-4111-8111-111111111111";
 const shopeeId = "22222222-2222-4222-8222-222222222222";
 const customId = "33333333-3333-4333-8333-333333333333";
 
-test("Pay Later providers survive the removal of financial accounts and repayment records", async () => {
+test("Pay Later provider assignments survive account cleanup and the table rename", async () => {
   const db = new PGlite();
   try {
     const directory = path.join(process.cwd(), "server/db/migrations");
@@ -102,7 +103,8 @@ test("Pay Later providers survive the removal of financial accounts and repaymen
 
     await db.exec(await readFile(path.join(directory, cleanupMigration, "migration.sql"), "utf8"));
     assert.deepEqual((await assignments()).rows, expectedAssignments);
-    assert.deepEqual((await db.query('SELECT * FROM "Expense" ORDER BY id')).rows, [
+    const savedExpenses = (await db.query('SELECT * FROM "Expense" ORDER BY id')).rows;
+    assert.deepEqual(savedExpenses, [
       { ...beforeExpenses[0], payLaterProviderKey: "shopee", payLaterProviderName: null },
       { ...beforeExpenses[1], payLaterProviderKey: "custom:neighborhood store", payLaterProviderName: "Neighborhood Store" },
       { ...beforeExpenses[2], payLaterProviderKey: null, payLaterProviderName: null },
@@ -121,11 +123,27 @@ test("Pay Later providers survive the removal of financial accounts and repaymen
       CREATE ROLE provider_api NOLOGIN;
       GRANT USAGE ON SCHEMA public TO provider_api;
       GRANT SELECT, INSERT ON "ExpenseGroupPayLaterProvider" TO provider_api;
-      SET ROLE provider_api;
     `);
-    assert.deepEqual((await assignments()).rows, []);
+    const savedAssignments = (await db.query('SELECT * FROM "ExpenseGroupPayLaterProvider" ORDER BY "expenseGroupId", "providerKey"')).rows;
+    await db.exec(await readFile(path.join(directory, renameMigration, "migration.sql"), "utf8"));
+
+    const renamedAssignments = () => db.query('SELECT * FROM "PayLaterProviderAssignment" ORDER BY "expenseGroupId", "providerKey"');
+    assert.deepEqual((await renamedAssignments()).rows, savedAssignments);
+    assert.deepEqual((await db.query('SELECT * FROM "Expense" ORDER BY id')).rows, savedExpenses);
+    assert.deepEqual((await db.query(`SELECT to_regclass('"ExpenseGroupPayLaterProvider"') AS "oldTable"`)).rows, [{ oldTable: null }]);
     await assert.rejects(db.exec(`
-      INSERT INTO "ExpenseGroupPayLaterProvider" ("expenseGroupId", "userId", "providerKey")
+      INSERT INTO "PayLaterProviderAssignment" ("expenseGroupId", "userId", "providerKey")
+        VALUES (10, 'owner', 'shopee')
+    `), /PayLaterProviderAssignment_expenseGroupId_userId_fkey/);
+    await assert.rejects(db.exec(`
+      INSERT INTO "PayLaterProviderAssignment" ("expenseGroupId", "userId", "providerKey")
+        VALUES (7, 'owner', 'shopee')
+    `), /PayLaterProviderAssignment_pkey/);
+
+    await db.exec("SET ROLE provider_api");
+    assert.deepEqual((await renamedAssignments()).rows, []);
+    await assert.rejects(db.exec(`
+      INSERT INTO "PayLaterProviderAssignment" ("expenseGroupId", "userId", "providerKey")
         VALUES (7, 'owner', 'lazada')
     `), /row-level security/);
   } finally {

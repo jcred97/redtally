@@ -33,7 +33,7 @@ export class BankSelectionError extends TypeError {}
 function parsePayLaterProviderKey(value: unknown) {
   if (value == null || value === "") return null;
   if (typeof value !== "string" || value.length > 127) {
-    throw new TypeError("Choose a valid credit provider.");
+    throw new TypeError("Choose a valid Pay Later provider.");
   }
   return value;
 }
@@ -175,7 +175,7 @@ export function createExpenseAccess(
         ? parsePayLaterProviderKey(input.payLaterProviderKey)
         : null;
       if (payment?.paymentMethod === PaymentMethod.PAY_LATER && !payLaterProviderKey) {
-        throw new TypeError("Choose a credit provider.");
+        throw new TypeError("Choose a Pay Later provider.");
       }
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
       const payload = [categoryId, values.title, values.amountCentavos, values.date];
@@ -324,7 +324,7 @@ export function createExpenseAccess(
               ? existing.payLaterProviderKey
               : parsePayLaterProviderKey(input.payLaterProviderKey);
             if (!providerKey && (existing.paymentMethod !== method || existing.payLaterProviderKey !== null)) {
-              throw new TypeError("Choose a credit provider.");
+              throw new TypeError("Choose a Pay Later provider.");
             }
             if (providerKey && providerKey !== existing.payLaterProviderKey) {
               const provider = await requireEnabledPayLaterProvider(tx, userId, expenseGroupId, providerKey);
