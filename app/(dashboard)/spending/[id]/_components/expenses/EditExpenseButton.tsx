@@ -1,8 +1,7 @@
 "use client";
 
-import ExpenseFormDialog, { type EditableExpense } from "./ExpenseFormDialog";
+import ExpenseFormDialog, { type CreditProviderOption, type EditableExpense } from "./ExpenseFormDialog";
 import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
-import type { CreditProviderOption } from "./CreditProviderField";
 
 export default function EditExpenseButton({
   expenseGroupId,

@@ -8,7 +8,7 @@ import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
 import ExpenseActionMenu from "./ExpenseActionMenu";
 import GroupedExpenseHistory from "./GroupedExpenseHistory";
-import type { CreditProviderOption } from "./CreditProviderField";
+import type { CreditProviderOption } from "./ExpenseFormDialog";
 
 type ExpenseHistoryProps = {
   expenseGroupId: number;

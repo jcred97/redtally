@@ -17,7 +17,10 @@ import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type Expense
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
-import CreditProviderField, { type CreditProviderOption } from "./CreditProviderField";
+
+export type CreditProviderOption = { key: string; name: string };
+
+const paymentMethods = Object.keys(paymentMethodLabels).filter(isPaymentMethod);
 
 export type EditableExpense = {
   id: number;
@@ -67,36 +70,51 @@ export default function ExpenseFormDialog({
   const [bankAssignmentId, setBankAssignmentId] = useState("");
   const [creditProviderKey, setCreditProviderKey] = useState("");
   const hasCategories = categories.length > 0;
-  const isPayLater = paymentMethod === "PAY_LATER";
-  const historicalKey = expense?.payLaterProviderKey;
-  const providerOptions = historicalKey && !creditProviders.some(({ key }) => key === historicalKey)
-    ? [...creditProviders, { key: historicalKey, name: `${expense?.payLaterProviderName ?? historicalKey} (previously selected)` }]
-    : creditProviders;
-  const providerRequired = expense?.paymentMethod !== "PAY_LATER" || Boolean(historicalKey);
-  const providerMissing = creditProviderKey ? !providerOptions.some(({ key }) => key === creditProviderKey) : providerRequired;
-  const canSelectBank = isBankPaymentMethod(paymentMethod);
-  const eligibleBanks = canSelectBank
+  const previousProviderKey = expense?.payLaterProviderKey;
+  const legacyPayLater = expense?.paymentMethod === "PAY_LATER" && !previousProviderKey;
+  const eligibleBanks = isBankPaymentMethod(paymentMethod)
     ? bankOptions.filter((bank) => bank.paymentMethods.includes(paymentMethod))
     : [];
-  const selectedBank = eligibleBanks.find((bank) => String(bank.id) === bankAssignmentId);
-  const bankHelp = paymentMethod === ""
-    ? "Select a method first."
-    : paymentMethod === "CASH"
-      ? "Unavailable for cash."
-      : canSelectBank && eligibleBanks.length === 0
-        ? "Enable a bank for this method in Payment Provider."
-        : null;
-  const hasRecordedBank =
-    expense?.bankName != null &&
-    paymentMethod === (expense.paymentMethod ?? "") &&
-    bankAssignmentId === String(expense.bankAssignmentId ?? "");
-  const showUnavailableBank =
-    hasRecordedBank &&
-    bankAssignmentId !== "" &&
-    !selectedBank;
-  const bankLabel = showUnavailableBank
-    ? `${expense?.bankName} (previously selected)`
-    : selectedBank?.name ?? "No bank";
+  const providerOptions = creditProviders.map(({ key, name }) => ({ value: `PAY_LATER:${key}`, label: `Pay Later — ${name}` }));
+  if (previousProviderKey && !creditProviders.some(({ key }) => key === previousProviderKey)) {
+    providerOptions.push({
+      value: `PAY_LATER:${previousProviderKey}`,
+      label: `Pay Later — ${expense?.payLaterProviderName ?? previousProviderKey} (previously selected)`,
+    });
+  }
+  const paymentDetail = paymentMethod === "PAY_LATER" ? creditProviderKey : bankAssignmentId;
+  const paymentValue = paymentDetail ? `${paymentMethod}:${paymentDetail}` : paymentMethod;
+  const needsProvider = paymentMethod === "PAY_LATER" && !legacyPayLater && !creditProviderKey;
+  const payLaterPlaceholder = legacyPayLater ? "Pay Later — no provider recorded"
+    : creditProviders.length ? "Pay Later — choose a provider" : "Pay Later — no providers enabled";
+  const paymentOptions = [
+    { value: "", label: "No payment method" },
+    ...paymentMethods.flatMap((method): { value: string; label: string; disabled?: boolean }[] => {
+      const label = paymentMethodLabels[method];
+      if (method === "PAY_LATER") {
+        return [
+          ...(legacyPayLater || needsProvider || !creditProviders.length
+            ? [{ value: method, label: payLaterPlaceholder, disabled: !legacyPayLater }]
+            : []),
+          ...providerOptions,
+        ];
+      }
+      if (!isBankPaymentMethod(method)) return [{ value: method, label }];
+
+      const banks = bankOptions.filter((bank) => bank.paymentMethods.includes(method));
+      const previousBankId = expense?.paymentMethod === method ? expense.bankAssignmentId : null;
+      const historicalBank = previousBankId !== null && !banks.some(({ id }) => id === previousBankId)
+        ? [{ value: `${method}:${previousBankId}`, label: `${label} — ${expense?.bankName ?? "Unavailable bank"} (previously selected)`, disabled: true }]
+        : [];
+      return [
+        { value: method, label },
+        ...banks.map(({ id, name }) => ({ value: `${method}:${id}`, label: `${label} — ${name}` })),
+        ...historicalBank,
+      ];
+    }),
+  ];
+  const showRecordedBank = expense?.bankName != null && expense.bankAssignmentId == null &&
+    paymentMethod === (expense.paymentMethod ?? "") && !bankAssignmentId;
 
   function resetFields() {
     if (expense) {
@@ -109,7 +127,7 @@ export default function ExpenseFormDialog({
       setCategoryId(String(expense.categoryId));
       setPaymentMethod(expense.paymentMethod ?? "");
       setBankAssignmentId(String(expense.bankAssignmentId ?? ""));
-      setCreditProviderKey(historicalKey ?? "");
+      setCreditProviderKey(previousProviderKey ?? "");
     } else {
       submissionId.current = crypto.randomUUID();
       setTitle("");
@@ -124,16 +142,13 @@ export default function ExpenseFormDialog({
     }
   }
 
-  function changePaymentMethod(method: PaymentMethod | "") {
-    setPaymentMethod(method);
-    if (
-      !isBankPaymentMethod(method) ||
-      !bankOptions.some(
-        (bank) => String(bank.id) === bankAssignmentId && bank.paymentMethods.includes(method)
-      )
-    ) {
-      setBankAssignmentId("");
-    }
+  function selectPayment(value: string) {
+    const separator = value.indexOf(":");
+    const method = separator < 0 ? value : value.slice(0, separator);
+    const detail = separator < 0 ? "" : value.slice(separator + 1);
+    setPaymentMethod(isPaymentMethod(method) ? method : "");
+    setBankAssignmentId(isBankPaymentMethod(method) ? detail : "");
+    setCreditProviderKey(method === "PAY_LATER" ? detail : "");
   }
 
   function applyReceiptSuggestion(field: keyof ReceiptSuggestions, value: string) {
@@ -154,7 +169,12 @@ export default function ExpenseFormDialog({
         setTime(value);
         break;
       case "paymentMethod":
-        if (isPaymentMethod(value)) changePaymentMethod(value);
+        if (isPaymentMethod(value) && value !== paymentMethod) {
+          const keepBank = isBankPaymentMethod(value) && bankOptions.some(
+            ({ id, paymentMethods }) => String(id) === bankAssignmentId && paymentMethods.includes(value),
+          );
+          selectPayment(keepBank ? `${value}:${bankAssignmentId}` : value);
+        }
         break;
       case "bank":
         if (eligibleBanks.some((bank) => String(bank.id) === value)) setBankAssignmentId(value);
@@ -166,6 +186,7 @@ export default function ExpenseFormDialog({
     formData.set("expenseGroupId", String(expenseGroupId));
     formData.set("paymentMethod", paymentMethod);
     formData.set("bankAssignmentId", bankAssignmentId);
+    formData.set("creditProviderKey", creditProviderKey);
 
     if (expense) {
       formData.set("expenseId", String(expense.id));
@@ -195,7 +216,7 @@ export default function ExpenseFormDialog({
         submitLabel={expense ? "Save changes" : "Save expense"}
         pendingLabel="Saving..."
         disabled={!hasCategories}
-        submitDisabled={isPayLater && providerMissing}
+        submitDisabled={needsProvider}
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
@@ -289,45 +310,16 @@ export default function ExpenseFormDialog({
               <label htmlFor={`${fieldId}-payment-method`} className={fieldLabelClass}>Payment method</label>
               <Select
                 id={`${fieldId}-payment-method`}
-                name="paymentMethod"
-                value={paymentMethod}
-                onChange={(value) => changePaymentMethod(value as PaymentMethod | "")}
-                options={[
-                  { value: "", label: "No payment method" },
-                  ...Object.entries(paymentMethodLabels)
-                    .map(([value, label]) => ({ value, label })),
-                ]}
+                value={paymentValue}
+                onChange={selectPayment}
+                options={paymentOptions}
               />
+              {needsProvider && !creditProviders.length && (
+                <p className="mt-1 text-xs text-gray-400">Enable a provider in Payment Provider → Pay Later.</p>
+              )}
             </div>
-            {!isPayLater && <div className="min-w-0">
-              <label htmlFor={`${fieldId}-bank`} className={fieldLabelClass}>
-                Bank <span className="text-xs">(optional)</span>
-              </label>
-              <Select
-                id={`${fieldId}-bank`}
-                name="bankAssignmentId"
-                value={bankAssignmentId}
-                onChange={setBankAssignmentId}
-                disabled={!canSelectBank}
-                aria-describedby={bankHelp ? `${fieldId}-bank-help` : undefined}
-                options={[
-                  { value: "", label: "No bank" },
-                  ...(showUnavailableBank ? [{ value: bankAssignmentId, label: bankLabel, disabled: true }] : []),
-                  ...eligibleBanks.map((bank) => ({ value: String(bank.id), label: bank.name })),
-                ]}
-              />
-              {bankHelp && <p id={`${fieldId}-bank-help`} className="mt-1 text-xs text-gray-400">{bankHelp}</p>}
-            </div>}
-            {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
+            {showRecordedBank && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
-            )}
-            {isPayLater && (
-              <CreditProviderField
-                providers={providerOptions}
-                value={creditProviderKey}
-                onChange={setCreditProviderKey}
-                required={providerRequired}
-              />
             )}
           </div>
 

@@ -38,7 +38,7 @@ Clearing **Enable for this expense group** hides the provider from new purchases
 ### Recording a Pay Later purchase
 
 1. In the expense group, open **New Expense** and enter the full purchase amount, date, and category.
-2. Set **Payment method** to **Pay Later** and choose a **Credit provider** enabled for that expense group. If the field shows **No credit providers available**, use the **?** beside it for setup directions.
+2. In **Payment method**, choose an enabled Pay Later provider, such as **Pay Later — Shopee**. Enable providers for the group under **Payment Provider → Pay Later**.
 3. Select **Save expense**.
 
 The full purchase counts once toward spending. The **Payment Provider** column in **Expenses** shows the saved provider’s name.

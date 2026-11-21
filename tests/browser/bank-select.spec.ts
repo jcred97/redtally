@@ -26,6 +26,7 @@ test.beforeAll(async () => {
     )).rows[0];
     assignments.push({ id: assignment.id, name });
   }
+  await db.query('UPDATE "ExpenseGroupBank" SET "supportedCreditCard" = false WHERE id = $1', [assignments[0].id]);
 });
 
 test.beforeEach(async ({ page }) => {
@@ -44,41 +45,41 @@ async function choosePaymentMethod(dialog: Locator, label: string) {
   await dialog.getByRole("listbox").getByRole("option", { name: label, exact: true }).click();
 }
 
-test("bank dropdown supports keyboard selection, cancellation, and saving its value", async ({ page }) => {
+test("payment dropdown supports keyboard selection, cancellation, and saving the bank", async ({ page }) => {
   await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
-  const bank = dialog.getByRole("combobox", { name: "Bank (optional)", exact: true });
-  await expect(bank).toBeDisabled();
-  await choosePaymentMethod(dialog, "Debit card");
-  await expect(bank).toBeEnabled();
-  await bank.focus();
-  await bank.press("ArrowDown");
-  await expect(bank).toHaveAttribute("aria-expanded", "true");
+  const payment = dialog.getByRole("combobox", { name: "Payment method", exact: true });
+  const debitOption = (index: number) => `Debit card — ${assignments[index].name}`;
+  await expect(payment).toHaveText("No payment method");
+  await expect(dialog.getByRole("combobox", { name: "Bank (optional)", exact: true })).toHaveCount(0);
+  await payment.press("d");
+  await expect(payment).toHaveAttribute("aria-expanded", "true");
   await expect(dialog.getByRole("listbox")).toBeVisible();
-  await expect(dialog.getByRole("listbox").getByRole("option")).toHaveCount(3);
-  for (const name of ["No bank", ...assignments.map((item) => item.name)]) {
+  for (const name of ["Debit card", debitOption(0), debitOption(1)]) {
     await expect(dialog.getByRole("option", { name, exact: true })).toBeVisible();
   }
+  await expect(dialog.getByRole("option", { name: `Credit card — ${assignments[0].name}`, exact: true })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("bank-menu-desktop.png") });
-  await bank.press("End");
-  await bank.press("Enter");
-  await expect(bank).toHaveText(assignments[1].name);
-  await expect(bank).toHaveAttribute("aria-expanded", "false");
-  await expect(bank).toBeFocused();
-  await expect(dialog.locator('input[name="bankAssignmentId"]')).toHaveValue(String(assignments[1].id));
+  await payment.press("ArrowDown");
+  await payment.press("ArrowDown");
+  await payment.press("Enter");
+  await expect(payment).toHaveText(debitOption(1));
+  await expect(payment).toHaveAttribute("aria-expanded", "false");
+  await expect(payment).toBeFocused();
 
-  await bank.press("Space");
-  await bank.press("Home");
-  await bank.press("Escape");
+  await payment.press("Space");
+  await payment.press("Home");
+  await payment.press("Escape");
   await expect(dialog).toBeVisible();
-  await expect(bank).toHaveAttribute("aria-expanded", "false");
-  await expect(bank).toHaveText(assignments[1].name);
-  await expect(bank).toBeFocused();
+  await expect(payment).toHaveAttribute("aria-expanded", "false");
+  await expect(payment).toHaveText(debitOption(1));
+  await expect(payment).toBeFocused();
 
-  await bank.press("Enter");
-  await bank.press("b");
-  await bank.press("Enter");
-  await expect(bank).toHaveText(assignments[0].name);
+  await payment.press("Enter");
+  await payment.press("d");
+  await payment.press("ArrowDown");
+  await payment.press("Enter");
+  await expect(payment).toHaveText(debitOption(0));
   await dialog.getByLabel("Title", { exact: true }).fill("Keyboard bank selection");
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("1.25");
   await dialog.getByRole("button", { name: "Save expense", exact: true }).click();
@@ -100,7 +101,7 @@ test("bank dropdown supports keyboard selection, cancellation, and saving its va
   await expect(editAction).toBeFocused();
   await page.keyboard.press("Enter");
   const edit = page.getByRole("dialog", { name: "Edit Expense", exact: true });
-  await expect(edit.getByRole("combobox", { name: "Bank (optional)", exact: true })).toHaveText(assignments[0].name);
+  await expect(edit.getByRole("combobox", { name: "Payment method", exact: true })).toHaveText(debitOption(0));
   await edit.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(actions).toBeFocused();
   await expect(actions).toHaveAttribute("aria-expanded", "false");
@@ -110,15 +111,15 @@ test("bank dropdown supports keyboard selection, cancellation, and saving its va
     await page.reload();
     await page.getByRole("button", { name: "Actions for Keyboard bank selection", exact: true }).click();
     await page.getByRole("button", { name: "Edit expense: Keyboard bank selection", exact: true }).click();
-    const historicalBank = edit.getByRole("combobox", { name: "Bank (optional)", exact: true });
-    await expect(historicalBank).toHaveText(`${assignments[0].name} (previously selected)`);
+    const historicalBank = edit.getByRole("combobox", { name: "Payment method", exact: true });
+    await expect(historicalBank).toHaveText(`${debitOption(0)} (previously selected)`);
     await historicalBank.click();
-    await expect(edit.getByRole("option", { name: `${assignments[0].name} (previously selected)`, exact: true }))
+    await expect(edit.getByRole("option", { name: `${debitOption(0)} (previously selected)`, exact: true }))
       .toHaveAttribute("aria-disabled", "true");
-    await historicalBank.press("Home");
+    await historicalBank.press("d");
     await historicalBank.press("ArrowDown");
     await historicalBank.press("Alt+ArrowUp");
-    await expect(historicalBank).toHaveText(assignments[1].name);
+    await expect(historicalBank).toHaveText(debitOption(1));
     await expect(historicalBank).toHaveAttribute("aria-expanded", "false");
     await expect(edit).toBeVisible();
     expect((await db.query<{ bankAssignmentId: number }>(
@@ -130,13 +131,12 @@ test("bank dropdown supports keyboard selection, cancellation, and saving its va
   }
 });
 
-test("bank menu dismisses on Tab and outside click and clears when payment method changes", async ({ page }) => {
+test("payment menu fits mobile and saves a bank method without a bank", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 640 });
   await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
-  await choosePaymentMethod(dialog, "Debit card");
-  const bank = dialog.getByRole("combobox", { name: "Bank (optional)", exact: true });
-  await bank.click();
+  const payment = dialog.getByRole("combobox", { name: "Payment method", exact: true });
+  await payment.click();
   const menu = dialog.getByRole("listbox");
   const bounds = await menu.boundingBox();
   expect(bounds).not.toBeNull();
@@ -145,20 +145,26 @@ test("bank menu dismisses on Tab and outside click and clears when payment metho
   expect(bounds!.y).toBeGreaterThanOrEqual(0);
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(640);
   await page.screenshot({ path: test.info().outputPath("bank-menu-mobile.png") });
-  await bank.press("Tab");
+  await payment.press("Tab");
   await expect(menu).not.toBeVisible();
-  await expect(bank).not.toBeFocused();
-  await bank.click();
-  await dialog.getByRole("option", { name: assignments[1].name, exact: true }).click();
-  await expect(bank).toHaveText(assignments[1].name);
-  await bank.click();
+  await expect(payment).not.toBeFocused();
+  await choosePaymentMethod(dialog, `Debit card — ${assignments[1].name}`);
+  await expect(payment).toHaveText(`Debit card — ${assignments[1].name}`);
+  await payment.click();
   await dialog.getByLabel("Title", { exact: true }).click();
   await expect(menu).not.toBeVisible();
   await choosePaymentMethod(dialog, "Cash");
-  await expect(bank).toBeDisabled();
+  await expect(payment).toHaveText("Cash");
   await choosePaymentMethod(dialog, "Debit card");
-  await expect(bank).toHaveText("No bank");
-  await expect(dialog.locator('input[name="bankAssignmentId"]')).toHaveValue("");
+  await expect(payment).toHaveText("Debit card");
+  await dialog.getByLabel("Title", { exact: true }).fill("Debit without a bank");
+  await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("1.25");
+  await dialog.getByRole("button", { name: "Save expense", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(async () => (await db.query(
+    'SELECT "transactionType", "bankAssignmentId" FROM "Expense" WHERE "expenseGroupId" = $1 AND title = $2',
+    [group.id, "Debit without a bank"],
+  )).rows).toEqual([{ transactionType: "DEBIT_CARD", bankAssignmentId: null }]);
 });
 
 test("recurring expense defaults to the first category and saves a different category and bank", async ({ page }) => {

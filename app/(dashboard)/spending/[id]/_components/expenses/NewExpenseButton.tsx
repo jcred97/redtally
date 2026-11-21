@@ -1,7 +1,6 @@
 import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
-import ExpenseFormDialog from "./ExpenseFormDialog";
+import ExpenseFormDialog, { type CreditProviderOption } from "./ExpenseFormDialog";
 import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
-import type { CreditProviderOption } from "./CreditProviderField";
 
 export default async function NewExpenseButton({
   expenseGroupId,
