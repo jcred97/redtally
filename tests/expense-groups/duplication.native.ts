@@ -129,7 +129,7 @@ test("native PostgreSQL duplicates 50,000 expenses exactly and rolls back a fail
         SELECT e.title, e.merchant, e."amountCentavos", e.date, e."timeMinutes", e.notes,
           e.bank, e."transactionType", c.name, c.icon, c.color, b."bankId"
         FROM "Expense" e JOIN "Category" c ON c.id = e."categoryId"
-        LEFT JOIN "ExpenseGroupBank" b ON b.id = e."bankAssignmentId"
+        LEFT JOIN "BankAssignment" b ON b.id = e."bankAssignmentId"
         WHERE e."expenseGroupId" = ${groupId}
       `;
       const difference = await client.$queryRaw<{ count: number }[]>(Prisma.sql`

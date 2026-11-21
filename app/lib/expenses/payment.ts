@@ -1,3 +1,4 @@
+import type { BankAssignment } from "@/generated/prisma/client";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 
 export const paymentMethodLabels = {
@@ -26,8 +27,7 @@ export function isBankPaymentMethod(value: unknown): value is BankPaymentMethod 
   return typeof value === "string" && Object.hasOwn(bankPaymentMethodFields, value);
 }
 
-export type ExpenseBankOption = {
-  id: number;
+export type BankAssignmentOption = Pick<BankAssignment, "id"> & {
   name: string;
   paymentMethods: BankPaymentMethod[];
 };

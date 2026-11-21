@@ -21,12 +21,12 @@ test.beforeAll(async () => {
       [name, name.toLowerCase()],
     )).rows[0];
     const assignment = (await db.query<{ id: number }>(
-      'INSERT INTO "ExpenseGroupBank" ("expenseGroupId", "bankId", "updatedAt") VALUES ($1, $2, now()) RETURNING id',
+      'INSERT INTO "BankAssignment" ("expenseGroupId", "bankId", "updatedAt") VALUES ($1, $2, now()) RETURNING id',
       [group.id, bank.id],
     )).rows[0];
     assignments.push({ id: assignment.id, name });
   }
-  await db.query('UPDATE "ExpenseGroupBank" SET "supportedCreditCard" = false WHERE id = $1', [assignments[0].id]);
+  await db.query('UPDATE "BankAssignment" SET "supportedCreditCard" = false WHERE id = $1', [assignments[0].id]);
 });
 
 test.beforeEach(async ({ page }) => {
@@ -104,7 +104,7 @@ test("payment provider dropdown supports keyboard selection, cancellation, and s
   await expect(actions).toBeFocused();
   await expect(actions).toHaveAttribute("aria-expanded", "false");
 
-  await db.query('UPDATE "ExpenseGroupBank" SET active = false WHERE id = $1', [assignments[0].id]);
+  await db.query('UPDATE "BankAssignment" SET active = false WHERE id = $1', [assignments[0].id]);
   try {
     await page.reload();
     await page.getByRole("button", { name: "Actions for Keyboard bank selection", exact: true }).click();
@@ -126,7 +126,7 @@ test("payment provider dropdown supports keyboard selection, cancellation, and s
       [group.id, "Keyboard bank selection"],
     )).rows[0].bankAssignmentId).toBe(assignments[0].id);
   } finally {
-    await db.query('UPDATE "ExpenseGroupBank" SET active = true WHERE id = $1', [assignments[0].id]);
+    await db.query('UPDATE "BankAssignment" SET active = true WHERE id = $1', [assignments[0].id]);
   }
 });
 

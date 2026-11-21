@@ -1,7 +1,7 @@
 import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
 import ExpenseFormDialog from "./ExpenseFormDialog";
 import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
-import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
+import type { BankAssignmentOption } from "@/app/lib/expenses/payment";
 
 export default async function NewExpenseButton({
   expenseGroupId,
@@ -11,7 +11,7 @@ export default async function NewExpenseButton({
 }: {
   expenseGroupId: number;
   categories: { id: number; name: string }[];
-  bankOptions: ExpenseBankOption[];
+  bankOptions: BankAssignmentOption[];
   payLaterProviders?: PayLaterProviderOption[];
 }) {
   const enabledProviders = payLaterProviders ?? (await getExpenseGroupPayLater(expenseGroupId)).providers.filter(({ active }) => active);

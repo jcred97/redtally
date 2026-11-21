@@ -13,7 +13,7 @@ import {
 } from "@/app/(dashboard)/_lib/expenses/mutations";
 import { expenseTimeInput, getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoInput } from "@/app/lib/expenses/money";
-import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type BankAssignmentOption } from "@/app/lib/expenses/payment";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
@@ -43,7 +43,7 @@ export type EditableExpense = {
 type ExpenseFormDialogProps = {
   expenseGroupId: number;
   categories: { id: number; name: string }[];
-  bankOptions: ExpenseBankOption[];
+  bankOptions: BankAssignmentOption[];
   payLaterProviders?: PayLaterProviderOption[];
   expense?: EditableExpense;
   focusKey?: string;

@@ -19,7 +19,7 @@ The signed-in home opens on **Dashboard**. Select the expense groups and Manila 
 
 ## Current implementation
 
-The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense groups also have optional monthly `Budget` targets and `BankAssignment` records. Server-side session checks and ownership filters protect expense groups and their child data. Existing groups remain unclaimed (`userId = null`) and hidden from all signed-in users until deliberately assigned through an administrative process. Prisma mappings retain the existing database names and data: `ExpenseGroup` maps to `Spending`, and `BankAssignment` maps to `ExpenseGroupBank`. `Budget` uses the existing `Budget` table. Expense payment choices use `PaymentMethod` (the existing `TransactionType` enum); `paymentMethod` and `legacyBankName` map to the existing `transactionType` and `bank` columns. Category's `expenseGroupId` still maps to `spendingId`.
+The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense groups also have optional monthly `Budget` targets and `BankAssignment` records. Server-side session checks and ownership filters protect expense groups and their child data. Existing groups remain unclaimed (`userId = null`) and hidden from all signed-in users until deliberately assigned through an administrative process. Prisma maps `ExpenseGroup` to the existing `Spending` table. Both Prisma and PostgreSQL use `BankAssignment` for per-group bank settings. `Budget` uses the existing `Budget` table. Expense payment choices use `PaymentMethod` (the existing `TransactionType` enum); `paymentMethod` and `legacyBankName` map to the existing `transactionType` and `bank` columns. Category's `expenseGroupId` still maps to `spendingId`.
 
 Implemented source includes:
 
@@ -139,6 +139,10 @@ The cleanup migration copies known Pay Later providers onto their original expen
 ### Pay Later provider table rename
 
 The rename migration updates the existing Pay Later provider table and constraints to match the Prisma model `PayLaterProviderAssignment`. Pause traffic, apply the migration, and deploy the matching app before resuming traffic. Older releases still query `ExpenseGroupPayLaterProvider`. [Rename migration](server/db/migrations/20261121130000_rename_pay_later_provider_assignment/migration.sql)
+
+### Bank assignment table rename
+
+The bank assignment migration renames the table, constraints, indexes, and ID sequence to match `BankAssignment` in Prisma. It preserves IDs and the links from expenses and recurring schedules. Coordinate the migration and app release with traffic paused because older releases query `ExpenseGroupBank`. [Bank assignment rename migration](server/db/migrations/20261122010000_rename_bank_assignment/migration.sql)
 
 ### Database connection troubleshooting
 

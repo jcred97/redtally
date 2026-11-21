@@ -38,7 +38,6 @@ Application names are mapped to the existing database identifiers. These naming 
 | Application name | Physical database name |
 | --- | --- |
 | `ExpenseGroup` | `Spending` table |
-| `BankAssignment` | `ExpenseGroupBank` table |
 | `PaymentMethod` | `TransactionType` enum |
 | `Expense.paymentMethod` | `Expense.transactionType` column |
 | `Expense.legacyBankName` | `Expense.bank` column |
@@ -49,7 +48,7 @@ New expenses support Cash, Debit Card, Credit Card, Bank Transfer, Bank Payment,
 
 Bank keys are the lower-case bank name after trimming surrounding spaces and collapsing internal whitespace. The caller supplies the key; a database CHECK rejects a key that does not match that normalization. Migration `20261111130000_philippine_bank_catalog` adds a starter catalog based on Bangko Sentral ng Pilipinas listings and preserves entries with matching keys. [Universal and commercial banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Commercial/assets.aspx) · [Digital banks](https://www.bsp.gov.ph/PaymentAndSettlement/PPDD_Payments_Bulletin.pdf) · [Rural banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Rural/assets.aspx)
 
-In **Payment Provider → Banks**, owners enable a catalog bank for their group and choose one or more payment methods they use with it. The expense form offers active assignments for the selected payment method. The server checks the same eligibility when a new bank is selected. Deactivation preserves the assignment, its method preferences, and historical expense links. Editing other expense details preserves the saved payment details. Deleting a group with no categories or budgets removes its bank settings in the same transaction.
+In **Payment Provider → Banks**, owners enable a catalog bank for their group and choose one or more payment methods they use with it. `BankAssignment` is the name in both Prisma and PostgreSQL. TypeScript uses `BankAssignmentOption` for expense entry, with the assignment ID, bank name, and supported payment methods. The expense form offers active assignments for the selected payment method. The server checks the same eligibility when a new bank is selected. Deactivation preserves the assignment, its method preferences, and historical expense links. Editing other expense details preserves the saved payment details. Deleting a group with no categories or budgets removes its bank settings in the same transaction.
 
 `Expense.expenseGroupId` is backfilled from its category. Composite foreign keys to `Category(id, expenseGroupId)` and `BankAssignment(id, expenseGroupId)` enforce group consistency even outside the UI. The category's Prisma field maps to the physical `spendingId` column. These keys also prevent reparenting an assigned expense, category, or assignment into an incompatible group.
 

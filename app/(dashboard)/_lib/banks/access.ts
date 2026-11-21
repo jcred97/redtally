@@ -2,22 +2,22 @@ import type { BankAssignment, PrismaClient } from "@/generated/prisma/client";
 import {
   bankPaymentMethodFields,
   type BankPaymentMethod,
-  type ExpenseBankOption,
+  type BankAssignmentOption,
 } from "@/app/lib/expenses/payment";
 
 const MAX_RECORD_ID = 2_147_483_647;
 const BANK_UNAVAILABLE = "This bank is unavailable for this expense group.";
 
-type BankSettings = Pick<
+type BankAssignmentSettings = Pick<
   BankAssignment,
-  "active" | "supportedDebitCard" | "supportedCreditCard" | "supportedBankTransfer" | "supportedBankPayment"
+  "active" | (typeof bankPaymentMethodFields)[BankPaymentMethod]
 >;
 
 export type BankCatalogEntry = {
   id: number;
   name: string;
   active: boolean;
-  assignment: BankSettings | null;
+  assignment: BankAssignmentSettings | null;
 };
 
 function validId(id: number) {
@@ -45,7 +45,7 @@ function readCheckbox(formData: FormData, name: string) {
 
 export function createBankAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
   return {
-    async listForExpenses(expenseGroupId: number): Promise<ExpenseBankOption[]> {
+    async listForExpenses(expenseGroupId: number): Promise<BankAssignmentOption[]> {
       const userId = await requireUserId();
       if (!validId(expenseGroupId)) return [];
 
@@ -142,7 +142,7 @@ export function createBankAccess(db: PrismaClient, requireUserId: () => Promise<
 
       // Lock eligibility while the database upserts the unique group/bank pair.
       const written = await db.$executeRaw`
-        INSERT INTO "ExpenseGroupBank" (
+        INSERT INTO "BankAssignment" (
           "expenseGroupId", "bankId", "active",
           "supportedDebitCard", "supportedCreditCard", "supportedBankTransfer", "supportedBankPayment",
           "updatedAt"

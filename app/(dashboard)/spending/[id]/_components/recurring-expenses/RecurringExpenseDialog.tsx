@@ -4,7 +4,7 @@ import { useId, useRef, useState } from "react";
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import { formatPesoInput } from "@/app/lib/expenses/money";
-import { isBankPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isBankPaymentMethod, paymentMethodLabels, type BankAssignmentOption } from "@/app/lib/expenses/payment";
 import { recurrenceFrequencies, recurrenceFrequencyLabels } from "@/app/lib/expenses/recurrence";
 import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-expenses/access";
 import { changeRecurringExpense } from "@/app/(dashboard)/_lib/recurring-expenses/mutations";
@@ -16,7 +16,7 @@ import { fieldLabelClass } from "@/app/components/forms/field-styles";
 export type RecurringExpenseOptions = {
   expenseGroupId: number;
   categories: { id: number; name: string }[];
-  banks: ExpenseBankOption[];
+  banks: BankAssignmentOption[];
   today: string;
 };
 
@@ -27,15 +27,15 @@ export default function RecurringExpenseDialog({
   const submissionId = useRef("");
   const providerFieldId = `${fieldId}-payment-provider`;
   const [method, setMethod] = useState<PaymentMethod | "">(rule?.paymentMethod ?? "");
-  const [bankId, setBankId] = useState(rule?.bankAssignmentId?.toString() ?? "");
+  const [bankAssignmentId, setBankAssignmentId] = useState(rule?.bankAssignmentId?.toString() ?? "");
   const usesBank = isBankPaymentMethod(method);
   const eligibleBanks = usesBank
     ? banks.filter((bank) => bank.paymentMethods.includes(method))
     : [];
-  const unavailableBank = usesBank && bankId !== "" && !eligibleBanks.some((bank) => String(bank.id) === bankId);
+  const unavailableBank = usesBank && bankAssignmentId !== "" && !eligibleBanks.some((bank) => String(bank.id) === bankAssignmentId);
   const providerOptions = usesBank ? [
     { value: "", label: "No bank" },
-    ...(unavailableBank ? [{ value: bankId, label: `${rule?.bankAssignment?.bank.name ?? "Bank"} (unavailable)`, disabled: true }] : []),
+    ...(unavailableBank ? [{ value: bankAssignmentId, label: `${rule?.bankAssignment?.bank.name ?? "Bank"} (unavailable)`, disabled: true }] : []),
     ...eligibleBanks.map(({ id, name }) => ({ value: String(id), label: name })),
   ] : [{ value: "", label: "No provider" }];
 
@@ -43,9 +43,9 @@ export default function RecurringExpenseDialog({
     if (nextMethod === method) return;
     setMethod(nextMethod);
     if (!isBankPaymentMethod(nextMethod) || !banks.some(
-      (bank) => String(bank.id) === bankId && bank.paymentMethods.includes(nextMethod),
+      (bank) => String(bank.id) === bankAssignmentId && bank.paymentMethods.includes(nextMethod),
     )) {
-      setBankId("");
+      setBankAssignmentId("");
     }
   }
 
@@ -63,7 +63,7 @@ export default function RecurringExpenseDialog({
       onOpenAction={() => {
         if (!rule) submissionId.current = crypto.randomUUID();
         setMethod(rule?.paymentMethod ?? "");
-        setBankId(rule?.bankAssignmentId?.toString() ?? "");
+        setBankAssignmentId(rule?.bankAssignmentId?.toString() ?? "");
       }}
       submitLabel={rule ? "Save changes" : "Create schedule"}
       pendingLabel="Saving..."
@@ -159,8 +159,8 @@ export default function RecurringExpenseDialog({
           <Select
             id={providerFieldId}
             name="bankAssignmentId"
-            value={usesBank ? bankId : ""}
-            onChange={setBankId}
+            value={usesBank ? bankAssignmentId : ""}
+            onChange={setBankAssignmentId}
             disabled={!usesBank}
             aria-describedby={unavailableBank ? `${providerFieldId}-help` : undefined}
             options={providerOptions}

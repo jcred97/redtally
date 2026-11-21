@@ -301,7 +301,7 @@ export function createExpenseGroupAccess(
         )
         SELECT 'assignment:' || assignment.id AS value, bank.name AS label,
           COALESCE(assigned_methods.methods, ARRAY[]::text[]) AS "paymentMethods", NULL::text AS "providerKey"
-        FROM "ExpenseGroupBank" assignment
+        FROM "BankAssignment" assignment
         JOIN owned_group ON owned_group.id = assignment."expenseGroupId"
         JOIN "Bank" bank ON bank.id = assignment."bankId"
         LEFT JOIN assigned_methods ON assigned_methods."bankAssignmentId" = assignment.id
@@ -416,7 +416,7 @@ export function createExpenseGroupAccess(
         ) expense ON true
         LEFT JOIN "Category" category
           ON category.id = expense."categoryId" AND category."spendingId" = pagination.id
-        LEFT JOIN "ExpenseGroupBank" assignment
+        LEFT JOIN "BankAssignment" assignment
           ON assignment.id = expense."bankAssignmentId" AND assignment."expenseGroupId" = pagination.id
         LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
         ORDER BY expense.date::date DESC, expense."timeMinutes" DESC NULLS LAST, expense.date DESC, expense.id DESC
@@ -492,7 +492,7 @@ export function createExpenseGroupAccess(
                 matching."payLaterProviderKey", matching."payLaterProviderName"
               FROM matching
               JOIN "Category" category ON category.id = matching."categoryId" AND category."spendingId" = ${id}
-              LEFT JOIN "ExpenseGroupBank" assignment ON assignment.id = matching."bankAssignmentId" AND assignment."expenseGroupId" = ${id}
+              LEFT JOIN "BankAssignment" assignment ON assignment.id = matching."bankAssignmentId" AND assignment."expenseGroupId" = ${id}
               LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
               ORDER BY matching.id
             `;
@@ -612,10 +612,10 @@ export function createExpenseGroupAccess(
               copied_assignment.id, ${copy.id}, ${copiedCategory.id},
               CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
             FROM "Expense" expense
-            LEFT JOIN "ExpenseGroupBank" source_assignment
+            LEFT JOIN "BankAssignment" source_assignment
               ON source_assignment.id = expense."bankAssignmentId"
                 AND source_assignment."expenseGroupId" = ${source.id}
-            LEFT JOIN "ExpenseGroupBank" copied_assignment
+            LEFT JOIN "BankAssignment" copied_assignment
               ON copied_assignment."bankId" = source_assignment."bankId"
                 AND copied_assignment."expenseGroupId" = ${copy.id}
             WHERE expense."expenseGroupId" = ${source.id}

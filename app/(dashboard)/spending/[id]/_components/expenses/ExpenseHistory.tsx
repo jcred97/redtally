@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ExpenseHistoryEntry } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { expenseTimeInput, formatExpenseDate, formatExpenseTime } from "@/app/lib/expenses/date";
-import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { paymentMethodLabels, type BankAssignmentOption } from "@/app/lib/expenses/payment";
 import ExpensePaymentProvider, { getExpenseBankName, getExpensePaymentProvider } from "./ExpensePaymentProvider";
 import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
@@ -14,7 +14,7 @@ type ExpenseHistoryProps = {
   expenseGroupId: number;
   groupPath: string;
   categories: { id: number; name: string }[];
-  bankOptions: ExpenseBankOption[];
+  bankOptions: BankAssignmentOption[];
   payLaterProviders: PayLaterProviderOption[];
   expenses: ExpenseHistoryEntry[];
   groupedSummary?: { day?: string; month?: string; through?: string; totalExpenses: number; totalCentavos: bigint };

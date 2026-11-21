@@ -110,7 +110,7 @@ export async function validateBankSelection(
   const [assignment] = await tx.$queryRaw<BankPaymentSettings[]>`
     SELECT assignment."supportedDebitCard", assignment."supportedCreditCard",
       assignment."supportedBankTransfer", assignment."supportedBankPayment"
-    FROM "ExpenseGroupBank" AS assignment
+    FROM "BankAssignment" AS assignment
     JOIN "Bank" AS bank ON bank."id" = assignment."bankId"
     WHERE assignment."id" = ${bankAssignmentId} AND assignment."expenseGroupId" = ${expenseGroupId}
       AND assignment."active" AND bank."active"

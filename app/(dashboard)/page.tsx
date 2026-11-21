@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
+import { getBankAssignmentOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getExpenseGroupById, getExpenseGroupOptions } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import Skeleton from "@/app/components/feedback/Skeleton";
 import { requireUser } from "@/app/lib/auth/session";
@@ -63,7 +63,7 @@ async function loadDashboard(query: DashboardQuery) {
     const [dashboard, entryGroup, bankOptions] = await Promise.all([
       selectedIds.length > 0 ? getHomeDashboard(selectedIds, month, today) : null,
       getExpenseGroupById(entry.id),
-      getExpenseBankOptions(entry.id),
+      getBankAssignmentOptions(entry.id),
     ]);
     return {
       status: "loaded", ownedGroups, entry, today,

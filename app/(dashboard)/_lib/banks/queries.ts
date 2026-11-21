@@ -10,6 +10,6 @@ export async function getBankCatalogForExpenseGroup(expenseGroupId: number) {
   return access.list(expenseGroupId);
 }
 
-export async function getExpenseBankOptions(expenseGroupId: number) {
+export async function getBankAssignmentOptions(expenseGroupId: number) {
   return access.listForExpenses(expenseGroupId);
 }

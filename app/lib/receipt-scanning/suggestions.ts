@@ -1,6 +1,6 @@
 import { parseExpenseDay, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoInput, parsePesoAmount } from "@/app/lib/expenses/money";
-import { isPaymentMethod, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isPaymentMethod, type BankAssignmentOption } from "@/app/lib/expenses/payment";
 import type { ReceiptSuggestions } from "./config";
 
 function nameSuggestion(value: unknown) {
@@ -50,7 +50,7 @@ function bankMatchKey(name: string) {
   return bankAliases.get(normalized) ?? normalized;
 }
 
-export function findReceiptBank(name: string, banks: readonly ExpenseBankOption[]) {
+export function findReceiptBank(name: string, banks: readonly BankAssignmentOption[]) {
   const key = bankMatchKey(name);
   if (!key) return undefined;
   const matches = banks.filter((bank) => bankMatchKey(bank.name) === key);

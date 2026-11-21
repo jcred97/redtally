@@ -3,7 +3,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } fro
 import FileInput from "@/app/components/forms/FileInput";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
-import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
+import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type BankAssignmentOption } from "@/app/lib/expenses/payment";
 import { maxReceiptImagePixels, providers, receiptImageTypes, type ReceiptProvider, type ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import { findReceiptBank } from "@/app/lib/receipt-scanning/suggestions";
 import type { PaymentMethod } from "@/generated/prisma/enums";
@@ -86,7 +86,7 @@ export default function ReceiptImageInput({
   onApply,
 }: {
   paymentMethod: PaymentMethod | "";
-  bankOptions: readonly ExpenseBankOption[];
+  bankOptions: readonly BankAssignmentOption[];
   onApply: (field: keyof ReceiptSuggestions, value: string) => void;
 }) {
   const headingId = useId();

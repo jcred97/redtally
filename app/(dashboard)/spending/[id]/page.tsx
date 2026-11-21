@@ -11,7 +11,7 @@ import ExpensesTab from "./_components/expenses/ExpensesTab";
 import ExpenseGroupPayLater from "./_components/pay-later/ExpenseGroupPayLater";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
-import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
+import { getBankAssignmentOptions, getBankCatalogForExpenseGroup } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
 import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "./_components/categories/ExpenseCategories";
@@ -62,7 +62,7 @@ export default async function ExpenseGroupPage({
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
-    showExpenses || showRecurring || showDashboard ? getExpenseBankOptions(id) : [],
+    showExpenses || showRecurring || showDashboard ? getBankAssignmentOptions(id) : [],
     showExpenses ? getExpenseHistoryProviderOptions(id) : [],
     showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
     showRecurring ? getRecurringExpenses(id) : null,

@@ -203,7 +203,6 @@ model BankAssignment {
   @@unique([expenseGroupId, bankId])
   @@unique([id, expenseGroupId])
   @@index([bankId])
-  @@map("ExpenseGroupBank")
 }
 
 model PayLaterProviderAssignment {

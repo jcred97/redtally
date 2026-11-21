@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { findReceiptBank, normalizeReceiptSuggestions } from "@/app/lib/receipt-scanning/suggestions";
-import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
+import type { BankAssignmentOption } from "@/app/lib/expenses/payment";
 
 test("AI order suggestions use the placed timestamp and never mix in a later clock time", () => {
   const order = {
@@ -46,8 +46,8 @@ test("AI payment receipts retain a valid transaction timestamp and supported pay
 });
 
 test("bank suggestions match only an unambiguous bank enabled in the expense group", () => {
-  const bdo: ExpenseBankOption = { id: 101, name: "BDO Unibank", paymentMethods: ["DEBIT_CARD"] };
-  const unionBank: ExpenseBankOption = { id: 102, name: "UnionBank", paymentMethods: ["BANK_TRANSFER"] };
+  const bdo: BankAssignmentOption = { id: 101, name: "BDO Unibank", paymentMethods: ["DEBIT_CARD"] };
+  const unionBank: BankAssignmentOption = { id: 102, name: "UnionBank", paymentMethods: ["BANK_TRANSFER"] };
   const banks = [bdo, unionBank];
   assert.equal(findReceiptBank(" B.D.O. ", banks), bdo);
   assert.equal(findReceiptBank("Union Bank", banks), unionBank);
