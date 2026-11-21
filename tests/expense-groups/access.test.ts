@@ -794,7 +794,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         { value: legacyToken, label: `${recordedName} (recorded name)`, paymentMethods: ["CREDIT_CARD", "DEBIT_CARD"] },
         { value: assignmentToken, label: bank.name, paymentMethods: ["CREDIT_CARD", "DEBIT_CARD"] },
         { value: providerToken, label: providerName, paymentMethods: ["PAY_LATER"] },
-        { value: `pay-later:${createHash("sha256").update("shopee").digest("hex")}`, label: "Shopee", paymentMethods: ["PAY_LATER"] },
+        { value: `pay-later:${createHash("sha256").update("shopee").digest("hex")}`, label: "SPayLater", paymentMethods: ["PAY_LATER"] },
       ]);
       const providerFilter = { payLaterProvider: parseExpenseHistoryPayLaterProviderFilter(providerToken) };
       const payLater = await alice.getExpensePageById(group.id, 1, providerFilter, true);

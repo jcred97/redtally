@@ -46,6 +46,7 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   const createCustom = providerForm(household.id, { name: "  Local   Store  " });
   await assert.rejects(createGroupPayLaterProvider("bob", createCustom), /expense groups/i);
   await assert.rejects(createGroupPayLaterProvider("alice", providerForm(household.id, { name: " Shopee " })), /settings list/i);
+  await assert.rejects(createGroupPayLaterProvider("alice", providerForm(household.id, { name: " SPayLater " })), /settings list/i);
   await assert.rejects(setGroupPayLaterProvider("alice", providerForm(household.id, { providerKey: "custom:missing", active: "on" })), /unavailable/i);
   await createGroupPayLaterProvider("alice", createCustom);
   await createGroupPayLaterProvider("alice", providerForm(household.id, { name: "local store" }));
@@ -54,7 +55,7 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
     providerName: "Local Store",
   });
   assert.deepEqual((await getExpenseGroupPayLater("alice", household.id)).providers.filter(({ active }) => active), [
-    { providerKey: "shopee", providerName: "Shopee", active: true },
+    { providerKey: "shopee", providerName: "SPayLater", active: true },
     { providerKey: "custom:local store", providerName: "Local Store", active: true },
   ]);
 

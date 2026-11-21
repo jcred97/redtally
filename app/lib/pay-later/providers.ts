@@ -4,7 +4,7 @@ export type PayLaterProviderOption = Pick<PayLaterProviderAssignment, "providerK
 export type PayLaterProviderSetting = PayLaterProviderOption & Pick<PayLaterProviderAssignment, "active">;
 
 export const presetPayLaterProviders = [
-  { providerKey: "shopee", providerName: "Shopee" },
+  { providerKey: "shopee", providerName: "SPayLater" },
   { providerKey: "lazada", providerName: "Lazada" },
   { providerKey: "gcash", providerName: "GCash" },
   { providerKey: "atome", providerName: "Atome" },

@@ -96,7 +96,8 @@ export function createPayLaterAccess(db: PrismaClient) {
       }
       const providerKey = customPayLaterProviderKey(providerName);
       if (!validProviderKey(providerKey)) throw new TypeError("Enter a shorter Pay Later provider name.");
-      if (presetPayLaterProviders.some((provider) => customPayLaterProviderKey(provider.providerName) === providerKey)) {
+      if (providerKey === "custom:shopee" ||
+          presetPayLaterProviders.some((provider) => customPayLaterProviderKey(provider.providerName) === providerKey)) {
         throw new TypeError("Choose this provider from the Pay Later settings list.");
       }
 

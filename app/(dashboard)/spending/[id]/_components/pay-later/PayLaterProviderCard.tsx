@@ -35,7 +35,7 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
       )}
       triggerClassName={settingsTileClass}
       title={provider.providerName}
-      description="Enable this provider to record Pay Later purchases in this expense group."
+      description="Enable this product to record Pay Later purchases in this expense group."
       onOpenAction={() => {}}
       submitLabel="Save changes"
       pendingLabel="Saving..."
