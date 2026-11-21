@@ -7,11 +7,12 @@ import { PGlite } from "@electric-sql/pglite";
 const providerMigration = "20261121110000_pay_later_providers";
 const cleanupMigration = "20261121120000_remove_accounts_and_loans";
 const renameMigration = "20261121130000_rename_pay_later_provider_assignment";
+const productSettingsMigration = "20261122020000_pay_later_product_settings";
 const spayLaterId = "11111111-1111-4111-8111-111111111111";
 const shopeeId = "22222222-2222-4222-8222-222222222222";
 const customId = "33333333-3333-4333-8333-333333333333";
 
-test("Pay Later provider assignments survive account cleanup and the table rename", async () => {
+test("Pay Later provider assignments survive account cleanup, the rename, and the product setting", async () => {
   const db = new PGlite();
   try {
     const directory = path.join(process.cwd(), "server/db/migrations");
@@ -124,7 +125,7 @@ test("Pay Later provider assignments survive account cleanup and the table renam
       GRANT USAGE ON SCHEMA public TO provider_api;
       GRANT SELECT, INSERT ON "ExpenseGroupPayLaterProvider" TO provider_api;
     `);
-    const savedAssignments = (await db.query('SELECT * FROM "ExpenseGroupPayLaterProvider" ORDER BY "expenseGroupId", "providerKey"')).rows;
+    const savedAssignments = (await db.query<Record<string, unknown>>('SELECT * FROM "ExpenseGroupPayLaterProvider" ORDER BY "expenseGroupId", "providerKey"')).rows;
     await db.exec(await readFile(path.join(directory, renameMigration, "migration.sql"), "utf8"));
 
     const renamedAssignments = () => db.query('SELECT * FROM "PayLaterProviderAssignment" ORDER BY "expenseGroupId", "providerKey"');
@@ -139,6 +140,18 @@ test("Pay Later provider assignments survive account cleanup and the table renam
       INSERT INTO "PayLaterProviderAssignment" ("expenseGroupId", "userId", "providerKey")
         VALUES (7, 'owner', 'shopee')
     `), /PayLaterProviderAssignment_pkey/);
+
+    await db.exec(await readFile(path.join(directory, productSettingsMigration, "migration.sql"), "utf8"));
+    assert.deepEqual((await renamedAssignments()).rows, savedAssignments.map((assignment) => ({ ...assignment, productEnabled: true })));
+    assert.deepEqual((await db.query('SELECT * FROM "Expense" ORDER BY id')).rows, savedExpenses);
+    await db.exec(`
+      UPDATE "PayLaterProviderAssignment" SET "productEnabled" = false
+      WHERE "expenseGroupId" = 7 AND "providerKey" = 'shopee'
+    `);
+    assert.deepEqual((await db.query(`
+      SELECT active, "productEnabled" FROM "PayLaterProviderAssignment"
+      WHERE "expenseGroupId" = 7 AND "providerKey" = 'shopee'
+    `)).rows, [{ active: true, productEnabled: false }]);
 
     await db.exec("SET ROLE provider_api");
     assert.deepEqual((await renamedAssignments()).rows, []);

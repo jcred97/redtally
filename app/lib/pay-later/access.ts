@@ -36,7 +36,7 @@ export async function requireEnabledPayLaterProvider(
   const [provider] = await tx.$queryRaw<Pick<PayLaterProviderAssignment, "providerKey" | "providerName">[]>`
     SELECT "providerKey", "providerName" FROM "PayLaterProviderAssignment"
     WHERE "expenseGroupId" = ${expenseGroupId} AND "userId" = ${userId}
-      AND "providerKey" = ${providerKey} AND active
+      AND "providerKey" = ${providerKey} AND active AND "productEnabled"
     FOR SHARE
   `;
   if (!provider) {
@@ -51,15 +51,15 @@ export function createPayLaterAccess(db: PrismaClient) {
       if (!validExpenseGroupId(expenseGroupId)) return { providers: [] };
       const group = await db.expenseGroup.findUnique({
         where: { id: expenseGroupId, userId },
-        select: { payLaterProviderAssignments: { select: { providerKey: true, providerName: true, active: true } } },
+        select: { payLaterProviderAssignments: { select: { providerKey: true, providerName: true, active: true, productEnabled: true } } },
       });
       if (!group) return { providers: [] };
 
       const providers = new Map<string, PayLaterProviderSetting>(
-        presetPayLaterProviders.map((provider) => [provider.providerKey, { ...provider, active: false }]),
+        presetPayLaterProviders.map((provider) => [provider.providerKey, { ...provider, active: false, productEnabled: false }]),
       );
-      for (const { providerKey, providerName, active } of group.payLaterProviderAssignments) {
-        providers.set(providerKey, { providerKey, providerName: getPayLaterProviderName(providerKey, providerName), active });
+      for (const { providerKey, providerName, active, productEnabled } of group.payLaterProviderAssignments) {
+        providers.set(providerKey, { providerKey, providerName: getPayLaterProviderName(providerKey, providerName), active, productEnabled });
       }
       return { providers: [...providers.values()] };
     },
@@ -68,21 +68,25 @@ export function createPayLaterAccess(db: PrismaClient) {
       const expenseGroupId = readExpenseGroupId(formData);
       const [providerKey, extraKey] = formData.getAll("providerKey");
       const [activeValue, extraActive] = formData.getAll("active");
+      const [productValue, extraProduct] = formData.getAll("productEnabled");
       const active = activeValue === "on";
       if (!validProviderKey(providerKey) || extraKey !== undefined || extraActive !== undefined ||
-        (activeValue !== undefined && !active)) {
+        (activeValue !== undefined && !active) || extraProduct !== undefined ||
+        (productValue !== undefined && productValue !== "on" && productValue !== "off")) {
         throw new TypeError("Choose a valid Pay Later provider and setting.");
       }
+      // An older form can still toggle the provider without changing a saved product choice.
+      const settings = productValue === undefined ? { active } : { active, productEnabled: productValue === "on" };
 
       return db.$transaction(async (tx) => {
         await lockOwnedExpenseGroup(tx, expenseGroupId, userId);
         const key = { expenseGroupId, providerKey };
         const where = { expenseGroupId_providerKey: key };
         if (presetPayLaterProviders.some((provider) => provider.providerKey === providerKey)) {
-          return tx.payLaterProviderAssignment.upsert({ where, create: { ...key, userId, active }, update: { active } });
+          return tx.payLaterProviderAssignment.upsert({ where, create: { ...key, userId, ...settings }, update: settings });
         }
 
-        const { count } = await tx.payLaterProviderAssignment.updateMany({ where: { ...key, userId }, data: { active } });
+        const { count } = await tx.payLaterProviderAssignment.updateMany({ where: { ...key, userId }, data: settings });
         if (!count) throw new TypeError("This Pay Later provider is unavailable.");
       });
     },

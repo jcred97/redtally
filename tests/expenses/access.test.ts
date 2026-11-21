@@ -676,9 +676,12 @@ test("expense writes validate money, dates, category membership, and current own
       await assert.rejects(createPurchase("shopee"), /Pay Later provider.*unavailable/i);
 
       const provider = await client.payLaterProviderAssignment.create({
-        data: { expenseGroupId: aliceGroup.id, userId: "alice", providerKey: "custom:shop credit", providerName: "Shop Credit", active: true },
+        data: { expenseGroupId: aliceGroup.id, userId: "alice", providerKey: "custom:shop credit", providerName: "Shop Credit", active: true, productEnabled: false },
       });
+      await assert.rejects(createPurchase(provider.providerKey), /Pay Later provider.*unavailable/i);
       assert.equal(await client.expenseSubmission.count({ where: { expenseGroupId: aliceGroup.id, id: submissionId } }), 0);
+      const providerWhere = { expenseGroupId_providerKey: { expenseGroupId: aliceGroup.id, providerKey: provider.providerKey } };
+      await client.payLaterProviderAssignment.update({ where: providerWhere, data: { productEnabled: true } });
       const purchase = await createPurchase(provider.providerKey);
       const savedSubmission = await client.expenseSubmission.findUniqueOrThrow({
         where: { expenseGroupId_id: { expenseGroupId: aliceGroup.id, id: submissionId } },
@@ -694,7 +697,7 @@ test("expense writes validate money, dates, category membership, and current own
       assert.equal(purchase.payLaterProviderName, "Shop Credit");
 
       await client.payLaterProviderAssignment.update({
-        where: { expenseGroupId_providerKey: { expenseGroupId: aliceGroup.id, providerKey: provider.providerKey } },
+        where: providerWhere,
         data: { active: false },
       });
       await assert.rejects(

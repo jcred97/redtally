@@ -538,7 +538,7 @@ export function createExpenseGroupAccess(
           include: {
             budgets: true,
             bankAssignments: true,
-            payLaterProviderAssignments: { select: { providerKey: true, providerName: true, active: true } },
+            payLaterProviderAssignments: { select: { providerKey: true, providerName: true, active: true, productEnabled: true } },
             categories: { orderBy: { id: "asc" } },
           },
         });

@@ -82,7 +82,7 @@ export default async function ExpenseGroupPage({
   const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
-  const payLaterProviders = payLater?.providers.filter(({ active }) => active) ?? [];
+  const payLaterProviders = payLater?.providers.filter(({ active, productEnabled }) => active && productEnabled) ?? [];
   const activeTabId = "expense-group-active-tab";
 
   let primaryAction = null;

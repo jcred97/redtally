@@ -31,14 +31,14 @@ RedTally stores the user’s provider key encrypted and retains its last four ch
 
 ### Managing Pay Later in an expense group
 
-Open **Payment Provider → Pay Later** in the expense group where you use the product. Select the product, such as **SPayLater**, check **Enable for this expense group**, and select **Save changes**. To set up a custom provider in the group, choose **Add Pay Later provider**, enter its name, and select **Create**.
+Open **Payment Provider → Pay Later** in the expense group where you use the product. Open the provider, check **Enable for this expense group**, select the product under **Pay Later products**, and select **Save changes**. For example, open **Shopee** and select **SPayLater**. To set up a custom provider in the group, choose **Add Pay Later provider**, enter its name, and select **Create**.
 
 Clearing **Enable for this expense group** hides the provider from new purchases. Existing expenses keep their saved provider.
 
 ### Recording a Pay Later purchase
 
 1. In the expense group, open **New Expense** and enter the full purchase amount, date, and category.
-2. Set **Payment Method** to **Pay Later** and choose an enabled **Payment Provider**, such as **SPayLater**. Enable providers for the group under **Payment Provider → Pay Later**.
+2. Set **Payment Method** to **Pay Later** and choose a **Payment Provider**, such as **SPayLater**. The dropdown lists products selected under enabled providers in the expense group.
 3. Select **Save expense**.
 
 The full purchase counts once toward spending. The **Payment Provider** column in **Expenses** shows the saved provider’s name.

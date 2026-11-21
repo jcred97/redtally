@@ -342,7 +342,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       });
       await client.payLaterProviderAssignment.createMany({
         data: [
-          { expenseGroupId: source.id, userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true },
+          { expenseGroupId: source.id, userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true, productEnabled: false },
           { expenseGroupId: source.id, userId: "alice", providerKey: "shopee", active: false },
         ],
       });
@@ -403,11 +403,11 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(await bob.getById(id), null);
       assert.deepEqual(await client.payLaterProviderAssignment.findMany({
         where: { expenseGroupId: id },
-        select: { userId: true, providerKey: true, providerName: true, active: true },
+        select: { userId: true, providerKey: true, providerName: true, active: true, productEnabled: true },
         orderBy: { providerKey: "asc" },
       }), [
-        { userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true },
-        { userId: "alice", providerKey: "shopee", providerName: null, active: false },
+        { userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true, productEnabled: false },
+        { userId: "alice", providerKey: "shopee", providerName: null, active: false, productEnabled: true },
       ]);
       assert.equal(copy.expenseSubmissions.length, 0);
       assert.equal(copy.budgets.length, 1);

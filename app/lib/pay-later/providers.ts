@@ -1,7 +1,7 @@
 import type { PayLaterProviderAssignment } from "@/generated/prisma/client";
 
 export type PayLaterProviderOption = Pick<PayLaterProviderAssignment, "providerKey"> & { providerName: string };
-export type PayLaterProviderSetting = PayLaterProviderOption & Pick<PayLaterProviderAssignment, "active">;
+export type PayLaterProviderSetting = PayLaterProviderOption & Pick<PayLaterProviderAssignment, "active" | "productEnabled">;
 
 export const presetPayLaterProviders = [
   { providerKey: "shopee", providerName: "SPayLater" },

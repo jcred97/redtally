@@ -211,6 +211,7 @@ model PayLaterProviderAssignment {
   providerKey    String       @db.VarChar(127)
   providerName   String?      @db.VarChar(120)
   active         Boolean      @default(true)
+  productEnabled Boolean      @default(true)
   expenseGroup   ExpenseGroup @relation(fields: [expenseGroupId, userId], references: [id, userId], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([expenseGroupId, providerKey])
