@@ -16,10 +16,10 @@ export function readFinancing(formData: FormData, expenseDate: Date): FinancingI
   return { creditAccountId: id.toLowerCase(), installments };
 }
 
-async function saveCreditAccount(tx: Prisma.TransactionClient, userId: string, name: string) {
+export async function saveCreditAccount(tx: Prisma.TransactionClient, userId: string, name: string) {
   const key = name.replace(/\s+/g, " ").toLowerCase();
   if (key.length > 120) throw new TypeError("Enter a shorter credit account name.");
-  // Keep the account reusable across simultaneous Add Credit Account requests.
+  // Reuse the same provider across retries and concurrent requests.
   const { count } = await tx.payLaterAccount.createMany({
     data: { userId, name, key, enabled: false },
     skipDuplicates: true,

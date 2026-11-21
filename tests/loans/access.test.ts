@@ -110,6 +110,24 @@ test("Pay Later providers and financing are scoped to the selected expense group
       (await loans.getCreditAccountSettings(travel.id)).find((account) => account.id === customAccount.id)?.assignment,
       { active: true, supportsPayLater: true },
     );
+
+    const customSettings = (expenseGroupId: number, name: string) => form([
+      ["expenseGroupId", String(expenseGroupId)], ["name", name], ["active", "on"], ["supportsPayLater", "on"],
+    ]);
+    await assert.rejects(loans.setGroupCreditAccountSettings(customSettings(privateGroup.id, "Store installments")), /expense groups/i);
+    await assert.rejects(loans.setGroupCreditAccountSettings(customSettings(household.id, "  ")), /credit provider name/i);
+    assert.equal(await client.payLaterAccount.count(), 2);
+
+    const configured = await loans.setGroupCreditAccountSettings(customSettings(household.id, " Store installments "));
+    assert.equal((await loans.setGroupCreditAccountSettings(customSettings(household.id, "store   installments"))).id, configured.id);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), [{ id: configured.id, name: "Store installments" }]);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(travel.id), [customAccount]);
+    const configuredPurchase = await expenses.create(
+      household.id, household.categories[0].id, purchase, randomUUID(), financing("creditAccountId", configured.id),
+    );
+    assert.equal((await client.repaymentPlan.findUniqueOrThrow({
+      where: { expenseId: configuredPurchase.id },
+    })).creditAccountId, configured.id);
   } finally {
     await fixture.close();
   }

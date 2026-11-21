@@ -190,6 +190,7 @@ export default function ExpenseFormDialog({
         submitLabel={expense ? "Save changes" : "Save expense"}
         pendingLabel="Saving..."
         disabled={!hasCategories}
+        submitDisabled={showSchedule && creditAccounts.length === 0}
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >

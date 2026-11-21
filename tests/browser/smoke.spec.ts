@@ -393,7 +393,7 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await expect(groupLink).toHaveCount(0);
 });
 
-test("Pay Later presets can be enabled for one group and selected in New Expense", async ({ page }) => {
+test("New Expense lists enabled Pay Later providers for the group and handles deletion", async ({ page }) => {
   await page.goto(groupPath());
   const groupViews = page.getByRole("navigation", { name: "Expense group views" });
   await groupViews.getByRole("link", { name: "Payment Provider", exact: true }).click();
@@ -415,18 +415,64 @@ test("Pay Later presets can be enabled for one group and selected in New Expense
   const expense = await newExpense(page);
   await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
-  const creditAccount = expense.getByRole("combobox", { name: "Credit account", exact: true });
-  await creditAccount.click();
+  const creditProvider = expense.getByRole("combobox", { name: "Credit provider", exact: true });
+  await creditProvider.click();
+  await expect(expense.getByRole("option")).toHaveCount(1);
   await expense.getByRole("option", { name: "LazPayLater", exact: true }).click();
-  await expect(creditAccount).toHaveText("LazPayLater");
+  await expect(creditProvider).toHaveText("LazPayLater");
 
-  await page.goto(groupPath(data.olderHistory.publicId));
+  async function openPayLaterWithNoProviders(publicId: string) {
+    await page.goto(groupPath(publicId));
+    await newExpense(page);
+    await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
+    await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+    await expect(creditProvider).toHaveText("No credit accounts available");
+    await expect(creditProvider).toBeDisabled();
+    await expect(expense.getByRole("button", { name: "Save expense", exact: true })).toBeDisabled();
+    await expect(expense.getByLabel("New credit account name", { exact: true })).toHaveCount(0);
+  }
+
+  await openPayLaterWithNoProviders(data.olderHistory.publicId);
+  const help = expense.getByRole("button", { name: "How to enable a credit provider", exact: true });
+  const instructions = expense.getByRole("tooltip");
+  await help.hover();
+  await expect(instructions).toBeVisible();
+  await expect(instructions).toContainText(/Payment Provider.*Pay Later/);
+  await expense.getByLabel("Title", { exact: true }).hover();
+  await expect(instructions).toBeHidden();
+  await expense.getByRole("combobox", { name: "Payment method", exact: true }).press("Tab");
+  await expect(help).toBeFocused();
+  await expect(instructions).toBeVisible();
+  await help.press("Escape");
+  await expect(instructions).toBeHidden();
+  await expect(expense).toBeVisible();
+
+  await page.goto("/accounts");
+  const accountSettings = page.getByRole("button", { name: "Settings for LazPayLater", exact: true });
+  await accountSettings.click();
+  await page.getByRole("button", { name: "Delete Account", exact: true }).click();
+  const remove = page.getByRole("dialog", { name: "Delete account?", exact: true });
+  await remove.getByRole("button", { name: "Delete account", exact: true }).click();
+  await expect(accountSettings).toHaveCount(0);
+  await openPayLaterWithNoProviders(data.group.publicId);
+
+  await expense.getByRole("button", { name: "Cancel", exact: true }).click();
+  await groupViews.getByRole("link", { name: "Payment Provider", exact: true }).click();
+  await page.getByRole("navigation", { name: "Payment provider views" })
+    .getByRole("link", { name: "Pay Later", exact: true }).click();
+  await page.getByRole("button", { name: "Add credit provider", exact: true }).click();
+  const addProvider = page.getByRole("dialog", { name: "Add credit provider", exact: true });
+  const providerName = "Neighborhood Shop Pay Later";
+  await addProvider.getByLabel("Name", { exact: true }).fill(providerName);
+  await addProvider.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(addProvider).toBeHidden();
+  await expect(page.getByRole("button", { name: `${providerName} Enabled`, exact: true })).toBeVisible();
+
+  await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   await newExpense(page);
   await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
-  await creditAccount.click();
-  await expect(expense.getByRole("option", { name: "Add credit account", exact: true })).toBeVisible();
-  await expect(expense.getByRole("option", { name: "LazPayLater", exact: true })).toHaveCount(0);
+  await expect(creditProvider).toHaveText(providerName);
 });
 
 test("Accounts lists owned accounts and the Shopee account created from an expense group", async ({ page }) => {
@@ -539,7 +585,7 @@ test("SPayLater purchases open their repayment schedules from Expenses", async (
   await expense.getByLabel("Date", { exact: true }).fill(purchasedOn);
   await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
-  await expect(expense.getByRole("combobox", { name: "Credit account", exact: true })).toHaveText("SPayLater");
+  await expect(expense.getByRole("combobox", { name: "Credit provider", exact: true })).toHaveText("SPayLater");
   const term = expense.getByRole("combobox", { name: "Term", exact: true });
   const receipt = expense.getByRole("heading", { name: "Receipt image (optional)", exact: true });
   const receiptShortcut = expense.getByRole("button", { name: "Go to receipt image", exact: true });
