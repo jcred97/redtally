@@ -56,9 +56,9 @@ export async function createExpense(
         time: formData.get("time") ?? undefined,
         paymentMethod: formData.get("paymentMethod"),
         bankAssignmentId: formData.get("bankAssignmentId"),
+        creditProviderKey: formData.get("creditProviderKey") ?? undefined,
       },
       formData.get("submissionId"),
-      formData,
     );
   } catch (error) {
     if (error instanceof TypeError) {
@@ -99,6 +99,7 @@ export async function updateExpense(
         time: formData.get("time") ?? undefined,
         paymentMethod: formData.get("paymentMethod"),
         bankAssignmentId: formData.get("bankAssignmentId"),
+        creditProviderKey: formData.get("creditProviderKey") ?? undefined,
       },
       formData.get("expectedUpdatedAt"),
     );
@@ -113,9 +114,6 @@ export async function updateExpense(
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
-  if (formData.get("paymentMethod") === "PAY_LATER") {
-    revalidatePath("/loans/plans/[id]", "page");
-  }
 
   return { success: true };
 }

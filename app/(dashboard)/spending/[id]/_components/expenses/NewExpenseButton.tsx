@@ -1,20 +1,27 @@
-import { getExpenseGroupPayLater } from "@/app/lib/loans/queries";
+import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
 import ExpenseFormDialog from "./ExpenseFormDialog";
 import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
+import type { CreditProviderOption } from "./CreditProviderField";
 
 export default async function NewExpenseButton({
   expenseGroupId,
   categories,
   bankOptions,
+  creditProviders,
 }: {
   expenseGroupId: number;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
+  creditProviders?: CreditProviderOption[];
 }) {
-  const { providers, accounts } = await getExpenseGroupPayLater(expenseGroupId);
+  const enabledProviders = creditProviders ?? (await getExpenseGroupPayLater(expenseGroupId)).providers.filter(({ active }) => active);
 
   return (
-    <ExpenseFormDialog expenseGroupId={expenseGroupId} categories={categories} bankOptions={bankOptions}
-      creditProviders={providers.filter(({ active }) => active)} creditAccounts={accounts} />
+    <ExpenseFormDialog
+      expenseGroupId={expenseGroupId}
+      categories={categories}
+      bankOptions={bankOptions}
+      creditProviders={enabledProviders}
+    />
   );
 }

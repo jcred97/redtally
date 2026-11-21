@@ -1,6 +1,6 @@
 import { PaymentMethod, Prisma, type Expense, type PrismaClient } from "@/generated/prisma/client";
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
-import { getPayLaterProviderName } from "@/app/lib/loans/credit-products";
+import { getPayLaterProviderName } from "@/app/lib/pay-later/credit-products";
 
 // Expense-group IDs use PostgreSQL's signed INTEGER column.
 const MAX_EXPENSE_GROUP_ID = 2_147_483_647;
@@ -20,9 +20,8 @@ type ExpensePageRow = {
       categoryName: string;
       categoryIcon: string | null;
       bankName: string | null;
-      repaymentPlanId: string | null;
-      creditProviderName: string | null;
-      creditProviderKey: string | null;
+      payLaterProviderName: string | null;
+      payLaterProviderKey: string | null;
       dayExpenseCount: bigint | null;
       dayTotalCentavos: bigint | null;
     })
@@ -371,10 +370,11 @@ export function createExpenseGroupAccess(
           expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName",
-          plan.id AS "repaymentPlanId", credit."providerKey" AS "creditProviderKey", credit."providerName" AS "creditProviderName"
+          expense."payLaterProviderKey", expense."payLaterProviderName"
         FROM pagination
         LEFT JOIN LATERAL (
           SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
+            "payLaterProviderKey", "payLaterProviderName",
             ${dayTotals}
           FROM "Expense"
           WHERE "expenseGroupId" = pagination.id
@@ -388,10 +388,6 @@ export function createExpenseGroupAccess(
         LEFT JOIN "ExpenseGroupBank" assignment
           ON assignment.id = expense."bankAssignmentId" AND assignment."expenseGroupId" = pagination.id
         LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
-        LEFT JOIN (
-          "RepaymentPlan" plan INNER JOIN "PayLaterAccount" credit
-            ON credit.id = plan."creditAccountId" AND credit."userId" = ${userId}
-        ) ON plan."expenseId" = expense.id
         ORDER BY expense.date::date DESC, expense."timeMinutes" DESC NULLS LAST, expense.date DESC, expense.id DESC
       `;
 
@@ -421,8 +417,10 @@ export function createExpenseGroupAccess(
           legacyBankName: row.legacyBankName,
           category: { name: row.categoryName, icon: row.categoryIcon },
           bankAssignment: row.bankName === null ? null : { bank: { name: row.bankName } },
-          repaymentPlanId: row.repaymentPlanId,
-          creditProviderName: row.creditProviderKey ? getPayLaterProviderName(row.creditProviderKey, row.creditProviderName) : null,
+          payLaterProviderKey: row.payLaterProviderKey,
+          payLaterProviderName: row.payLaterProviderKey
+            ? getPayLaterProviderName(row.payLaterProviderKey, row.payLaterProviderName)
+            : null,
         })),
       };
     },
@@ -503,7 +501,6 @@ export function createExpenseGroupAccess(
           include: {
             budgets: true,
             bankAssignments: true,
-            creditAccountAssignments: { select: { creditAccountId: true, active: true, supportsPayLater: true } },
             payLaterProviders: { select: { providerKey: true, providerName: true, active: true } },
             categories: { orderBy: { id: "asc" } },
           },
@@ -544,14 +541,6 @@ export function createExpenseGroupAccess(
           },
         });
 
-        if (source.creditAccountAssignments.length > 0) {
-          await tx.creditAccountAssignment.createMany({
-            data: source.creditAccountAssignments.map((assignment) => ({
-              ...assignment, expenseGroupId: copy.id, userId,
-            })),
-          });
-        }
-
         if (source.payLaterProviders.length > 0) {
           await tx.expenseGroupPayLaterProvider.createMany({
             data: source.payLaterProviders.map((provider) => ({
@@ -577,10 +566,12 @@ export function createExpenseGroupAccess(
           await tx.$executeRaw`
             INSERT INTO "Expense" (
               title, merchant, "amountCentavos", date, "timeMinutes", notes, bank,
-              "transactionType", "bankAssignmentId", "expenseGroupId", "categoryId", "createdAt", "updatedAt"
+              "transactionType", "payLaterProviderKey", "payLaterProviderName",
+              "bankAssignmentId", "expenseGroupId", "categoryId", "createdAt", "updatedAt"
             )
             SELECT expense.title, expense.merchant, expense."amountCentavos", expense.date,
               expense."timeMinutes", expense.notes, expense.bank, expense."transactionType",
+              expense."payLaterProviderKey", expense."payLaterProviderName",
               copied_assignment.id, ${copy.id}, ${copiedCategory.id},
               CURRENT_TIMESTAMP AT TIME ZONE 'UTC', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
             FROM "Expense" expense
@@ -603,7 +594,7 @@ export function createExpenseGroupAccess(
       const where = ownedGroup(id, userId);
       try {
         await db.$transaction(async (tx) => {
-          // Lock the owned group before changing its settings or unlinking its loans.
+          // Lock the owned group before removing its settings.
           const [group] = await tx.$queryRaw<{ hasRecords: boolean }[]>`
             SELECT EXISTS (SELECT 1 FROM "Category" WHERE "spendingId" = g.id)
                 OR EXISTS (SELECT 1 FROM "Budget" WHERE "expenseGroupId" = g.id) AS "hasRecords"
@@ -613,7 +604,6 @@ export function createExpenseGroupAccess(
           if (!group) throw new ExpenseGroupAccessError("Expense group not found");
           if (group.hasRecords) throw new ExpenseGroupAccessError(GROUP_HAS_DEPENDENCIES);
 
-          await tx.loan.updateMany({ where: { expenseGroupId: id, userId }, data: { expenseGroupId: null } });
           await tx.bankAssignment.deleteMany({ where: { expenseGroupId: id } });
           await tx.expenseGroup.delete({ where });
         });

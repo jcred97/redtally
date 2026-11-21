@@ -18,7 +18,6 @@ import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
 import CreditProviderField, { type CreditProviderOption } from "./CreditProviderField";
-import FinancedPurchaseFields, { type CreditAccountOption } from "./FinancedPurchaseFields";
 
 export type EditableExpense = {
   id: number;
@@ -32,7 +31,8 @@ export type EditableExpense = {
   paymentMethod: PaymentMethod | null;
   bankAssignmentId: number | null;
   bankName: string | null;
-  repaymentPlanId?: string | null;
+  payLaterProviderKey: string | null;
+  payLaterProviderName: string | null;
 };
 
 type ExpenseFormDialogProps = {
@@ -40,7 +40,6 @@ type ExpenseFormDialogProps = {
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
   creditProviders?: CreditProviderOption[];
-  creditAccounts?: CreditAccountOption[];
   expense?: EditableExpense;
   focusKey?: string;
   inMenu?: boolean;
@@ -51,13 +50,11 @@ export default function ExpenseFormDialog({
   categories,
   bankOptions,
   creditProviders = [],
-  creditAccounts = [],
   expense,
   focusKey,
   inMenu,
 }: ExpenseFormDialogProps) {
   const fieldId = useId();
-  const receiptHeading = useRef<HTMLHeadingElement>(null);
   const submissionId = useRef("");
   const expectedUpdatedAt = useRef("");
   const [title, setTitle] = useState("");
@@ -69,16 +66,14 @@ export default function ExpenseFormDialog({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [bankAssignmentId, setBankAssignmentId] = useState("");
   const [creditProviderKey, setCreditProviderKey] = useState("");
-  const [creditAccountId, setCreditAccountId] = useState("");
   const hasCategories = categories.length > 0;
-  const financed = paymentMethod === "PAY_LATER";
-  const showSchedule = !expense && financed;
-  const selectedCreditProvider = creditProviders.find(({ key }) => key === creditProviderKey);
-  const matchingCreditAccounts = selectedCreditProvider
-    ? creditAccounts.filter(({ providerKey }) => providerKey === selectedCreditProvider.key)
-    : [];
-  const selectedCreditAccount = matchingCreditAccounts.find(({ id }) => id === creditAccountId);
-  const hasRepaymentPlan = Boolean(expense?.repaymentPlanId);
+  const isPayLater = paymentMethod === "PAY_LATER";
+  const historicalKey = expense?.payLaterProviderKey;
+  const providerOptions = historicalKey && !creditProviders.some(({ key }) => key === historicalKey)
+    ? [...creditProviders, { key: historicalKey, name: `${expense?.payLaterProviderName ?? historicalKey} (previously selected)` }]
+    : creditProviders;
+  const providerRequired = expense?.paymentMethod !== "PAY_LATER" || Boolean(historicalKey);
+  const providerMissing = creditProviderKey ? !providerOptions.some(({ key }) => key === creditProviderKey) : providerRequired;
   const canSelectBank = isBankPaymentMethod(paymentMethod);
   const eligibleBanks = canSelectBank
     ? bankOptions.filter((bank) => bank.paymentMethods.includes(paymentMethod))
@@ -114,6 +109,7 @@ export default function ExpenseFormDialog({
       setCategoryId(String(expense.categoryId));
       setPaymentMethod(expense.paymentMethod ?? "");
       setBankAssignmentId(String(expense.bankAssignmentId ?? ""));
+      setCreditProviderKey(historicalKey ?? "");
     } else {
       submissionId.current = crypto.randomUUID();
       setTitle("");
@@ -125,7 +121,6 @@ export default function ExpenseFormDialog({
       setPaymentMethod("");
       setBankAssignmentId("");
       setCreditProviderKey("");
-      setCreditAccountId("");
     }
   }
 
@@ -193,19 +188,18 @@ export default function ExpenseFormDialog({
         triggerClassName={inMenu ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm` : undefined}
         returnFocusId={expense ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
-        description={hasRepaymentPlan ? "The amount, date, and payment method are tied to this expense’s repayment plan." : undefined}
-        dialogSize={showSchedule ? "extra-wide" : "wide"}
+        dialogSize="wide"
         compact
         pendingMessage="Saving your expense. Please wait..."
         failureMessage="Unable to save your expense. Please try again."
         submitLabel={expense ? "Save changes" : "Save expense"}
         pendingLabel="Saving..."
         disabled={!hasCategories}
-        submitDisabled={showSchedule && !selectedCreditAccount}
+        submitDisabled={isPayLater && providerMissing}
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
-        <div className={`grid items-start gap-4 ${expense ? "" : "md:grid-cols-2"} ${showSchedule ? "lg:grid-cols-3" : ""}`}>
+        <div className={`grid items-start gap-4 ${expense ? "" : "md:grid-cols-2"}`}>
           <div className={`grid min-w-0 gap-4 ${expense ? "sm:grid-cols-2" : ""}`}>
             <div className="col-span-full min-w-0">
               <label htmlFor={`${fieldId}-title`} className={fieldLabelClass}>Title</label>
@@ -246,7 +240,6 @@ export default function ExpenseFormDialog({
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 required
-                readOnly={hasRepaymentPlan}
                 maxLength={20}
                 placeholder="150.75"
                 aria-describedby={`${fieldId}-amount-help`}
@@ -277,7 +270,6 @@ export default function ExpenseFormDialog({
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
                 required
-                readOnly={hasRepaymentPlan}
               />
             </div>
             <div className="min-w-0">
@@ -299,17 +291,15 @@ export default function ExpenseFormDialog({
                 id={`${fieldId}-payment-method`}
                 name="paymentMethod"
                 value={paymentMethod}
-                disabled={hasRepaymentPlan}
                 onChange={(value) => changePaymentMethod(value as PaymentMethod | "")}
                 options={[
                   { value: "", label: "No payment method" },
                   ...Object.entries(paymentMethodLabels)
-                    .filter(([value]) => value !== "PAY_LATER" || !expense || expense.paymentMethod === value)
                     .map(([value, label]) => ({ value, label })),
                 ]}
               />
             </div>
-            {!financed && <div className="min-w-0">
+            {!isPayLater && <div className="min-w-0">
               <label htmlFor={`${fieldId}-bank`} className={fieldLabelClass}>
                 Bank <span className="text-xs">(optional)</span>
               </label>
@@ -331,40 +321,18 @@ export default function ExpenseFormDialog({
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
-            {!expense && (
+            {isPayLater && (
               <CreditProviderField
-                providers={creditProviders}
-                value={selectedCreditProvider?.key ?? ""}
-                onChange={(key) => {
-                  if (key !== creditProviderKey) setCreditAccountId("");
-                  setCreditProviderKey(key);
-                }}
-                hidden={!showSchedule}
+                providers={providerOptions}
+                value={creditProviderKey}
+                onChange={setCreditProviderKey}
+                required={providerRequired}
               />
-            )}
-            {showSchedule && (
-              <button
-                type="button"
-                className="button-secondary min-h-10 justify-self-start rounded-lg px-4 text-sm font-medium lg:hidden"
-                onClick={() => receiptHeading.current?.focus()}
-              >
-                Go to receipt image
-              </button>
             )}
           </div>
 
           {!expense && (
-            <div className={`grid min-w-0 gap-4 ${showSchedule ? "lg:contents" : ""}`}>
-              <FinancedPurchaseFields
-                purchaseDate={date}
-                provider={selectedCreditProvider?.name}
-                accounts={matchingCreditAccounts}
-                accountId={selectedCreditAccount?.id ?? ""}
-                onAccountChange={setCreditAccountId}
-                hidden={!showSchedule}
-              />
-              <ReceiptImageInput headingRef={receiptHeading} paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />
-            </div>
+            <ReceiptImageInput paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />
           )}
         </div>
       </FormDialog>

@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** controls which banks and Pay Later providers are available for that group. Open **Accounts** to add and manage financial accounts. **Loans** opens the cash loan list. [Financial account and loan workflows](docs/workflows.md) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** controls which banks and Pay Later providers are available for that group. [Expense workflows](docs/workflows.md) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -23,9 +23,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 
 Implemented source includes:
 
-- **Accounts** lets users add named savings, checking, e-wallet, credit card, cash, Pay Later, and other accounts. For a Pay Later account, choose its **Credit provider** when you add it. To use a custom provider, choose **Other** and enter its name. [Financial account model](docs/data-model.md#financial-accounts)
-- **Pay Later purchases** use providers enabled in the expense group's **Payment Provider → Pay Later** settings. In **New Expense**, choose **Pay Later** as the payment method, select a **Credit provider**, then choose an existing matching **Account** and enter the repayment schedule. The expense history's **Payment Provider** column shows the recorded bank or Pay Later provider. Open **View plan** to review or record repayments for the purchase. [Pay Later setup and purchases](docs/workflows.md#pay-later-setup-and-purchases)
-- **Loans** supports cash loans with an optional expense-group link. Enter receiving and funding account names manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
+- **Pay Later purchases** use providers enabled in the expense group's **Payment Provider → Pay Later** settings. In **New Expense**, choose **Pay Later** as the payment method, select a **Credit provider**, and save the full purchase amount. The expense history's **Payment Provider** column shows the saved provider. [Pay Later setup and purchases](docs/workflows.md#pay-later-setup-and-purchases)
 - Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
 - Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
@@ -134,13 +132,9 @@ For future installations or releases that change authentication storage, coordin
 4. Apply committed migrations with `npx prisma migrate deploy`, generate the client, and deploy the matching code. This release is not activated by merely pushing the schema file.
 5. Verify anonymous redirects, two independent users, rejected cross-user IDs, sign-out/revocation, and preserved unclaimed legacy records. Any later assignment of legacy groups must target a specifically verified account ID, never the first account to sign up.
 
-### Loans production rollout
+### Accounts and loans removal
 
-On November 20, 2026, migration `20261120120000_loans` was applied to production for commit `e629b71`. The rollout used a verified Windows DPAPI-encrypted backup of 10 business tables and the Prisma migration history. The backup excluded authentication tables and credentials. [Loans migration](server/db/migrations/20261120120000_loans/migration.sql)
-
-After migration, row fingerprints matched the backup across all 10 existing business tables. All six new Loans tables had row-level security enabled with zero policies. The Loan List loaded while signed in, and anonymous requests to Loans redirected to sign-in. Production verification was read-only.
-
-Apply `20261120120000_loans` before deploying the matching application to any other existing database.
+The cleanup migration copies known Pay Later providers onto their original expenses, then permanently removes financial accounts, cash loans, repayment plans, installments, payments, and allocations. It preserves expenses, expense-group Pay Later settings, and sign-in records. Take a verified backup and apply pending migrations in order during a coordinated release with the matching application. [Cleanup migration](server/db/migrations/20261121120000_remove_accounts_and_loans/migration.sql)
 
 ### Database connection troubleshooting
 
@@ -160,10 +154,8 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Dashboard route and cross-group reporting feature |
 | `app/(dashboard)/expense-groups/` | Expense Groups list and redirects from retired credit-account pages |
 | `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
-| `app/(dashboard)/loans/` | Cash loan list and details, financed-purchase plans, and repayment forms |
-| `app/(dashboard)/accounts/` | Financial account list, Add Account dialog, and owner-scoped access |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
-| `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
+| `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, payment provider settings, and recurring expenses |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
 | `app/(dashboard)/spending/[id]/_lib/expenses/` | CSV, PDF, and Excel export helpers |
 | `app/(dashboard)/spending/[id]/export/` | Owner-only expense downloads using history filters |
@@ -175,7 +167,7 @@ Authenticated pages render per request because their session check uses request 
 | `app/api/cron/recurring-expenses/` | Protected scheduled worker entry point |
 | `app/lib/auth/` | Better Auth configuration, browser and server clients, and session checks |
 | `app/lib/expenses/` | Expense dates, exact centavo parsing/formatting/totals, merchant validation, and import normalization |
-| `app/lib/loans/` | Loan, installment, and repayment logic |
+| `app/lib/pay-later/` | Pay Later provider settings and selection validation |
 | `app/lib/receipt-scanning/` | Provider credentials, AI adapters, and receipt suggestion normalization |
 | `app/components/` | Shared auth, dialog, feedback, and native form-field components |
 | `app/components/forms/` | Reusable Select and DateInput controls with shared icons and picker behavior |
@@ -193,15 +185,13 @@ Authenticated pages render per request because their session check uses request 
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
 | `tests/dashboard/` | Cross-group and per-group spending, comparison periods, and budget ownership tests |
-| `tests/loans/` | Loan ownership, financed purchases, and repayment tests |
-| `tests/financial-accounts/` | Financial account ownership, validation, and safe draft retries |
 | `tests/db/migrations/public-id.test.ts` | Public UUID backfill, defaults, uniqueness, and preserved records |
 | `tests/db/migrations/` | Tests for PostgreSQL migrations and data preservation |
 | `public/branding/` | Active RedTally header logo and handwritten R coin favicon |
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |
 | `docs/roadmap.md` | Planned milestones and completion criteria |
 | `docs/data-model.md` | Core model, integrity rules, and preservation strategy |
-| `docs/workflows.md` | Account settings, financial accounts, receipt scanning, cash loans, and Pay Later purchases |
+| `docs/workflows.md` | Profile settings, receipt scanning, and Pay Later purchases |
 | `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
 Application code uses grouped feature routes, the private Dashboard home feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.

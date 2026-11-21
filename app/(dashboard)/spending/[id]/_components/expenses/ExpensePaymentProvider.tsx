@@ -6,7 +6,7 @@ export function getExpenseBankName(expense: ExpenseHistoryEntry) {
 }
 
 export function getExpensePaymentProvider(expense: ExpenseHistoryEntry) {
-  const creditProvider = expense.creditProviderName?.trim();
+  const creditProvider = expense.payLaterProviderName?.trim();
   if (creditProvider) return { name: creditProvider, isBank: false };
 
   const bank = getExpenseBankName(expense)?.trim();

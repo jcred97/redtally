@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import type { ExpenseHistoryEntry } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import { expenseTimeInput, formatExpenseDate, formatExpenseTime, parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
@@ -105,11 +104,6 @@ export default function GroupedExpenseHistory({
                             <span aria-hidden="true">/</span>
                             <span>{paymentMethodLabels[expense.paymentMethod]}</span>
                           </span>
-                        )}
-                        {expense.repaymentPlanId && (
-                          <Link href={`/loans/plans/${expense.repaymentPlanId}`} className="text-red-400 underline underline-offset-4">
-                            View plan
-                          </Link>
                         )}
                       </div>
                     </div>

@@ -12,6 +12,7 @@ User
        -> Budget (optional, one per calendar month)
        -> BankAssignment -> Bank (shared catalog)
             -> Expense (optional bank assignment)
+       -> ExpenseGroupPayLaterProvider (group settings)
        -> RecurringExpense (references a category and optionally a bank assignment)
             -> RecurringExpenseOccurrence -> Expense (until the expense is deleted)
 ```
@@ -26,6 +27,7 @@ User
 | `Budget` | Optional monthly target for a group | Positive integer centavos; month stored as a PostgreSQL DATE on the first day; unique group/month |
 | `Bank` | Shared institution catalog | Unique normalized key; active flag; assigned banks cannot be deleted |
 | `BankAssignment` | Enables a bank for a group and configures supported payment methods | Unique group/bank; four capabilities default to enabled; referenced assignments cannot be deleted |
+| `ExpenseGroupPayLaterProvider` | Enables a Pay Later provider for a group | Unique group/provider key with a same-owner group foreign key |
 | `RecurringExpense` | Schedule and next due date for an expense in one group | Same-group category and bank assignment; positive integer centavos; calendar dates with an inclusive optional end date |
 | `RecurringExpenseSubmission` | Records a schedule draft and its original payload hash | A draft ID is unique within its group. Deleting the schedule preserves the claim so a late retry cannot recreate it. |
 | `RecurringExpenseOccurrence` | Records that the worker posted a scheduled date | Unique schedule and due date; survives expense deletion until the schedule itself is deleted |
@@ -43,7 +45,7 @@ Application names are mapped to the existing database identifiers. These naming 
 
 `ExpenseGroup` is the named record shown in the current **Expense Groups** navigation and list. **Spending** would fit a broader section if a future view brings together reports and expense groups. The PostgreSQL table name is `Spending`. [Current navigation](roadmap.md#purpose-and-navigation)
 
-New expenses support Cash, Debit Card, Credit Card, Bank Transfer, Bank Payment, and Pay Later. Expense groups expose monthly targets through `budgets`. Each `budgetMonth` must be the first day of its calendar month, with one budget per expense group/month and a positive integer-centavo amount. Raw SQL and historical migration tests retain physical database names. [Loan and financed-purchase relationships](#loan-and-financed-purchase-relationships)
+New expenses support Cash, Debit Card, Credit Card, Bank Transfer, Bank Payment, and Pay Later. Expense groups expose monthly targets through `budgets`. Each `budgetMonth` must be the first day of its calendar month, with one budget per expense group/month and a positive integer-centavo amount. Raw SQL and historical migration tests retain physical database names.
 
 Bank keys are the lower-case bank name after trimming surrounding spaces and collapsing internal whitespace. The caller supplies the key; a database CHECK rejects a key that does not match that normalization. Migration `20261111130000_philippine_bank_catalog` adds a starter catalog based on Bangko Sentral ng Pilipinas listings and preserves entries with matching keys. [Universal and commercial banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Commercial/assets.aspx) · [Digital banks](https://www.bsp.gov.ph/PaymentAndSettlement/PPDD_Payments_Bulletin.pdf) · [Rural banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Rural/assets.aspx)
 
@@ -57,27 +59,17 @@ Category display names and totals are derived by queries/UI rather than duplicat
 
 Migration `20261115120000_recurring_expenses` adds the schedule and occurrence tables with row-level security and no Data API policies. The worker creates the expense, records its scheduled date, and advances the schedule in one transaction. Duplicating an expense group copies its ordinary expense history and starts with an empty Recurring tab.
 
-## Financial accounts
+## Pay Later
 
-`FinancialAccount` is the user-owned record displayed in **Accounts**. It stores a display name, type, currency, and active status. A bank-backed account can reference the shared `Bank` catalog. `BankAssignment` controls a group's payment settings for an institution, while the user can register several named financial accounts at that institution.
+Each expense group enables preset or custom providers through `ExpenseGroupPayLaterProvider`. A Pay Later purchase stores its full amount in a single `Expense` and its selected provider in `payLaterProviderKey` and `payLaterProviderName`. The name is optional for built-in providers, whose labels come from the preset catalog. Older Pay Later expenses without a known provider keep empty provider fields. Disabling a provider preserves the saved choice on existing expenses. Group duplication copies both provider settings and saved expense details. [Pay Later setup](workflows.md#pay-later-setup-and-purchases)
 
-An account of type `PAY_LATER` links to exactly one same-owner `PayLaterAccount` profile. The profile stores its provider key and an optional custom provider name. Several named accounts can use the same provider. Migration `20261121100000_financial_accounts` backfills the financial account link and creates a PHP financial account when a profile is inserted. Migration `20261121110000_pay_later_providers` maps existing accounts named Shopee and SPayLater to the Shopee provider and retains their separate account IDs and repayment links. Apply the provider migration with the matching application release. [Financial accounts migration](../server/db/migrations/20261121100000_financial_accounts/migration.sql) · [Pay Later providers migration](../server/db/migrations/20261121110000_pay_later_providers/migration.sql) · [Pay Later setup](workflows.md#managing-pay-later-in-an-expense-group)
-
-## Loan and financed-purchase relationships
-
-The loan and financed-purchase records use `Loan`, `PayLaterAccount`, `ExpenseGroupPayLaterProvider`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Receiving and funding account names are stored as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans and repayments](workflows.md#loans-and-repayments)
-
-- **Cash loan.** `Loan` has its own owner, lender, terms, and schedule. Its optional `expenseGroupId` must belong to the same user. A linked group opens the same loan record. Purchases funded with loan proceeds count toward group spending as they occur.
-- **Provider settings.** An `ExpenseGroupPayLaterProvider` records whether a provider is enabled in a group. Its composite foreign key enforces group ownership. Group settings write to this record. The migration derives initial provider availability from legacy `CreditAccountAssignment` records and account defaults. Duplicating a group copies its provider settings.
-- **Financed purchase.** One `Expense` represents the full purchase. **New Expense** lists enabled providers in **Credit provider** and matching financial accounts in **Account**. The expense's `RepaymentPlan` links to the selected financial account's `PayLaterAccount` profile and gets its expense group from the expense. Each plan has its own schedule and outstanding balance. Expense history reads the provider name through this link for the **Payment Provider** column, phone cards, and grouped history.
-- **Payments.** A `LoanPayment` records the actual payment once. A new payment applies to the covered installments of a single loan or repayment plan. Historical provider payments can have allocations across multiple plans. Payment allocations preserve the original purchase amount and reduce outstanding balances.
-- **History.** Duplicating an expense group can copy expense history without creating payable balances. A future correction workflow must preserve recorded payments. Validate ownership on both ends of links between user-owned records.
+The cleanup migration copies known providers onto existing Pay Later expenses before dropping the financial account, loan, and repayment tables. It preserves expense rows, group provider settings, and sign-in records. [Cleanup migration](../server/db/migrations/20261121120000_remove_accounts_and_loans/migration.sql)
 
 ## Planned financial-model dependencies
 
 The planned ledger will record loan disbursements as increases in available funds and debt, and record principal repayments as outflows that reduce debt. It will record separately identified interest and fees as expenses when the underlying transactions support that breakdown.
 
-Phase 1 uses the existing expense, budget, and recurring expense models. The following hierarchy includes the deployed Loans workflow and the planned financial records for Phases 2–4. [Dashboard and connected-finances roadmap](roadmap.md#dashboard-and-connected-finances)
+Phase 1 uses the existing expense, budget, and recurring expense models. The hierarchy also outlines possible financial records for Phases 2–4. [Dashboard and connected-finances roadmap](roadmap.md#dashboard-and-connected-finances)
 
 ### Proposed ownership hierarchy
 
@@ -94,7 +86,6 @@ User
 │   └── RecurringExpense → generated occurrences
 ├── FinancialAccount
 │   ├── Cash, bank, e-wallet, and credit card accounts
-│   ├── PayLaterAccount → RepaymentPlan → original Expense
 │   └── Future brokerage accounts → holdings, trades, and dated valuations
 ├── Loan (cash loan)
 │   ├── Terms and repayment schedule
@@ -131,8 +122,6 @@ Introduce financial-account and transaction storage additively, with a deliberat
 Migration `20261022150000_core_expense_group_model` runs in one transaction. It adds the new tables, adds/backfills each expense's group ID, and strengthens foreign keys. It neither renames nor recreates the original tables, resets sequences, nor changes existing amounts, titles, dates, bank text, categories, or group names. Existing `/spending/[id]` URLs remain supported.
 
 Back up the existing application rows and migration history before applying it. Afterward, compare all original columns per ID, verify the group backfill and null bank assignments, and reconcile counts/totals. Apply migrations before running the new application build, which reads the new optional bank relation. The previous deployed read/create-group workflows remain compatible with the retained physical tables. Older external expense writers would need to supply the new required group ID and are outside this app's current implemented workflows.
-
-Migrations `20261120150000_credit_account_availability` and `20261120160000_group_credit_account_settings` define the historical provider settings retained in existing databases.
 
 ## Deferred
 

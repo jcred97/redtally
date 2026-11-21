@@ -1,9 +1,7 @@
 # RedTally workflows
 
 - [Account settings](#account-settings)
-- [Financial accounts](#financial-accounts)
 - [Receipt scanning](#receipt-scanning)
-- [Loans and repayments](#loans-and-repayments)
 - [Pay Later setup and purchases](#pay-later-setup-and-purchases)
 
 ## Account settings
@@ -11,12 +9,6 @@
 Open the avatar menu and select **Account settings**. In **Profile**, you can see your name and email, upload a profile photo, or switch back to your initials.
 
 In **Receipt scanning**, choose **OpenAI** or **Anthropic**, enter your API key, and select **Test & Save**. The test uses a small amount of provider quota. After it succeeds, the settings show the provider and the last four characters of the key. You can replace the key or disconnect. The connection is available across your expense groups.
-
-## Financial accounts
-
-Open **Accounts → Add Account** and enter an account name and type. The form starts with **Savings** and **PHP**. A savings, checking, or credit card account can also reference a bank from the catalog.
-
-Pay Later accounts use PHP and have a **Credit provider**. For other account types, enter a three-letter currency code. [Pay Later setup and purchases](#pay-later-setup-and-purchases)
 
 ## Receipt scanning
 
@@ -35,36 +27,20 @@ Apply the [receipt scanner migration](../server/db/migrations/20261119120000_rec
 
 RedTally stores the user’s provider key encrypted and retains its last four characters for display. The scan endpoint returns suggestions and does not store the uploaded receipt. [OpenAI vision guide](https://developers.openai.com/api/docs/guides/images-vision) · [Anthropic vision guide](https://platform.claude.com/docs/en/build-with-claude/vision)
 
-## Loans and repayments
-
-**Loans** lists cash loans with outstanding balances and payment information. Select a loan to see its lender, terms, repayment schedule, and payment history. Enter receiving and funding account names as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Financial accounts roadmap](roadmap.md#phase-2-financial-accounts-income-and-bills)
-
-### Recording a cash loan
-
-Open **Loans → Add Loan**. Record the lender, amount borrowed, disbursement date, receiving bank account or wallet, and repayment schedule. Leave **Expense Group** blank for a general loan or select a group such as **Renovation** when the loan funds a specific purpose. A linked group opens the same record through **View Loan**. Deleting an empty expense group removes its link and preserves the loan and payments.
-
-Purchases funded with cash-loan proceeds count toward group spending as they occur. See the [loan and financed-purchase relationships](data-model.md#loan-and-financed-purchase-relationships) for ownership, history, and planned cash-flow handling.
-
-### Recording repayments
-
-Open a cash loan and choose **Record Payment**. Enter the funding bank account or wallet name and apply the payment to the installments it covers.
-
 ## Pay Later setup and purchases
 
 ### Managing Pay Later in an expense group
 
-1. To add a Pay Later account, open **Accounts → Add Account**. Enter the **Account name**, choose **Pay Later** as the **Account type**, and choose its **Credit provider**. Presets include Shopee, Lazada, GCash, Atome, BillEase, and Home Credit. For a custom provider, choose **Other** and enter the **Custom provider name**. Select **Save account**.
-2. Open **Payment Provider → Pay Later** in the expense group where you use the provider. Select the provider, check **Enable for this expense group**, and select **Save changes**. Repeat for each group where you use it.
+Open **Payment Provider → Pay Later** in the expense group where you use the provider. For a preset such as Shopee, Lazada, GCash, Atome, BillEase, or Home Credit, select the provider, check **Enable for this expense group**, and select **Save changes**. To set up a custom provider in the group, choose **Add credit provider**, enter its name, and select **Create**.
 
-Enabling a provider only changes its availability in that group. For example, a named **SPayLater** account can use **Shopee** as its provider. Clearing **Enable for this expense group** preserves existing purchases and repayment schedules.
+Clearing **Enable for this expense group** hides the provider from new purchases. Existing expenses keep their saved provider.
 
 ### Recording a Pay Later purchase
 
 1. In the expense group, open **New Expense** and enter the full purchase amount, date, and category.
 2. Set **Payment method** to **Pay Later** and choose a **Credit provider** enabled for that expense group. If the field shows **No credit providers available**, use the **?** beside it for setup directions.
-3. Choose an existing **Account** for that provider above **Term**. If you see **No Pay Later accounts available**, add a Pay Later account for the selected provider in **Accounts**.
-4. Select the **Term** and enter the provider's due dates and installment amounts. Then select **Save expense**.
+3. Select **Save expense**.
 
-The full purchase counts once toward spending. The **Payment Provider** column in **Expenses** shows the provider’s name. Select **View plan** on the purchase to see the account, installment schedule, outstanding balance, and payment history or to record a repayment.
+The full purchase counts once toward spending. The **Payment Provider** column in **Expenses** shows the saved provider’s name.
 
-Editing a financed expense can change its descriptive fields while preserving the original repayment plan. Duplicating an expense group copies its provider settings and expense history. The repayment plans stay with the original expenses.
+You can edit a purchase and keep its saved provider even after disabling it. To change the provider, choose one that’s enabled for the group. Duplicating an expense group copies its provider settings and expense history.

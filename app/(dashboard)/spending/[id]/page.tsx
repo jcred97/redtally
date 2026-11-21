@@ -10,9 +10,9 @@ import DashboardTab from "./_components/dashboard/DashboardTab";
 import ExpensesTab from "./_components/expenses/ExpensesTab";
 import ExpenseGroupPayLater from "./_components/pay-later/ExpenseGroupPayLater";
 import { getManilaToday } from "@/app/lib/expenses/date";
+import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
-import { getCashLoansForExpenseGroup } from "@/app/lib/loans/queries";
 import ExpenseGroupBanks from "./_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "./_components/categories/ExpenseCategories";
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
@@ -57,7 +57,7 @@ export default async function ExpenseGroupPage({
   } = view;
   const showBanks = showPaymentProviders && !showPayLater;
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard, linkedLoans] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard, payLater] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
@@ -67,7 +67,7 @@ export default async function ExpenseGroupPage({
     showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
     showRecurring ? getRecurringExpenses(id) : null,
     showDashboard ? getDashboard(id, dashboardMonth, today) : null,
-    showDashboard ? getCashLoansForExpenseGroup(id) : [],
+    showExpenses || showDashboard ? getExpenseGroupPayLater(id) : null,
   ]);
 
   if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
@@ -82,13 +82,14 @@ export default async function ExpenseGroupPage({
   const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
+  const creditProviders = payLater?.providers.filter(({ active }) => active) ?? [];
   const activeTabId = "expense-group-active-tab";
 
   let primaryAction = null;
   if (showCategories || ((showExpenses || showDashboard) && categoryOptions.length === 0)) {
     primaryAction = <NewCategoryButton expenseGroupId={id} successFocusId={showCategories ? undefined : activeTabId} />;
   } else if (showExpenses || showDashboard) {
-    primaryAction = <NewExpenseButton expenseGroupId={id} categories={categoryOptions} bankOptions={bankOptions} />;
+    primaryAction = <NewExpenseButton expenseGroupId={id} categories={categoryOptions} bankOptions={bankOptions} creditProviders={creditProviders} />;
   } else if (showRecurring && categoryOptions.length > 0) {
     primaryAction = <RecurringExpenseDialog expenseGroupId={id} categories={categoryOptions} banks={bankOptions} today={today} />;
   }
@@ -140,13 +141,13 @@ export default async function ExpenseGroupPage({
             groupPath={groupPath}
             expenseGroupId={id}
             currentMonth={currentMonth}
-            linkedLoans={linkedLoans}
           />
         ) : expensePage ? (
           <ExpensesTab
             expenseGroupId={id}
             categories={categoryOptions}
             bankOptions={bankOptions}
+            creditProviders={creditProviders}
             historyBankOptions={historyBankOptions}
             merchantLabel={merchant === "none" ? "No merchant" : merchant ? merchantLabel ?? "Unavailable merchant" : undefined}
             expensePage={expensePage}

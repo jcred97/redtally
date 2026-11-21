@@ -13,6 +13,7 @@ type ExpensesTabProps = {
   expenseGroupId: number;
   categories: ComponentProps<typeof ExpenseHistory>["categories"];
   bankOptions: ComponentProps<typeof ExpenseHistory>["bankOptions"];
+  creditProviders: ComponentProps<typeof ExpenseHistory>["creditProviders"];
   historyBankOptions: ComponentProps<typeof ExpenseHistoryFilters>["banks"];
   merchantLabel?: string;
   expensePage: NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>;
@@ -21,7 +22,7 @@ type ExpensesTabProps = {
   links: ExpenseGroupLinks;
 };
 
-export default function ExpensesTab({ expenseGroupId, categories, bankOptions, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
+export default function ExpensesTab({ expenseGroupId, categories, bankOptions, creditProviders, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
   const { day, month, through, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
   const { groupPath, expenseTab, allMonthsHref } = links;
   const { totalExpenses, totalCentavos } = expensePage;
@@ -108,6 +109,7 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, h
             expenseGroupId={expenseGroupId}
             categories={categories}
             bankOptions={bankOptions}
+            creditProviders={creditProviders}
             expenses={expensePage.expenses}
             groupedSummary={grouped ? { day, month, through, totalExpenses, totalCentavos } : undefined}
             page={expensePage.page}

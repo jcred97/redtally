@@ -5,23 +5,24 @@ import Select from "@/app/components/forms/Select";
 
 export type CreditProviderOption = { key: string; name: string };
 
-export default function CreditProviderField({ providers, value, onChange, hidden }: {
+export default function CreditProviderField({ providers, value, onChange, required }: {
   providers: CreditProviderOption[];
   value: string;
   onChange: (key: string) => void;
-  hidden: boolean;
+  required: boolean;
 }) {
   const id = useId();
   const [helpOpen, setHelpOpen] = useState(false);
   const helpId = `${id}-help`;
   const hasProviders = providers.length > 0;
+  const emptyLabel = hasProviders ? "Select a credit provider" : "No credit providers available";
   const options = [
-    { value: "", label: hasProviders ? "Select a credit provider" : "No credit providers available", disabled: true },
+    { value: "", label: required ? emptyLabel : "No provider recorded", disabled: required },
     ...providers.map(({ key, name }) => ({ value: key, label: name })),
   ];
 
   return (
-    <fieldset disabled={hidden} hidden={hidden} className={hidden ? undefined : "grid min-w-0 gap-4"}>
+    <fieldset className="grid min-w-0 gap-4">
       <div className="min-w-0">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <label htmlFor={`${id}-provider`} className="text-sm font-medium">Credit provider</label>
@@ -52,13 +53,13 @@ export default function CreditProviderField({ providers, value, onChange, hidden
             </button>
             <div className="absolute right-0 bottom-full z-10 w-56 pb-1" hidden={!helpOpen}>
               <p id={helpId} role="tooltip" className="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200 shadow-lg">
-                Enable a supported provider in this group’s <strong>Payment Provider → Pay Later</strong> settings.
+                Enable or add a provider in this group’s <strong>Payment Provider → Pay Later</strong> settings.
               </p>
             </div>
           </div>
         </div>
         <Select id={`${id}-provider`} name="creditProviderKey" value={value}
-          onChange={onChange} options={options} disabled={!hasProviders} required />
+          onChange={onChange} options={options} disabled={!hasProviders} required={required} />
       </div>
     </fieldset>
   );

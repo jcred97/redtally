@@ -204,7 +204,7 @@ export default function ExpenseGroupSettings({
           destructive
           returnFocusId={settingsId}
           title="Delete expense group?"
-          description="This permanently removes the group and its bank settings. Linked cash loans are kept. Remove any categories and budgets first."
+          description="This permanently removes the group and its payment provider settings. Remove any categories and budgets first."
           onOpenAction={closeMenu}
           submitLabel="Delete group"
           pendingLabel="Deleting…"

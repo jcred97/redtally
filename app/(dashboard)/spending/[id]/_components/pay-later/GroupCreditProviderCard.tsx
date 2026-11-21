@@ -5,7 +5,7 @@ import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/SettingsTileLabel";
-import { setGroupCreditAccountSettings } from "@/app/lib/loans/mutations";
+import { setGroupPayLaterProvider } from "@/app/lib/pay-later/mutations";
 
 const saveError = "Unable to save credit provider settings. Please try again.";
 
@@ -16,8 +16,7 @@ export default function GroupCreditProviderCard({ expenseGroupId, provider }: {
   async function save(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
     formData.set("providerKey", provider.key);
-    const result = await setGroupCreditAccountSettings({}, formData);
-    return result.success ? { success: true } as const : { error: result.error ?? saveError };
+    return setGroupPayLaterProvider(formData);
   }
 
   return (
@@ -35,7 +34,7 @@ export default function GroupCreditProviderCard({ expenseGroupId, provider }: {
       )}
       triggerClassName={settingsTileClass}
       title={provider.name}
-      description="Enable this provider to use your matching Pay Later accounts in this expense group."
+      description="Enable this provider to record Pay Later purchases in this expense group."
       onOpenAction={() => {}}
       submitLabel="Save changes"
       pendingLabel="Saving..."

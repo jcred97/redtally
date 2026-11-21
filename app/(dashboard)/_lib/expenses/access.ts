@@ -4,7 +4,7 @@ import { parsePesoAmount } from "@/app/lib/expenses/money";
 import { parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { bankPaymentMethodFields, isBankPaymentMethod, type BankPaymentMethod } from "@/app/lib/expenses/payment";
 import { parseMerchant } from "@/app/lib/expenses/merchant";
-import { createFinancedPurchase, readFinancing } from "@/app/lib/loans/financing";
+import { requireEnabledPayLaterProvider } from "@/app/lib/pay-later/access";
 
 const MAX_RECORD_ID = 2_147_483_647;
 const SUBMISSION_ID_PATTERN =
@@ -18,6 +18,7 @@ type ExpenseInput = {
   time?: unknown;
   paymentMethod?: unknown;
   bankAssignmentId?: unknown;
+  creditProviderKey?: unknown;
 };
 
 type PaymentSelection = {
@@ -28,6 +29,14 @@ type PaymentSelection = {
 type BankPaymentSettings = Pick<BankAssignment, (typeof bankPaymentMethodFields)[BankPaymentMethod]>;
 
 export class BankSelectionError extends TypeError {}
+
+function parseCreditProviderKey(value: unknown) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string" || value.length > 127) {
+    throw new TypeError("Choose a valid credit provider.");
+  }
+  return value;
+}
 
 function validId(id: number): boolean {
   return Number.isSafeInteger(id) && id > 0 && id <= MAX_RECORD_ID;
@@ -125,26 +134,15 @@ export function createExpenseAccess(
       }
 
       // Ownership and deletion happen in one query, never a separate pre-check.
-      const ownedExpense = {
-        id: expenseId,
-        expenseGroupId,
-        category: { expenseGroup: { userId } },
-      };
       const result = await db.expense.deleteMany({
         where: {
-          ...ownedExpense,
-          repaymentPlan: null,
+          id: expenseId,
+          expenseGroupId,
+          category: { expenseGroup: { userId } },
         },
       });
 
       if (result.count === 0) {
-        const expense = await db.expense.findUnique({
-          where: ownedExpense,
-          select: { repaymentPlan: { select: { id: true } } },
-        });
-        if (expense?.repaymentPlan) {
-          throw new TypeError("This expense has a repayment plan. Open the plan to review its balance and payments.");
-        }
         throw new TypeError("Expense not found in this expense group");
       }
     },
@@ -154,7 +152,6 @@ export function createExpenseAccess(
       categoryId: number,
       input: ExpenseInput,
       submissionId: unknown,
-      financingFields?: FormData,
     ) {
       const userId = await requireUserId();
 
@@ -174,9 +171,12 @@ export function createExpenseAccess(
       const merchant = parseMerchant(input.merchant);
       const timeMinutes = parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
-      const financing = payment?.paymentMethod === PaymentMethod.PAY_LATER
-        ? readFinancing(financingFields ?? new FormData(), values.date)
+      const creditProviderKey = payment?.paymentMethod === PaymentMethod.PAY_LATER
+        ? parseCreditProviderKey(input.creditProviderKey)
         : null;
+      if (payment?.paymentMethod === PaymentMethod.PAY_LATER && !creditProviderKey) {
+        throw new TypeError("Choose a credit provider.");
+      }
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
       const payload = [categoryId, values.title, values.amountCentavos, values.date];
       // Keep hashes for saved drafts that predate payment selection valid.
@@ -190,7 +190,7 @@ export function createExpenseAccess(
           ...paymentPayload,
           ...(timeMinutes === null ? [] : [{ timeMinutes }]),
           ...(merchant ? [{ merchant }] : []),
-          ...(financing ? [{ financing }] : []),
+          ...(creditProviderKey ? [{ creditProviderKey }] : []),
         ]))
         .digest("hex");
 
@@ -223,13 +223,18 @@ export function createExpenseAccess(
           }
 
           if (payment) await validateBankSelection(tx, expenseGroupId, payment);
+          const provider = creditProviderKey
+            ? await requireEnabledPayLaterProvider(tx, userId, expenseGroupId, creditProviderKey)
+            : null;
 
-          const expense = await tx.expense.create({
+          return tx.expense.create({
             data: {
               ...values,
               merchant,
               timeMinutes,
               paymentMethod: payment?.paymentMethod,
+              payLaterProviderKey: provider?.providerKey,
+              payLaterProviderName: provider?.providerName,
               ...(payment?.bankAssignmentId == null ? {} : {
                 bankAssignment: {
                   connect: { id_expenseGroupId: { id: payment.bankAssignmentId, expenseGroupId } },
@@ -244,8 +249,6 @@ export function createExpenseAccess(
               submission: { connect: { expenseGroupId_id: submissionKey } },
             },
           });
-          if (financing) await createFinancedPurchase(tx, userId, expense.id, financing);
-          return expense;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
       } catch (error) {
         if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
@@ -298,9 +301,7 @@ export function createExpenseAccess(
             select: {
               paymentMethod: true,
               bankAssignmentId: true,
-              amountCentavos: true,
-              date: true,
-              repaymentPlan: { select: { id: true } },
+              payLaterProviderKey: true,
             },
           });
           if (!existing) return undefined;
@@ -309,21 +310,27 @@ export function createExpenseAccess(
             payment.paymentMethod !== existing.paymentMethod ||
             payment.bankAssignmentId !== existing.bankAssignmentId
           );
-          if (existing.repaymentPlan && (
-            changesPayment ||
-            values.amountCentavos !== existing.amountCentavos ||
-            values.date.getTime() !== existing.date.getTime()
-          )) {
-            throw new TypeError("The amount, date, and payment method are tied to this expense's repayment plan.");
-          }
-          if (changesPayment && payment.paymentMethod === PaymentMethod.PAY_LATER) {
-            throw new TypeError("Add a new expense with Pay Later to set up a repayment plan.");
-          }
-
           let paymentChanges: (PaymentSelection & { legacyBankName: null }) | undefined;
           if (changesPayment) {
             await validateBankSelection(tx, expenseGroupId, payment);
             paymentChanges = { ...payment, legacyBankName: null };
+          }
+
+          const method = payment ? payment.paymentMethod : existing.paymentMethod;
+          let providerChanges: { payLaterProviderKey: string | null; payLaterProviderName: string | null } | undefined;
+          if (method === PaymentMethod.PAY_LATER) {
+            const providerKey = input.creditProviderKey === undefined
+              ? existing.payLaterProviderKey
+              : parseCreditProviderKey(input.creditProviderKey);
+            if (!providerKey && (existing.paymentMethod !== method || existing.payLaterProviderKey !== null)) {
+              throw new TypeError("Choose a credit provider.");
+            }
+            if (providerKey && providerKey !== existing.payLaterProviderKey) {
+              const provider = await requireEnabledPayLaterProvider(tx, userId, expenseGroupId, providerKey);
+              providerChanges = { payLaterProviderKey: provider.providerKey, payLaterProviderName: provider.providerName };
+            }
+          } else if (existing.paymentMethod === PaymentMethod.PAY_LATER) {
+            providerChanges = { payLaterProviderKey: null, payLaterProviderName: null };
           }
 
           const [updatedExpense] = await tx.expense.updateManyAndReturn({
@@ -334,6 +341,7 @@ export function createExpenseAccess(
               merchant,
               timeMinutes,
               ...paymentChanges,
+              ...providerChanges,
               categoryId,
               updatedAt: nextUpdatedAt,
             },

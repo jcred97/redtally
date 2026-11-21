@@ -8,12 +8,14 @@ import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
 import ExpenseActionMenu from "./ExpenseActionMenu";
 import GroupedExpenseHistory from "./GroupedExpenseHistory";
+import type { CreditProviderOption } from "./CreditProviderField";
 
 type ExpenseHistoryProps = {
   expenseGroupId: number;
   groupPath: string;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
+  creditProviders: CreditProviderOption[];
   expenses: ExpenseHistoryEntry[];
   groupedSummary?: { day?: string; month?: string; through?: string; totalExpenses: number; totalCentavos: bigint };
   page: number;
@@ -37,6 +39,7 @@ export default function ExpenseHistory({
   groupPath,
   categories,
   bankOptions,
+  creditProviders,
   expenses,
   groupedSummary,
   page,
@@ -60,6 +63,7 @@ export default function ExpenseHistory({
           expenseGroupId={expenseGroupId}
           categories={categories}
           bankOptions={bankOptions}
+          creditProviders={creditProviders}
           expense={{
             id: expense.id,
             title: expense.title,
@@ -72,10 +76,11 @@ export default function ExpenseHistory({
             paymentMethod: expense.paymentMethod,
             bankAssignmentId: expense.bankAssignmentId,
             bankName: getExpenseBankName(expense),
-            repaymentPlanId: expense.repaymentPlanId,
+            payLaterProviderKey: expense.payLaterProviderKey,
+            payLaterProviderName: expense.payLaterProviderName,
           }}
         />
-        {!expense.repaymentPlanId && <DeleteExpenseButton
+        <DeleteExpenseButton
           focusKey={keys.delete}
           inMenu={inMenu}
           expenseGroupId={expenseGroupId}
@@ -84,7 +89,7 @@ export default function ExpenseHistory({
             title: expense.title,
             amountCentavos: expense.amountCentavos,
           }}
-        />}
+        />
       </>
     );
   }
@@ -115,11 +120,6 @@ export default function ExpenseHistory({
                     <div className="min-w-0 flex-1">
                       <h3 className="wrap-anywhere font-medium">{expense.title}</h3>
                       {expense.merchant && <p className="mt-0.5 wrap-anywhere text-xs text-gray-400">{expense.merchant}</p>}
-                      {expense.repaymentPlanId && (
-                        <Link href={`/loans/plans/${expense.repaymentPlanId}`} className="mt-1 inline-block text-sm text-red-400 underline underline-offset-4">
-                          View plan
-                        </Link>
-                      )}
                     </div>
                     <p className="whitespace-nowrap font-semibold text-red-400">
                       {formatPesoAmount(expense.amountCentavos)}
@@ -177,11 +177,6 @@ export default function ExpenseHistory({
                         {expense.title}
                         {expense.merchant && (
                           <p className="mt-0.5 w-0 min-w-full wrap-anywhere text-xs font-normal text-gray-400">{expense.merchant}</p>
-                        )}
-                        {expense.repaymentPlanId && (
-                          <Link href={`/loans/plans/${expense.repaymentPlanId}`} className="mt-1 inline-block text-sm text-red-400 underline underline-offset-4">
-                            View plan
-                          </Link>
                         )}
                       </td>
                       <td className="py-4 text-gray-300">

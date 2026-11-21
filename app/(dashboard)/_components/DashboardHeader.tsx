@@ -11,7 +11,6 @@ import MobileNavigation from "./MobileNavigation";
 export default function DashboardHeader(account: ComponentProps<typeof AccountMenu>) {
   const pathname = usePathname();
   const viewingExpenseGroup = pathname.startsWith("/spending/");
-  const viewingFinancedPurchase = pathname.startsWith("/loans/plans/");
   const tabs = [
     { label: "Dashboard", href: "/", current: pathname === "/" },
     {
@@ -19,11 +18,8 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
       href: "/expense-groups",
       current: pathname === "/expense-groups"
         || pathname.startsWith("/expense-groups/")
-        || viewingExpenseGroup
-        || viewingFinancedPurchase,
+        || viewingExpenseGroup,
     },
-    { label: "Accounts", href: "/accounts", current: pathname === "/accounts" || pathname.startsWith("/accounts/") },
-    { label: "Loans", href: "/loans", current: pathname === "/loans" || (pathname.startsWith("/loans/") && !viewingFinancedPurchase) },
   ];
   const links: ComponentProps<typeof MobileNavigation>["links"] = tabs.map(({ label, href, current }) => ({
     label,
