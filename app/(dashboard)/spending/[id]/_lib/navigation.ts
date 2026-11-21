@@ -3,6 +3,7 @@ import { nextExpenseHistoryScope } from "./expenses/scope";
 import {
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryMerchantFilter,
+  parseExpenseHistoryPayLaterProviderFilter,
   parseExpenseHistoryPaymentMethod,
   parseExpenseHistorySearch,
 } from "@/app/(dashboard)/_lib/expense-groups/access";
@@ -10,7 +11,7 @@ import {
 export type ExpenseGroupQuery = Record<string, string | string[] | undefined>;
 
 const paymentProvidersTabValue = "payment-providers";
-const payLaterProvider = "pay-later";
+const payLaterProviderTabValue = "pay-later";
 
 export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQuery) {
   const params = new URLSearchParams();
@@ -33,7 +34,7 @@ export function expenseGroupRedirectHref(routeKey: string, publicId: string, que
     return canonicalExpenseGroupHref(publicId, {
       ...query,
       tab: paymentProvidersTabValue,
-      provider: query.tab === "credit-accounts" ? payLaterProvider : undefined,
+      provider: query.tab === "credit-accounts" ? payLaterProviderTabValue : undefined,
     });
   }
   return routeKey === publicId ? null : canonicalExpenseGroupHref(publicId, query);
@@ -43,7 +44,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view } = query;
   const showCategories = tab === "categories";
   const showPaymentProviders = tab === paymentProvidersTabValue;
-  const showPayLater = showPaymentProviders && query.provider === payLaterProvider;
+  const showPayLater = showPaymentProviders && query.provider === payLaterProviderTabValue;
   const showRecurring = tab === "recurring";
   const showDashboard = tab === "dashboard";
   const showExpenses = !showCategories && !showPaymentProviders && !showRecurring && !showDashboard;
@@ -65,7 +66,8 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
     ? requestedCategory
     : undefined;
   const paymentMethod = parseExpenseHistoryPaymentMethod(rawMethod);
-  const bank = parseExpenseHistoryBankFilter(rawBank);
+  const payLaterProvider = parseExpenseHistoryPayLaterProviderFilter(query.paymentProvider);
+  const bank = payLaterProvider ? undefined : parseExpenseHistoryBankFilter(rawBank);
   const bankFilterValue = bank && typeof rawBank === "string" ? rawBank : undefined;
   const search = parseExpenseHistorySearch(query.search ?? query.merchantSearch);
   const merchant = search ? undefined : parseExpenseHistoryMerchantFilter(rawMerchant);
@@ -76,12 +78,13 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const expenseId = requestedExpense !== undefined && requestedExpense <= 2_147_483_647
     ? requestedExpense
     : undefined;
-  const filters = { ...(expenseId === undefined ? {} : { expenseId }), day, month, through, categoryId, paymentMethod, bank, merchant, search };
+  const filters = { ...(expenseId === undefined ? {} : { expenseId }), day, month, through, categoryId, paymentMethod, bank, payLaterProvider, merchant, search };
   const filterParams = new URLSearchParams();
   if (expenseId !== undefined) filterParams.set("expense", String(expenseId));
   if (categoryId !== undefined) filterParams.set("category", String(categoryId));
   if (paymentMethod !== undefined) filterParams.set("paymentMethod", paymentMethod);
   if (bankFilterValue !== undefined) filterParams.set("bank", bankFilterValue);
+  if (payLaterProvider !== undefined) filterParams.set("paymentProvider", `pay-later:${payLaterProvider}`);
   if (merchant !== undefined) filterParams.set("merchant", merchant);
   if (search !== undefined) filterParams.set("search", search);
   const hasOtherFilters = filterParams.size > 0;
@@ -122,7 +125,7 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const viewSuffix = grouped ? "&view=grouped" : "";
   const categoriesTab = `?tab=categories${viewSuffix}`;
   const paymentProvidersTab = `?tab=${paymentProvidersTabValue}${viewSuffix}`;
-  const payLaterTab = `${paymentProvidersTab}&provider=${payLaterProvider}`;
+  const payLaterTab = `${paymentProvidersTab}&provider=${payLaterProviderTabValue}`;
   const recurringTab = `?tab=recurring${viewSuffix}`;
   const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
   const tabSuffix = showDashboard ? dashboardTab

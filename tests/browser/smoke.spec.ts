@@ -534,6 +534,21 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   await expect(purchaseCard.getByText("Shopee", { exact: true })).toBeVisible();
   await expect(purchaseCard.getByText("₱140.00", { exact: true })).toBeVisible();
   await expect(purchaseCard.getByRole("button", { name: "Delete expense: " + title, exact: true })).toBeVisible();
+
+  const filters = page.getByRole("form", { name: "Expense history filters" });
+  await filters.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await filters.getByRole("option", { name: "Pay Later", exact: true }).click();
+  const provider = filters.getByRole("combobox", { name: "Payment provider", exact: true });
+  await provider.click();
+  await filters.getByRole("option", { name: "Shopee", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]paymentProvider=pay-later%3A[a-f0-9]{64}/);
+  await expect(purchaseCard).toBeVisible();
+  await page.reload();
+  await expect(provider).toHaveText("Shopee");
+  const url = new URL(page.url());
+  const csv = await page.request.get(`${url.pathname}/export${url.search}`);
+  expect(csv.ok()).toBe(true);
+  expect(await csv.text()).toContain(title);
 });
 
 test("a lost schedule response can be retried from the dialog and posts one expense", async ({ page }) => {
@@ -667,11 +682,11 @@ test("an exact merchant link retains its filter until the text is edited", async
   expect(new URL(page.url()).searchParams.has("merchant")).toBe(false);
 });
 
-test("expense payment and bank filters apply immediately and can be cleared", async ({ page }) => {
+test("expense payment provider filter follows the method and keeps bookmarked bank filters", async ({ page }) => {
   await page.goto(groupPath(data.merchants.publicId));
   const form = page.getByRole("form", { name: "Expense history filters" });
   const payment = form.getByRole("combobox", { name: "Payment method", exact: true });
-  const bank = form.getByRole("combobox", { name: "Bank", exact: true });
+  const provider = form.getByRole("combobox", { name: "Payment provider", exact: true });
   const alpha = page.getByRole("cell", { name: /^Alpha Bakery purchase/ });
 
   await payment.click();
@@ -680,7 +695,7 @@ test("expense payment and bank filters apply immediately and can be cleared", as
   await expect(alpha).toHaveCount(0);
   await expect(payment).toBeFocused();
 
-  await bank.click();
+  await provider.click();
   await form.getByRole("option", { name: "Browser Test Bank (recorded name)", exact: true }).click();
   await expect(page).toHaveURL(/[?&]bank=legacy%3A[a-f0-9]{64}/);
   await payment.click();
@@ -691,8 +706,19 @@ test("expense payment and bank filters apply immediately and can be cleared", as
   const bankExpense = page.getByRole("row").filter({ hasText: "Beta Cafe purchase" });
   await expect(bankExpense.getByRole("cell", { name: "Browser Test Bank", exact: true })).toBeVisible();
 
+  await payment.click();
+  await form.getByRole("option", { name: "Bank payment", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]paymentMethod=BANK_PAYMENT/);
+  expect(new URL(page.url()).searchParams.has("bank")).toBe(false);
+  await expect(provider).toHaveText("All providers");
+  await expect(provider).toBeDisabled();
+
+  await page.goBack();
+  await expect(provider).toHaveText("Browser Test Bank (recorded name)");
+  await expect(bankExpense).toBeVisible();
+
   await form.getByRole("link", { name: "Clear filters", exact: true }).click();
-  await expect(bank).toHaveText("All banks");
+  await expect(provider).toHaveText("All providers");
   expect(new URL(page.url()).searchParams.has("bank")).toBe(false);
 });
 

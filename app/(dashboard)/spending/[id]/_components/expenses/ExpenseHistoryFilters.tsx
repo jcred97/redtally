@@ -9,13 +9,14 @@ import ExpenseHistoryDateFilters from "./ExpenseHistoryDateFilters";
 import Select from "@/app/components/forms/Select";
 import TextInput from "@/app/components/forms/TextInput";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
+import type { ExpenseHistoryProviderOption } from "@/app/(dashboard)/_lib/expense-groups/access";
 import { nextExpenseHistoryScope } from "../../_lib/expenses/scope";
 
 type ExpenseHistoryFiltersProps = {
   groupPath: string;
   filterQuery: string;
   categories: { id: number; name: string }[];
-  banks: { value: string; label: string }[];
+  providers: ExpenseHistoryProviderOption[];
   merchantLabel?: string;
   currentMonth: string;
   monthScopeHref: string;
@@ -25,13 +26,13 @@ type ExpenseHistoryFiltersProps = {
 
 const SEARCH_DELAY_MS = 300;
 
-type FilterField = "month" | "day" | "category" | "paymentMethod" | "bank";
+type FilterField = "month" | "day" | "category" | "paymentMethod" | "paymentProvider";
 
 export default function ExpenseHistoryFilters({
   groupPath,
   filterQuery,
   categories,
-  banks,
+  providers,
   merchantLabel,
   currentMonth,
   monthScopeHref,
@@ -62,9 +63,13 @@ export default function ExpenseHistoryFilters({
   const through = params.get("through");
   const category = params.get("category") ?? "";
   const paymentMethod = params.get("paymentMethod") ?? "";
-  const bank = params.get("bank") ?? "";
+  const provider = params.get("paymentProvider") ?? params.get("bank") ?? "";
   const categoryUnavailable = category && !categories.some(({ id }) => String(id) === category);
-  const bankUnavailable = bank && !banks.some(({ value }) => value === bank);
+  const selectedProvider = providers.find(({ value }) => value === provider);
+  const eligibleProviders = paymentMethod
+    ? providers.filter(({ paymentMethods }) => paymentMethods.some((method) => method === paymentMethod))
+    : providers;
+  const providerUnavailable = provider && !eligibleProviders.some(({ value }) => value === provider);
   const scopeHref = filters.requestedQuery === appliedQuery
     ? monthScopeHref
     : `${groupPath}?${nextExpenseHistoryScope(params, currentMonth)}`;
@@ -104,8 +109,19 @@ export default function ExpenseHistoryFilters({
         next.delete("day");
         next.set("month", month);
       }
-    } else if (value) next.set(field, value);
-    else next.delete(field);
+    } else if (field === "paymentProvider") {
+      next.delete("bank");
+      next.delete("paymentProvider");
+      if (value) next.set(value.startsWith("pay-later:") ? "paymentProvider" : "bank", value);
+    } else {
+      if (value) next.set(field, value);
+      else next.delete(field);
+      if (field === "paymentMethod" && value && value !== paymentMethod && provider &&
+        !selectedProvider?.paymentMethods.some((method) => method === value)) {
+        next.delete("bank");
+        next.delete("paymentProvider");
+      }
+    }
     navigate(next, "push");
   }
 
@@ -179,15 +195,16 @@ export default function ExpenseHistoryFilters({
         />
       </div>
       <div className={fieldLabelClass}>
-        <label htmlFor="expense-filter-bank">Bank</label>
+        <label htmlFor="expense-filter-payment-provider">Payment provider</label>
         <Select
-          id="expense-filter-bank"
-          value={bank}
-          onChange={(value) => changeFilter("bank", value)}
+          id="expense-filter-payment-provider"
+          value={provider}
+          onChange={(value) => changeFilter("paymentProvider", value)}
+          disabled={!provider && eligibleProviders.length === 0}
           options={[
-            { value: "", label: "All banks" },
-            ...(bankUnavailable ? [{ value: bank, label: "Unavailable bank" }] : []),
-            ...banks,
+            { value: "", label: "All providers" },
+            ...(providerUnavailable ? [{ value: provider, label: selectedProvider?.label ?? "Unavailable provider", disabled: true }] : []),
+            ...eligibleProviders,
           ]}
         />
       </div>

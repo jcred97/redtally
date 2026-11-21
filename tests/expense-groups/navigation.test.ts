@@ -19,11 +19,25 @@ test("group query defaults and repeated or invalid filters are handled consisten
   const invalid = parseExpenseGroupQuery({
     tab: ["dashboard", "categories"], page: "0", month: "2026-13",
     day: ["2026-11-01", "2026-11-02"], category: "2147483648",
-    paymentMethod: "invalid", bank: "assignment:0", merchant: "some store",
+    paymentMethod: "invalid", bank: "assignment:0", paymentProvider: "pay-later:custom:shop", merchant: "some store",
   }, today);
   assert.deepEqual(invalid, defaults);
   for (const search of [["Cafe", "Shop"], " ", "Cafe\0", "x".repeat(101)]) {
     assert.deepEqual(parseExpenseGroupQuery({ search }, today), defaults);
+  }
+});
+
+test("Pay Later provider filters carry through month, grouped view, and pagination links", () => {
+  const digest = "a".repeat(64);
+  const paymentProvider = `pay-later:${digest}`;
+  const view = parseExpenseGroupQuery({ allMonths: "1", paymentProvider, bank: "assignment:7" }, today);
+  assert.equal(view.filters.payLaterProvider, digest);
+  assert.equal(view.filters.bank, undefined);
+  const links = expenseGroupLinks("id", view);
+  for (const href of [links.monthScopeHref, links.historyViewHref(true, 2)]) {
+    const { searchParams } = new URL(href, "https://example.test");
+    assert.equal(searchParams.get("paymentProvider"), paymentProvider);
+    assert.equal(searchParams.has("bank"), false);
   }
 });
 

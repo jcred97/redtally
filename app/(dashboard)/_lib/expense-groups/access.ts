@@ -44,6 +44,7 @@ export type ExpenseHistoryFilters = {
   categoryId?: number;
   paymentMethod?: PaymentMethod;
   bank?: { assignmentId: number } | { legacyKey: string };
+  payLaterProvider?: string;
   merchant?: string;
   search?: string;
 };
@@ -63,11 +64,12 @@ export type ExpenseExportRow = {
   bankName: string | null;
 };
 
-type ExpenseHistoryBankOption = { value: string; label: string };
+export type ExpenseHistoryProviderOption = { value: string; label: string; paymentMethods: PaymentMethod[] };
 
 const merchantName = Prisma.sql`NULLIF(btrim(merchant), '')`;
 // Exact merchant links identify case variants without exposing saved names.
 const merchantKey = Prisma.sql`encode(sha256(convert_to(lower(${merchantName}), 'UTF8')), 'hex')`;
+const payLaterProviderDigest = Prisma.sql`encode(sha256(convert_to("payLaterProviderKey", 'UTF8')), 'hex')`;
 export { merchantName as expenseHistoryMerchantName, merchantKey as expenseHistoryMerchantKey };
 
 export class ExpenseGroupAccessError extends Error {}
@@ -97,6 +99,10 @@ export function parseExpenseHistoryPaymentMethod(value: unknown): PaymentMethod 
   return typeof value === "string" && Object.hasOwn(PaymentMethod, value)
     ? PaymentMethod[value as keyof typeof PaymentMethod]
     : undefined;
+}
+
+export function parseExpenseHistoryPayLaterProviderFilter(value: unknown): string | undefined {
+  return typeof value === "string" ? /^pay-later:([a-f0-9]{64})$/.exec(value)?.[1] : undefined;
 }
 
 export function parseExpenseHistoryMerchantFilter(value: unknown): string | undefined {
@@ -141,7 +147,7 @@ function copyName(name: string) {
   return (shortened || "Expense Group") + suffix;
 }
 
-function expenseHistoryFilterSql({ expenseId, day, month, through, categoryId, paymentMethod, bank, merchant, search }: ExpenseHistoryFilters) {
+function expenseHistoryFilterSql({ expenseId, day, month, through, categoryId, paymentMethod, bank, payLaterProvider, merchant, search }: ExpenseHistoryFilters) {
   const expenseFilter = expenseId !== undefined && validId(expenseId)
     ? Prisma.sql`AND id = ${expenseId}` : Prisma.empty;
   const selectedDay = parseExpenseDay(day);
@@ -167,6 +173,9 @@ function expenseHistoryFilterSql({ expenseId, day, month, through, categoryId, p
     bankFilter = Prisma.sql`AND "bankAssignmentId" IS NULL AND bank ~ '[^[:space:]]'
       AND encode(sha256(convert_to(bank, 'UTF8')), 'hex') = ${bank.legacyKey}`;
   }
+  const payLaterFilter = payLaterProvider
+    ? Prisma.sql`AND "transactionType" = 'PAY_LATER' AND ${payLaterProviderDigest} = ${payLaterProvider}`
+    : Prisma.empty;
   const selectedMerchant = parseExpenseHistoryMerchantFilter(merchant);
   const searchText = parseExpenseHistorySearch(search);
   let textFilter = Prisma.empty;
@@ -180,7 +189,7 @@ function expenseHistoryFilterSql({ expenseId, day, month, through, categoryId, p
   } else if (selectedMerchant) {
     textFilter = Prisma.sql`AND ${merchantKey} = ${selectedMerchant}`;
   }
-  return Prisma.sql`${expenseFilter} ${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${textFilter}`;
+  return Prisma.sql`${expenseFilter} ${dateFilter} ${categoryFilter} ${paymentMethodFilter} ${bankFilter} ${payLaterFilter} ${textFilter}`;
 }
 
 // Identity is resolved per operation, never captured at startup or supplied by a browser.
@@ -268,30 +277,49 @@ export function createExpenseGroupAccess(
       });
     },
 
-    async listExpenseHistoryBankOptions(id: number) {
+    async listExpenseHistoryProviderOptions(id: number): Promise<ExpenseHistoryProviderOption[]> {
       const userId = await requireUserId();
       if (!validId(id)) return [];
 
-      // Use a digest as the URL value so recorded labels stay out of URLs.
-      return db.$queryRaw<ExpenseHistoryBankOption[]>`
+      // Use digests so custom provider keys and recorded bank names stay out of URLs.
+      const rows = await db.$queryRaw<(Omit<ExpenseHistoryProviderOption, "label"> & { label: string | null; providerKey: string | null })[]>`
         WITH owned_group AS (
           SELECT id FROM "Spending" WHERE id = ${id} AND "userId" = ${userId}
-        ), legacy_banks AS (
-          SELECT DISTINCT expense.bank AS name
+        ), recorded AS (
+          SELECT expense."bankAssignmentId", expense.bank, expense."transactionType"::text AS method,
+            expense."payLaterProviderKey", expense."payLaterProviderName"
           FROM "Expense" expense
           JOIN owned_group ON owned_group.id = expense."expenseGroupId"
-          WHERE expense."bankAssignmentId" IS NULL AND expense.bank ~ '[^[:space:]]'
+        ), assigned_methods AS (
+          SELECT "bankAssignmentId", array_agg(DISTINCT method ORDER BY method) AS methods
+          FROM recorded
+          WHERE "bankAssignmentId" IS NOT NULL AND method <> 'PAY_LATER'
+          GROUP BY "bankAssignmentId"
         )
-        SELECT 'assignment:' || assignment.id AS value, bank.name AS label
+        SELECT 'assignment:' || assignment.id AS value, bank.name AS label,
+          COALESCE(assigned_methods.methods, ARRAY[]::text[]) AS "paymentMethods", NULL::text AS "providerKey"
         FROM "ExpenseGroupBank" assignment
         JOIN owned_group ON owned_group.id = assignment."expenseGroupId"
         JOIN "Bank" bank ON bank.id = assignment."bankId"
+        LEFT JOIN assigned_methods ON assigned_methods."bankAssignmentId" = assignment.id
         UNION ALL
-        SELECT 'legacy:' || encode(sha256(convert_to(name, 'UTF8')), 'hex') AS value,
-          name || ' (recorded name)' AS label
-        FROM legacy_banks
-        ORDER BY label, value
+        SELECT 'legacy:' || encode(sha256(convert_to(bank, 'UTF8')), 'hex'), bank || ' (recorded name)',
+          COALESCE(array_agg(DISTINCT method ORDER BY method) FILTER (WHERE method <> 'PAY_LATER'), ARRAY[]::text[]), NULL::text
+        FROM recorded
+        WHERE "bankAssignmentId" IS NULL AND bank ~ '[^[:space:]]'
+        GROUP BY bank
+        UNION ALL
+        SELECT 'pay-later:' || ${payLaterProviderDigest}, MAX(NULLIF(btrim("payLaterProviderName"), '')),
+          ARRAY['PAY_LATER']::text[], "payLaterProviderKey"
+        FROM recorded
+        WHERE method = 'PAY_LATER' AND "payLaterProviderKey" <> ''
+        GROUP BY "payLaterProviderKey"
       `;
+      return rows.map(({ value, label, paymentMethods, providerKey }) => ({
+        value,
+        label: providerKey ? getPayLaterProviderName(providerKey, label) : label ?? "Unavailable provider",
+        paymentMethods,
+      })).sort((left, right) => left.label.localeCompare(right.label) || left.value.localeCompare(right.value));
     },
 
     async getExpenseHistoryMerchantLabel(id: number, merchant: string) {

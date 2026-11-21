@@ -37,8 +37,8 @@ export async function getExpenseHistoryAvailability(id: number, filters: Expense
   return access.getExpenseHistoryAvailability(id, filters);
 }
 
-export async function getExpenseHistoryBankOptionsByExpenseGroupId(id: number) {
-  return access.listExpenseHistoryBankOptions(id);
+export async function getExpenseHistoryProviderOptions(id: number) {
+  return access.listExpenseHistoryProviderOptions(id);
 }
 
 export async function getExpenseHistoryMerchantLabel(id: number, merchant: string) {

@@ -7,6 +7,7 @@ import {
   createExpenseGroupAccess,
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryMerchantFilter,
+  parseExpenseHistoryPayLaterProviderFilter,
   parseExpenseHistoryPaymentMethod,
 } from "../../app/(dashboard)/_lib/expense-groups/access";
 
@@ -706,7 +707,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(await bob.getExpensePageById(group.id, 1, filter), null);
     });
 
-    await t.test("bank and payment method filters match the totals and rows across pages", async () => {
+    await t.test("payment method and provider filters match historical rows, totals, and exports", async () => {
       const group = await alice.create("Payment history");
       const category = await client.category.create({
         data: { expenseGroupId: group.id, name: "Groceries" },
@@ -724,6 +725,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         data: { expenseGroupId: b.id, bankId: bank.id },
       });
       const recordedName = "Older Bancó & Co.";
+      const providerName = "Retired Pay Later shop";
+      const providerKey = `custom:${providerName.toLowerCase()}`;
+      const providerToken = `pay-later:${createHash("sha256").update(providerKey).digest("hex")}`;
       const legacyKey = createHash("sha256").update(recordedName).digest("hex");
       const assignmentToken = `assignment:${assignment.id}`;
       const legacyToken = `legacy:${legacyKey}`;
@@ -747,6 +751,8 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           { ...base, title: "Legacy debit", legacyBankName: recordedName, paymentMethod: "DEBIT_CARD", amountCentavos: 50 },
           { ...base, title: "Legacy credit", legacyBankName: recordedName, paymentMethod: "CREDIT_CARD", amountCentavos: 60 },
           { ...base, title: "Blank legacy label", legacyBankName: " \t " },
+          { ...base, title: "Historical Pay Later purchase", paymentMethod: "PAY_LATER", payLaterProviderKey: providerKey, payLaterProviderName: providerName },
+          { ...base, title: "Other Pay Later purchase", paymentMethod: "PAY_LATER", payLaterProviderKey: "shopee" },
         ],
       });
 
@@ -784,13 +790,24 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(historical?.expenses.map(({ title }) => title), ["Legacy debit"]);
       assert.equal(historical?.totalCentavos, BigInt(50));
 
-      assert.deepEqual(await alice.listExpenseHistoryBankOptions(group.id), [
-        { value: legacyToken, label: `${recordedName} (recorded name)` },
-        { value: assignmentToken, label: bank.name },
+      assert.deepEqual(await alice.listExpenseHistoryProviderOptions(group.id), [
+        { value: legacyToken, label: `${recordedName} (recorded name)`, paymentMethods: ["CREDIT_CARD", "DEBIT_CARD"] },
+        { value: assignmentToken, label: bank.name, paymentMethods: ["CREDIT_CARD", "DEBIT_CARD"] },
+        { value: providerToken, label: providerName, paymentMethods: ["PAY_LATER"] },
+        { value: `pay-later:${createHash("sha256").update("shopee").digest("hex")}`, label: "Shopee", paymentMethods: ["PAY_LATER"] },
       ]);
-      assert.deepEqual(await bob.listExpenseHistoryBankOptions(group.id), []);
-      assert.deepEqual(await alice.listExpenseHistoryBankOptions(legacy.id), []);
-      await assert.rejects(anonymous.listExpenseHistoryBankOptions(group.id), /Sign in required/);
+      const providerFilter = { payLaterProvider: parseExpenseHistoryPayLaterProviderFilter(providerToken) };
+      const payLater = await alice.getExpensePageById(group.id, 1, providerFilter, true);
+      assert.deepEqual(payLater?.expenses.map(({ title }) => title), ["Historical Pay Later purchase"]);
+      assert.equal(payLater?.totalCentavos, BigInt(10));
+      const exported = await alice.prepareExpenseExport(group.id, providerFilter);
+      assert.ok(exported);
+      const titles: string[] = [];
+      for await (const batch of exported.batches()) titles.push(...batch.map(({ title }) => title));
+      assert.deepEqual(titles, ["Historical Pay Later purchase"]);
+      assert.deepEqual(await bob.listExpenseHistoryProviderOptions(group.id), []);
+      assert.deepEqual(await alice.listExpenseHistoryProviderOptions(legacy.id), []);
+      await assert.rejects(anonymous.listExpenseHistoryProviderOptions(group.id), /Sign in required/);
       assert.equal(await bob.getExpensePageById(group.id, 1, filters), null);
       assert.deepEqual(await alice.getExpensePageById(group.id, 2, { bank: { assignmentId: foreignAssignment.id } }), {
         expenses: [],

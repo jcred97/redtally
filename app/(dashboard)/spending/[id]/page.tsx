@@ -26,7 +26,7 @@ import {
   getExpenseGroupById,
   getExpenseGroupOptions,
   getExpenseHistoryAvailability,
-  getExpenseHistoryBankOptionsByExpenseGroupId,
+  getExpenseHistoryProviderOptions,
   getExpenseHistoryMerchantLabel,
   getExpensePageByExpenseGroupId,
   resolveExpenseGroupRoute,
@@ -57,13 +57,13 @@ export default async function ExpenseGroupPage({
   } = view;
   const showBanks = showPaymentProviders && !showPayLater;
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard, payLater] = await Promise.all([
+  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyProviderOptions, merchantLabel, recurringExpenses, dashboard, payLater] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring || showDashboard ? getExpenseBankOptions(id) : [],
-    showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
+    showExpenses ? getExpenseHistoryProviderOptions(id) : [],
     showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
     showRecurring ? getRecurringExpenses(id) : null,
     showDashboard ? getDashboard(id, dashboardMonth, today) : null,
@@ -148,7 +148,7 @@ export default async function ExpenseGroupPage({
             categories={categoryOptions}
             bankOptions={bankOptions}
             creditProviders={creditProviders}
-            historyBankOptions={historyBankOptions}
+            historyProviderOptions={historyProviderOptions}
             merchantLabel={merchant === "none" ? "No merchant" : merchant ? merchantLabel ?? "Unavailable merchant" : undefined}
             expensePage={expensePage}
             historyAvailability={historyAvailability}

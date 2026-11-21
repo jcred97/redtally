@@ -14,7 +14,7 @@ type ExpensesTabProps = {
   categories: ComponentProps<typeof ExpenseHistory>["categories"];
   bankOptions: ComponentProps<typeof ExpenseHistory>["bankOptions"];
   creditProviders: ComponentProps<typeof ExpenseHistory>["creditProviders"];
-  historyBankOptions: ComponentProps<typeof ExpenseHistoryFilters>["banks"];
+  historyProviderOptions: ComponentProps<typeof ExpenseHistoryFilters>["providers"];
   merchantLabel?: string;
   expensePage: NonNullable<Awaited<ReturnType<typeof getExpensePageByExpenseGroupId>>>;
   historyAvailability?: ExpenseHistoryAvailability;
@@ -22,7 +22,7 @@ type ExpensesTabProps = {
   links: ExpenseGroupLinks;
 };
 
-export default function ExpensesTab({ expenseGroupId, categories, bankOptions, creditProviders, historyBankOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
+export default function ExpensesTab({ expenseGroupId, categories, bankOptions, creditProviders, historyProviderOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
   const { day, month, through, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
   const { groupPath, expenseTab, allMonthsHref } = links;
   const { totalExpenses, totalCentavos } = expensePage;
@@ -39,7 +39,7 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, c
         groupPath={groupPath}
         filterQuery={filterQuery}
         categories={categories}
-        banks={historyBankOptions}
+        providers={historyProviderOptions}
         merchantLabel={merchantLabel}
         currentMonth={currentMonth}
         monthScopeHref={links.monthScopeHref}
