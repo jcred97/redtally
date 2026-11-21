@@ -20,6 +20,7 @@ type ExpensePageRow = {
       categoryIcon: string | null;
       bankName: string | null;
       repaymentPlanId: string | null;
+      creditProviderName: string | null;
       dayExpenseCount: bigint | null;
       dayTotalCentavos: bigint | null;
     })
@@ -368,7 +369,7 @@ export function createExpenseGroupAccess(
           expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName",
-          plan.id AS "repaymentPlanId"
+          plan.id AS "repaymentPlanId", credit.name AS "creditProviderName"
         FROM pagination
         LEFT JOIN LATERAL (
           SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
@@ -385,10 +386,10 @@ export function createExpenseGroupAccess(
         LEFT JOIN "ExpenseGroupBank" assignment
           ON assignment.id = expense."bankAssignmentId" AND assignment."expenseGroupId" = pagination.id
         LEFT JOIN "Bank" bank ON bank.id = assignment."bankId"
-        LEFT JOIN "RepaymentPlan" plan ON plan."expenseId" = expense.id AND EXISTS (
-          SELECT 1 FROM "PayLaterAccount" credit
-          WHERE credit.id = plan."creditAccountId" AND credit."userId" = ${userId}
-        )
+        LEFT JOIN (
+          "RepaymentPlan" plan INNER JOIN "PayLaterAccount" credit
+            ON credit.id = plan."creditAccountId" AND credit."userId" = ${userId}
+        ) ON plan."expenseId" = expense.id
         ORDER BY expense.date::date DESC, expense."timeMinutes" DESC NULLS LAST, expense.date DESC, expense.id DESC
       `;
 
@@ -419,6 +420,7 @@ export function createExpenseGroupAccess(
           category: { name: row.categoryName, icon: row.categoryIcon },
           bankAssignment: row.bankName === null ? null : { bank: { name: row.bankName } },
           repaymentPlanId: row.repaymentPlanId,
+          creditProviderName: row.creditProviderName,
         })),
       };
     },

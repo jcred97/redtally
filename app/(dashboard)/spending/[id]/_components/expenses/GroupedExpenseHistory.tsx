@@ -4,7 +4,7 @@ import type { ExpenseHistoryEntry } from "@/app/(dashboard)/_lib/expense-groups/
 import { expenseTimeInput, formatExpenseDate, formatExpenseTime, parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
-import BankLogo from "../banks/BankLogo";
+import ExpensePaymentProvider, { getExpensePaymentProvider } from "./ExpensePaymentProvider";
 
 function expenseCount(count: number) {
   return `${count} ${count === 1 ? "expense" : "expenses"}`;
@@ -78,7 +78,7 @@ export default function GroupedExpenseHistory({
             </header>
             <ul className="divide-y divide-gray-800">
               {entries.map((expense) => {
-                const bankName = (expense.bankAssignment?.bank.name ?? expense.legacyBankName)?.trim();
+                const provider = getExpensePaymentProvider(expense);
                 const time = expense.timeMinutes;
 
                 return (
@@ -94,11 +94,10 @@ export default function GroupedExpenseHistory({
                           {expense.category.icon && <span aria-hidden="true">{expense.category.icon} </span>}
                           {expense.category.name}
                         </span>
-                        {bankName && (
+                        {provider && (
                           <span className="flex min-w-0 items-center gap-1.5">
                             <span aria-hidden="true">/</span>
-                            <BankLogo name={bankName} compact />
-                            <span className="wrap-anywhere">{bankName}</span>
+                            <ExpensePaymentProvider {...provider} />
                           </span>
                         )}
                         {expense.paymentMethod && (

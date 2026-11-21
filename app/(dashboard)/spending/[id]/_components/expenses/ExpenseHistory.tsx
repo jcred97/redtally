@@ -3,7 +3,7 @@ import type { ExpenseHistoryEntry } from "@/app/(dashboard)/_lib/expense-groups/
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { expenseTimeInput, formatExpenseDate, formatExpenseTime } from "@/app/lib/expenses/date";
 import { paymentMethodLabels, type ExpenseBankOption } from "@/app/lib/expenses/payment";
-import BankLogo from "../banks/BankLogo";
+import ExpensePaymentProvider, { getExpenseBankName, getExpensePaymentProvider } from "./ExpensePaymentProvider";
 import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
 import ExpenseActionMenu from "./ExpenseActionMenu";
@@ -25,10 +25,6 @@ const pageLinkClass = "rounded-lg border px-3 py-2 text-sm font-medium";
 
 function expenseActionFocusKeys(id: number) {
   return { edit: `expense-edit-${id}`, delete: `expense-delete-${id}` };
-}
-
-function expenseBankName(expense: ExpenseHistoryEntry) {
-  return expense.bankAssignment?.bank.name ?? expense.legacyBankName;
 }
 
 function expenseDateTime(expense: ExpenseHistoryEntry) {
@@ -75,7 +71,7 @@ export default function ExpenseHistory({
             categoryId: expense.categoryId,
             paymentMethod: expense.paymentMethod,
             bankAssignmentId: expense.bankAssignmentId,
-            bankName: expenseBankName(expense),
+            bankName: getExpenseBankName(expense),
             repaymentPlanId: expense.repaymentPlanId,
           }}
         />
@@ -111,7 +107,7 @@ export default function ExpenseHistory({
           <ul className="space-y-3 sm:hidden">
             {expenses.map((expense) => {
               const paymentLabel = expense.paymentMethod && paymentMethodLabels[expense.paymentMethod];
-              const bankName = expenseBankName(expense)?.trim();
+              const provider = getExpensePaymentProvider(expense);
 
               return (
                 <li key={expense.id} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
@@ -136,16 +132,11 @@ export default function ExpenseHistory({
                     </time>
                     {" · "}{expense.category.name}
                   </p>
-                  {(paymentLabel || bankName) && (
+                  {(paymentLabel || provider) && (
                     <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-400">
                       {paymentLabel && <span>{paymentLabel}</span>}
-                      {paymentLabel && bankName && <span aria-hidden="true">·</span>}
-                      {bankName && (
-                        <span className="flex min-w-0 items-center gap-2">
-                          <BankLogo name={bankName} compact />
-                          <span className="wrap-anywhere">{bankName}</span>
-                        </span>
-                      )}
+                      {paymentLabel && provider && <span aria-hidden="true">·</span>}
+                      {provider && <ExpensePaymentProvider {...provider} />}
                     </p>
                   )}
                   <div className="mt-3 flex flex-wrap justify-end gap-2">{expenseActions(expense)}</div>
@@ -163,14 +154,14 @@ export default function ExpenseHistory({
                   <th scope="col" className="py-4">Title</th>
                   <th scope="col" className="py-4">Category</th>
                   <th scope="col" className="py-4">Payment Method</th>
-                  <th scope="col" className="py-4">Bank</th>
+                  <th scope="col" className="py-4">Payment Provider</th>
                   <th scope="col" className="py-4 text-right">Amount</th>
                   <th scope="col"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.map((expense) => {
-                  const bankName = expenseBankName(expense)?.trim();
+                  const provider = getExpensePaymentProvider(expense);
 
                   return (
                     <tr key={expense.id} className="bg-gray-900 transition-colors hover:bg-gray-800/60 focus-within:bg-gray-800/60 [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl">
@@ -201,12 +192,7 @@ export default function ExpenseHistory({
                         {expense.paymentMethod ? paymentMethodLabels[expense.paymentMethod] : "—"}
                       </td>
                       <td className="py-4 text-gray-400">
-                        {bankName ? (
-                          <div className="flex items-center gap-2">
-                            <BankLogo name={bankName} compact />
-                            <span>{bankName}</span>
-                          </div>
-                        ) : "—"}
+                        {provider ? <ExpensePaymentProvider {...provider} /> : "—"}
                       </td>
                       <td className="py-4 text-right font-semibold text-red-400">
                         {formatPesoAmount(expense.amountCentavos)}

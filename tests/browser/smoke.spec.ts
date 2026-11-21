@@ -626,7 +626,19 @@ test("SPayLater purchases open their repayment schedules from Expenses", async (
 
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   await page.goto(`${new URL(page.url()).pathname}?allMonths=1`);
-  await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 1185, height: 844 });
+  const history = page.getByRole("table", { name: "Expense history", exact: true });
+  await expect(history.getByRole("columnheader", { name: "Payment Provider", exact: true })).toBeVisible();
+  const purchaseRow = history.getByRole("row").filter({ hasText: title });
+  await expect(purchaseRow.getByRole("cell", { name: "SPayLater", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Grouped by day", exact: true }).click();
+  const purchaseCard = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+  await expect(purchaseCard.getByText("SPayLater", { exact: true })).toBeVisible();
+  const tableView = page.getByRole("link", { name: "Table", exact: true });
+  await tableView.click();
+  await expect(tableView).toHaveAttribute("aria-current", "page");
+  await page.setViewportSize(phone);
+  await expect(purchaseCard.getByText("SPayLater", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "View plan", exact: true }).click();
   await expect(page).toHaveURL(/\/loans\/plans\//);
   await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
@@ -821,6 +833,8 @@ test("expense payment and bank filters apply immediately and can be cleared", as
   await expect.poll(() => new URL(page.url()).searchParams.has("paymentMethod")).toBe(false);
   await expect(alpha).toHaveCount(0);
   await expect(page.getByRole("cell", { name: /^Beta Cafe purchase/ })).toBeVisible();
+  const bankExpense = page.getByRole("row").filter({ hasText: "Beta Cafe purchase" });
+  await expect(bankExpense.getByRole("cell", { name: "Browser Test Bank", exact: true })).toBeVisible();
 
   await form.getByRole("link", { name: "Clear filters", exact: true }).click();
   await expect(bank).toHaveText("All banks");
