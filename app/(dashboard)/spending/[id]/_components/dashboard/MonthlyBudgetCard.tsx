@@ -45,9 +45,9 @@ export default function MonthlyBudgetCard({
       tabIndex={-1}
       aria-labelledby={hasBudget ? headingId : undefined}
       aria-label={hasBudget ? undefined : "Spending summary"}
-      className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6"
+      className={`min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6 ${hasBudget ? "" : "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4"}`}
     >
-      <header className={`mb-4 flex flex-wrap items-start gap-x-4 gap-y-2 ${hasBudget ? "justify-between" : "justify-end"}`}>
+      <header className={hasBudget ? "mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2" : "col-start-2 row-start-1"}>
         {hasBudget && (
           <h2 id={headingId} className="self-center text-base font-semibold text-white sm:text-lg">Monthly budget</h2>
         )}
@@ -97,7 +97,7 @@ export default function MonthlyBudgetCard({
         </div>
       </header>
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+      <dl className={hasBudget ? "grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3" : "col-start-1 row-start-1"}>
         <div className="col-span-2 min-w-0 sm:col-span-1">
           <dt className="text-sm text-gray-400">Total spent</dt>
           <dd className="mt-1 wrap-anywhere text-2xl font-semibold tracking-tight text-white tabular-nums sm:text-3xl">{spent}</dd>
@@ -120,7 +120,7 @@ export default function MonthlyBudgetCard({
       </dl>
 
       {!hasBudget ? (
-        <p className="mt-3 text-sm text-gray-400">No budget set for {monthLabel}.</p>
+        <p className="col-span-2 mt-3 text-sm text-gray-400">No budget set for {monthLabel}.</p>
       ) : (
         <div aria-hidden="true" className="mt-5 h-2 overflow-hidden rounded-full bg-gray-800">
           <div
