@@ -144,6 +144,18 @@ The rename migration updates the existing Pay Later provider table and constrain
 
 The bank assignment migration renames the table, constraints, indexes, and ID sequence to match `BankAssignment` in Prisma. It preserves IDs and the links from expenses and recurring schedules. Coordinate the migration and app release with traffic paused because older releases query `ExpenseGroupBank`. [Bank assignment rename migration](server/db/migrations/20261122010000_rename_bank_assignment/migration.sql)
 
+### Finish a coordinated production rollout
+
+1. From a clean checkout or Git archive of the release commit, stage the build with `vercel deploy --prod --skip-domain`. For a deployment from a Git archive, add `--meta redtallyReleaseSha=FULL_COMMIT_SHA`. Record the ready production deployment's `dpl_…` ID and full commit SHA before pausing traffic.
+2. Pause the linked Vercel project and confirm the public domain returns `503 DEPLOYMENT_PAUSED`. Apply and verify the production migration after taking a verified backup. Keep other promotions out of the cutover so only the matching build can take traffic.
+3. Set `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` in the shell for the production project, then run the command below.
+
+   ```sh
+   npm run rollout:finish -- DEPLOYMENT_ID FULL_COMMIT_SHA
+   ```
+
+The command checks the staged build's commit, project, and readiness. It promotes the build if needed, verifies `redtally.vercel.app` through Vercel's hostname alias API, and resumes traffic. It then checks that `/sign-in` returns HTTP 200 and confirms the domain still points to the same build. Run the release-specific smoke checks after it succeeds. Rerun the command with the same deployment ID and commit to recover from an interrupted promotion or resume. [Vercel hostname alias API](https://vercel.com/docs/rest-api/aliases/get-an-alias)
+
 ### Database connection troubleshooting
 
 If a Supabase connection returns `(ENOTFOUND) tenant/user ... not found`, the shared pooler could not match the configured host and username to a project. This response can arrive after successful DNS resolution; it does not by itself mean a local DNS failure or an incorrect password. See [Supabase's troubleshooting guide](https://supabase.com/kb/troubleshooting/tenant-or-user-not-found).
@@ -187,7 +199,8 @@ Authenticated pages render per request because their session check uses request 
 | `tests/helpers/` | Shared PGlite and native PostgreSQL fixtures and cleanup |
 | `tests/expense-groups/duplication.native.ts` | Native 50,000-expense copy preservation, ownership, and rollback regression |
 | `tests/browser/` | Production browser smoke coverage with an isolated native database |
-| `scripts/` | Automatic test discovery, synthetic history profiling, and isolated browser-test lifecycle |
+| `tests/deployment/` | Vercel promotion, production alias, and traffic resume regression tests |
+| `scripts/` | Production rollout, automatic test discovery, synthetic history profiling, and isolated browser-test lifecycle |
 | `playwright.config.ts` | Chromium browser smoke configuration |
 | `.github/workflows/ci.yml` | Lint, TypeScript, and test checks |
 | `tests/categories/`, `tests/expense-groups/`, `tests/expenses/` | Feature access, expense date, and money tests |

@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "rollout:finish": "node --import tsx scripts/production-rollout.ts",
     "lint": "eslint",
     "test": "node scripts/test.mjs",
     "test:native": "node --import tsx --test tests/expense-groups/duplication.native.ts",
