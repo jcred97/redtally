@@ -415,13 +415,19 @@ test("New Expense lists enabled Pay Later providers for the group", async ({ pag
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   const expense = await newExpense(page);
   const paymentMethod = expense.getByRole("combobox", { name: "Payment method", exact: true });
+  const paymentProvider = expense.getByRole("combobox", { name: "Payment provider", exact: true });
   const saveExpense = expense.getByRole("button", { name: "Save expense", exact: true });
   await paymentMethod.click();
-  await expect(expense.getByRole("option", { name: /^Pay Later — / })).toHaveText([
-    "Pay Later — Lazada", `Pay Later — ${customProvider}`,
+  await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await expect(paymentProvider).toHaveText("Select a provider");
+  await expect(saveExpense).toBeDisabled();
+  await paymentProvider.click();
+  await expect(expense.getByRole("listbox").getByRole("option")).toHaveText([
+    /Select a provider/, "Lazada", customProvider,
   ]);
-  await expense.getByRole("option", { name: `Pay Later — ${customProvider}`, exact: true }).click();
-  await expect(paymentMethod).toHaveText(`Pay Later — ${customProvider}`);
+  await expense.getByRole("option", { name: customProvider, exact: true }).click();
+  await expect(paymentMethod).toHaveText("Pay Later");
+  await expect(paymentProvider).toHaveText(customProvider);
   await expect(expense.getByRole("combobox", { name: "Credit provider", exact: true })).toHaveCount(0);
   await expect(expense.getByRole("button", { name: "How to enable a credit provider" })).toHaveCount(0);
   await expect(saveExpense).toBeEnabled();
@@ -429,8 +435,10 @@ test("New Expense lists enabled Pay Later providers for the group", async ({ pag
   await page.goto(groupPath(data.olderHistory.publicId));
   await newExpense(page);
   await paymentMethod.click();
-  await expect(expense.getByRole("option", { name: /^Pay Later — / })).toHaveCount(1);
-  await expect(expense.getByRole("option", { name: "Pay Later — no providers enabled", exact: true })).toBeDisabled();
+  await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await expect(paymentProvider).toHaveText("No providers enabled");
+  await expect(paymentProvider).toBeDisabled();
+  await expect(saveExpense).toBeDisabled();
 });
 
 test("the retired Accounts and Loans pages are unavailable", async ({ page }) => {
@@ -477,7 +485,9 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   await expense.getByLabel("Amount (PHP)", { exact: true }).fill("125");
   await expense.getByLabel("Date", { exact: true }).fill(purchasedOn);
   await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
-  await expense.getByRole("option", { name: "Pay Later — Shopee", exact: true }).click();
+  await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await expense.getByRole("combobox", { name: "Payment provider", exact: true }).click();
+  await expense.getByRole("option", { name: "Shopee", exact: true }).click();
   const receipt = expense.getByRole("heading", { name: "Receipt image (optional)", exact: true });
   await expect(expense.getByRole("combobox", { name: "Term", exact: true })).toHaveCount(0);
   await expect(expense.getByRole("combobox", { name: /account/i })).toHaveCount(0);
@@ -516,7 +526,8 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   await expect(purchaseCard.getByText("Shopee", { exact: true })).toBeVisible();
   await purchaseCard.getByRole("button", { name: "Edit expense: " + title, exact: true }).click();
   const edit = page.getByRole("dialog", { name: "Edit Expense", exact: true });
-  await expect(edit.getByRole("combobox", { name: "Payment method", exact: true })).toHaveText("Pay Later — Shopee (previously selected)");
+  await expect(edit.getByRole("combobox", { name: "Payment method", exact: true })).toHaveText("Pay Later");
+  await expect(edit.getByRole("combobox", { name: "Payment provider", exact: true })).toHaveText("Shopee (previously selected)");
   await edit.getByLabel("Amount (PHP)", { exact: true }).fill("140");
   await edit.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(edit).toBeHidden();
