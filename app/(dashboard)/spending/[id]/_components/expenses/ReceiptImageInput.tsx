@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent, type Ref } from "react";
 import FileInput from "@/app/components/forms/FileInput";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { formatPesoAmount, parsePesoAmount } from "@/app/lib/expenses/money";
@@ -81,10 +81,12 @@ function toPng(image: HTMLImageElement, width: number, height: number): Promise<
 }
 
 export default function ReceiptImageInput({
+  headingRef,
   paymentMethod,
   bankOptions,
   onApply,
 }: {
+  headingRef: Ref<HTMLHeadingElement>;
   paymentMethod: PaymentMethod | "";
   bankOptions: readonly ExpenseBankOption[];
   onApply: (field: keyof ReceiptSuggestions, value: string) => void;
@@ -166,7 +168,7 @@ export default function ReceiptImageInput({
         const { text, shopFooter } = await readReceiptText(ocrImage, ocrSize, signal);
         if (!signal.aborted) setLocalSuggestions(suggestReceiptFields(text, shopFooter));
       } catch {
-        if (!signal.aborted) setError("The receipt could not be read. Enter the expense details below or try another image.");
+        if (!signal.aborted) setError("The receipt could not be read. Enter the expense details manually or try another image.");
       }
     } catch (cause) {
       if (signal.aborted) return;
@@ -215,7 +217,7 @@ export default function ReceiptImageInput({
   return (
     <section ref={section} aria-labelledby={headingId} className="flex min-w-0 flex-col gap-2 rounded-lg border border-gray-800 p-2 sm:gap-3 sm:p-3">
       <div className="flex min-h-10 items-center justify-between gap-2">
-        <h3 id={headingId} className="text-sm font-medium text-gray-200">
+        <h3 ref={headingRef} id={headingId} tabIndex={-1} className="rounded-sm text-sm font-medium text-gray-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
           Receipt image{!preview && <span className="text-xs font-normal text-gray-400"> (optional)</span>}
         </h3>
         {preview && (

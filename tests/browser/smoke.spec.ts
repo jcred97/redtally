@@ -540,8 +540,31 @@ test("SPayLater purchases open their repayment schedules from Expenses", async (
   await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
   await expect(expense.getByRole("combobox", { name: "Credit account", exact: true })).toHaveText("SPayLater");
-  await expense.getByRole("combobox", { name: "Term", exact: true }).click();
+  const term = expense.getByRole("combobox", { name: "Term", exact: true });
+  const receipt = expense.getByRole("heading", { name: "Receipt image (optional)", exact: true });
+  const receiptShortcut = expense.getByRole("button", { name: "Go to receipt image", exact: true });
+  await term.click();
+  await expense.getByRole("option", { name: "24 installments", exact: true }).click();
+  await receiptShortcut.press("Enter");
+  await expect(receipt).toBeFocused();
+  await expect(receipt).toBeInViewport();
+
+  const phone = page.viewportSize()!;
+  await page.setViewportSize({ width: 1185, height: 844 });
+  await expect(receiptShortcut).toBeHidden();
+  const [detailsX, scheduleX, receiptX] = await Promise.all([
+    expense.getByLabel("Title", { exact: true }).evaluate((field) => field.getBoundingClientRect().left),
+    term.evaluate((field) => field.getBoundingClientRect().left),
+    receipt.evaluate((heading) => heading.getBoundingClientRect().left),
+  ]);
+  expect(detailsX).toBeLessThan(scheduleX);
+  expect(scheduleX).toBeLessThan(receiptX);
+  await term.click();
   await expense.getByRole("option", { name: "2 installments", exact: true }).click();
+  await expense.getByLabel("Payment 2 amount (PHP)", { exact: true }).press("Tab");
+  await expect(expense.getByRole("button", { name: "Paste Image", exact: true })).toBeFocused();
+  await page.setViewportSize(phone);
+
   await expense.getByLabel("Payment 1 due date", { exact: true }).fill("2026-12-18");
   await expense.getByLabel("Payment 1 amount (PHP)", { exact: true }).fill("50");
   await expense.getByLabel("Payment 2 due date", { exact: true }).fill("2027-01-18");

@@ -55,6 +55,7 @@ export default function ExpenseFormDialog({
   inMenu,
 }: ExpenseFormDialogProps) {
   const fieldId = useId();
+  const receiptHeading = useRef<HTMLHeadingElement>(null);
   const submissionId = useRef("");
   const expectedUpdatedAt = useRef("");
   const [title, setTitle] = useState("");
@@ -319,10 +320,23 @@ export default function ExpenseFormDialog({
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
             {!expense && <CreditAccountFields creditAccounts={creditAccounts} hidden={!showSchedule} />}
+            {showSchedule && (
+              <button
+                type="button"
+                className="button-secondary min-h-10 justify-self-start rounded-lg px-4 text-sm font-medium lg:hidden"
+                onClick={() => receiptHeading.current?.focus()}
+              >
+                Go to receipt image
+              </button>
+            )}
           </div>
 
-          {!expense && <ReceiptImageInput paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />}
-          {!expense && <FinancedPurchaseFields purchaseDate={date} hidden={!showSchedule} />}
+          {!expense && (
+            <div className={`grid min-w-0 gap-4 ${showSchedule ? "lg:contents" : ""}`}>
+              <FinancedPurchaseFields purchaseDate={date} hidden={!showSchedule} />
+              <ReceiptImageInput headingRef={receiptHeading} paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />
+            </div>
+          )}
         </div>
       </FormDialog>
 

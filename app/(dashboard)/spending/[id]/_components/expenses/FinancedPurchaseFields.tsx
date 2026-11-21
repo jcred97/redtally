@@ -17,7 +17,7 @@ export default function FinancedPurchaseFields({
   const [installmentCount, setInstallmentCount] = useState("1");
 
   return (
-    <fieldset disabled={hidden} hidden={hidden} className={hidden ? undefined : "grid min-w-0 gap-4 md:col-span-2 lg:col-span-1"}>
+    <fieldset disabled={hidden} hidden={hidden} className={hidden ? undefined : "grid min-w-0 gap-4"}>
       <div className="min-w-0">
         <label htmlFor={`${id}-term`} className={fieldLabelClass}>Term</label>
         <Select id={`${id}-term`} value={installmentCount} onChange={setInstallmentCount}
