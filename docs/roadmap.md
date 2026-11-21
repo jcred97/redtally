@@ -70,7 +70,7 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 **Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Payment Provider tabs. Payment Provider contains the group's **Banks** and **Pay Later** settings. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
-**Loans** lists cash loans and their balances and payments. Pay Later schedules and payments are accessible from the original expenses. [Loans and repayments](workflows.md#loans-and-repayments) · [Production rollout](../README.md#loans-production-rollout)
+**Accounts** lists the user's named financial accounts, including Pay Later accounts. **Loans** lists cash loans and their balances and payments. Pay Later schedules and payments are accessible from the original expenses. [Financial accounts and loans](workflows.md) · [Production rollout](../README.md#loans-production-rollout)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 
@@ -87,7 +87,8 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 
 ### Phase 2: financial accounts, income, and bills
 
-- [ ] Add balance-bearing financial accounts for cash, banks, e-wallets, and credit cards, allowing multiple named accounts at one institution. Add income, linked transfers, opening balances, and statement reconciliation before presenting cash balances as reliable.
+- [x] Add the Accounts registry for named financial accounts and link existing Pay Later profiles.
+- [ ] Track balances, income, linked transfers, opening balances, and statement reconciliation for financial accounts.
 - [ ] Extend recurring scheduling into a bills and payday timeline with planned, due, overdue, and paid states, reminders, and matching between expected items and actual transactions. Include subscriptions and annual renewals.
 - [ ] Add account balances, income, expenses, and net cash flow to Dashboard. Internal transfers and credit-card repayments must not count purchases as expenses twice.
 - [ ] Add credit-card statement/current balances, minimum payments, due dates, installments, and debt payoff progress.

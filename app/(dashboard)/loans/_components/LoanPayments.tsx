@@ -42,14 +42,17 @@ export function PaymentHistory({
 export function InstallmentSchedule({
   installments,
   today,
+  embedded = false,
 }: {
   installments: Installment[];
   today: string;
+  embedded?: boolean;
 }) {
   const { schedule } = summarizeInstallments(installments);
+  const Heading = embedded ? "h4" : "h2";
   return (
-    <section className={loanPanel}>
-      <h2 className="text-lg font-semibold">Repayment Schedule</h2>
+    <section className={embedded ? "border-t border-gray-800 p-4 sm:px-5" : loanPanel}>
+      <Heading className={`${embedded ? "text-sm" : "text-lg"} font-semibold`}>Repayment Schedule</Heading>
       <table className="mt-2 w-full table-fixed text-sm sm:table-auto">
         <thead className="text-left text-gray-400">
           <tr>

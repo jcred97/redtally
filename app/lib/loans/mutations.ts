@@ -32,6 +32,7 @@ export async function setGroupCreditAccountSettings(_previous: LoanActionState, 
   try {
     const { id } = await access.setGroupCreditAccountSettings(formData);
     revalidatePath("/spending/[id]", "page");
+    revalidatePath("/accounts");
     revalidatePath("/");
     return { success: true, id };
   } catch (error) {

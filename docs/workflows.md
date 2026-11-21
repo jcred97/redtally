@@ -1,6 +1,7 @@
 # RedTally workflows
 
 - [Account settings](#account-settings)
+- [Financial accounts](#financial-accounts)
 - [Receipt scanning](#receipt-scanning)
 - [Loans and repayments](#loans-and-repayments)
 
@@ -9,6 +10,12 @@
 Open the avatar menu and select **Account settings**. In **Profile**, you can see your name and email, upload a profile photo, or switch back to your initials.
 
 In **Receipt scanning**, choose **OpenAI** or **Anthropic**, enter your API key, and select **Test & Save**. The test uses a small amount of provider quota. After it succeeds, the settings show the provider and the last four characters of the key. You can replace the key or disconnect. The connection is available across your expense groups.
+
+## Financial accounts
+
+Open **Accounts → Add Account** to save a name, account type, and three-letter currency code. The form starts with **Savings** and **PHP**. A savings, checking, or credit card account can also reference a bank from the catalog.
+
+Pay Later accounts appear automatically. Enable Shopee from the expense group’s **Payment Provider → Pay Later** tab or add a custom provider when recording a Pay Later purchase.
 
 ## Receipt scanning
 
@@ -51,6 +58,6 @@ Open **Payment Provider → Pay Later** in the expense group and select a provid
 2. Select **Pay Later** and choose an enabled credit account. To record a purchase with a new provider, select **Add credit account** and enter its name. This enables the new account in that expense group.
 3. Select the **Term** and enter the provider's due dates and installment amounts. Then select **Save expense**.
 
-The full purchase counts once toward spending. Select **View plan** in expense history to see the provider, outstanding balance, schedule, and payments. Use **Record Payment** on that plan to record a repayment for the purchase.
+The full purchase counts once toward spending. For SPayLater, **Payment Provider → Pay Later** shows the purchases, outstanding balances, and installment schedules for the current group. Select **View plan** there or in expense history to see the payment history and record a repayment.
 
 Editing a financed expense can change its descriptive fields while preserving the original repayment plan. Duplicating an expense group copies its provider settings and expense history. The repayment plans stay with the original expenses.

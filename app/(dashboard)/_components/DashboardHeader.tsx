@@ -22,6 +22,7 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
         || viewingExpenseGroup
         || viewingFinancedPurchase,
     },
+    { label: "Accounts", href: "/accounts", current: pathname === "/accounts" || pathname.startsWith("/accounts/") },
     { label: "Loans", href: "/loans", current: pathname === "/loans" || (pathname.startsWith("/loans/") && !viewingFinancedPurchase) },
   ];
   const links: ComponentProps<typeof MobileNavigation>["links"] = tabs.map(({ label, href, current }) => ({
@@ -32,7 +33,7 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
 
   return (
     <header className="border-b border-gray-800 bg-background text-white">
-      <div className={`mx-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2 sm:grid-cols-[auto_1fr_auto] sm:gap-x-8 sm:px-6 ${viewingExpenseGroup ? "max-w-7xl" : "max-w-6xl"}`}>
+      <div className={`mx-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2 sm:grid-cols-[auto_1fr_auto] sm:gap-x-4 sm:px-6 md:gap-x-8 ${viewingExpenseGroup ? "max-w-7xl" : "max-w-6xl"}`}>
         <MobileNavigation links={links} pathname={pathname} />
         <Link
           href="/"
@@ -46,7 +47,7 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
             className="h-auto w-[134%] max-w-none shrink-0"
           />
         </Link>
-        <nav aria-label="Main navigation" className="hidden gap-5 sm:flex">
+        <nav aria-label="Main navigation" className="hidden gap-3 sm:flex md:gap-5">
           {links.map(({ label, href, ariaCurrent }) => (
             <Link
               key={href}

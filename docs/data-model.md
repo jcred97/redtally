@@ -57,6 +57,12 @@ Category display names and totals are derived by queries/UI rather than duplicat
 
 Migration `20261115120000_recurring_expenses` adds the schedule and occurrence tables with row-level security and no Data API policies. The worker creates the expense, records its scheduled date, and advances the schedule in one transaction. Duplicating an expense group copies its ordinary expense history and starts with an empty Recurring tab.
 
+## Financial accounts
+
+`FinancialAccount` is the user-owned record displayed in **Accounts**. It stores a display name, type, currency, and active status. A bank-backed account can reference the shared `Bank` catalog. `BankAssignment` controls a group's payment settings for an institution, while the user can register several named financial accounts at that institution.
+
+An account of type `PAY_LATER` links to exactly one same-owner `PayLaterAccount` profile. Migration `20261121100000_financial_accounts` backfills that link for existing profiles and creates the corresponding financial account whenever a new Pay Later profile is inserted. Apply the migration before deploying the Accounts page. Existing expenses, assignments, plans, and repayments keep their original IDs and links. [Financial accounts migration](../server/db/migrations/20261121100000_financial_accounts/migration.sql)
+
 ## Loan and financed-purchase relationships
 
 The loan and financed-purchase records use `Loan`, `PayLaterAccount`, `CreditAccountAssignment`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Receiving and funding account names are stored as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans and repayments](workflows.md#loans-and-repayments)
@@ -87,14 +93,12 @@ User
 │   └── RecurringExpense → generated occurrences
 ├── FinancialAccount
 │   ├── Cash, bank, e-wallet, and credit card accounts
-│   └── Brokerage account → holdings, trades, and dated valuations
+│   ├── PayLaterAccount → RepaymentPlan → original Expense
+│   └── Future brokerage accounts → holdings, trades, and dated valuations
 ├── Loan (cash loan)
 │   ├── Terms and repayment schedule
 │   ├── Optional ExpenseGroup link
 │   └── Disbursement link → transaction into receiving bank account or wallet
-├── PayLaterAccount (historical provider record)
-│   └── RepaymentPlan → original Expense
-│       └── Scheduled installments
 ├── FinancialTransaction
 │   ├── Movements → financial accounts or liabilities
 │   └── Payment allocations → loans, repayment plans, or installments
@@ -105,7 +109,7 @@ User
 └── Portfolio → linked brokerage accounts
 ```
 
-The shared `Bank` catalog provides institution names. `BankAssignment` stores group-specific payment settings. A `FinancialAccount` carries a balance, so a user can have several distinct financial accounts at the same bank. The existing user-owned support records are Better Auth's `Account` and `Session`, plus `ReceiptScanner`. Better Auth's `Account` holds authentication identities. [Prisma schema](../server/db/schema.prisma)
+The future ledger will track balances for the registered financial accounts. The user-owned support records include Better Auth's `Account` and `Session`, plus `ReceiptScanner`. Better Auth's `Account` holds authentication identities. [Prisma schema](../server/db/schema.prisma)
 
 Dashboard, cash-flow forecasts, and net worth use the underlying financial records to calculate their totals and projections. [Dashboard roadmap](roadmap.md#layout-and-acceptance-criteria)
 

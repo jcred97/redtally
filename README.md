@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** has **Banks** and **Pay Later** settings. **Loans** opens the cash loan list. [Loans workflows](docs/workflows.md#loans-and-repayments) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** has **Banks** and **Pay Later** settings. **Accounts** lists named financial accounts, including linked Pay Later accounts. **Loans** opens the cash loan list. [Financial account and loan workflows](docs/workflows.md) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -23,6 +23,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 
 Implemented source includes:
 
+- **Accounts** lets users add named savings, checking, e-wallet, credit card, cash, and other accounts. Migration `20261121100000_financial_accounts` adds one linked account for each existing Pay Later profile. [Financial account model](docs/data-model.md#financial-accounts)
 - **Loans** supports cash loans with an optional expense-group link. **New Expense** can record a Pay Later purchase and its repayment schedule. Open **View plan** in expense history to see the balance, schedule, and payments for that purchase. Enter receiving and funding account names manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
 - Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
 - Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
@@ -159,6 +160,7 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/expense-groups/` | Expense Groups list and redirects from retired credit-account pages |
 | `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
 | `app/(dashboard)/loans/` | Cash loan list and details, financed-purchase plans, and repayment forms |
+| `app/(dashboard)/accounts/` | Financial account list, Add Account dialog, and owner-scoped access |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
 | `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, banks, and recurring-expense views |
 | `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
@@ -191,13 +193,14 @@ Authenticated pages render per request because their session check uses request 
 | `tests/recurring-expenses/` | Recurrence calculator, isolated worker, and schedule ownership tests |
 | `tests/dashboard/` | Cross-group and per-group spending, comparison periods, and budget ownership tests |
 | `tests/loans/` | Loan ownership, financed purchases, and repayment tests |
+| `tests/financial-accounts/` | Financial account ownership, validation, and safe draft retries |
 | `tests/db/migrations/public-id.test.ts` | Public UUID backfill, defaults, uniqueness, and preserved records |
 | `tests/db/migrations/` | Tests for PostgreSQL migrations and data preservation |
 | `public/branding/` | Active RedTally header logo and handwritten R coin favicon |
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |
 | `docs/roadmap.md` | Planned milestones and completion criteria |
 | `docs/data-model.md` | Core model, integrity rules, and preservation strategy |
-| `docs/workflows.md` | Account settings, receipt scanning, cash loans, and Pay Later purchases |
+| `docs/workflows.md` | Account settings, financial accounts, receipt scanning, cash loans, and Pay Later purchases |
 | `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
 Application code uses grouped feature routes, the private Dashboard home feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.

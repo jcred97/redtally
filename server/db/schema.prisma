@@ -23,6 +23,16 @@ enum PaymentMethod {
   @@map("TransactionType")
 }
 
+enum FinancialAccountType {
+  CASH
+  SAVINGS
+  CHECKING
+  WALLET
+  CREDIT_CARD
+  PAY_LATER
+  OTHER
+}
+
 enum RecurrenceFrequency {
   DAILY
   WEEKLY
@@ -180,8 +190,29 @@ model Bank {
   key         String           @unique
   active      Boolean          @default(true)
   assignments BankAssignment[]
+  financialAccounts FinancialAccount[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+}
+
+model FinancialAccount {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  name              String               @db.VarChar(120)
+  type              FinancialAccountType
+  currency          String               @default("PHP") @db.Char(3)
+  active            Boolean              @default(true)
+  bankId            Int?
+  bank              Bank?                @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  payLaterAccountId String?              @db.Uuid
+  payLaterAccount   PayLaterAccount?     @relation(fields: [payLaterAccountId, userId], references: [id, userId], onDelete: Restrict)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@unique([payLaterAccountId, userId])
+  @@index([userId, name])
+  @@index([bankId])
 }
 
 model BankAssignment {
@@ -236,6 +267,7 @@ model PayLaterAccount {
   enabled   Boolean         @default(true)
   plans     RepaymentPlan[]
   assignments CreditAccountAssignment[]
+  financialAccount FinancialAccount?
   createdAt DateTime        @default(now())
 
   @@unique([userId, key])
@@ -320,6 +352,7 @@ model User {
   expenseGroups ExpenseGroup[]
   receiptScanner ReceiptScanner?
   loans          Loan[]
+  financialAccounts FinancialAccount[]
   payLaterAccounts PayLaterAccount[]
   loanPayments   LoanPayment[]
 

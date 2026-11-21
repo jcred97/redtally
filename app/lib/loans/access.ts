@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { MAX_AMOUNT_CENTAVOS, sumCentavos } from "@/app/lib/expenses/money";
-import { creditProducts } from "./credit-products";
+import { creditProducts, spayLaterProduct } from "./credit-products";
 import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, readText, validateInstallmentTotal } from "./form";
 
 const cashFrequencies = ["One-time", "Weekly", "Monthly", "Other"];
@@ -151,6 +151,24 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       const userId = await requireUserId();
       if (!isLoanId(id)) return null;
       return db.repaymentPlan.findUnique({ where: { id, ...ownedPlan(userId) }, include: planInclude(userId) });
+    },
+
+    async getGroupSPayLaterPurchases(expenseGroupId: number) {
+      const userId = await requireUserId();
+      if (!isExpenseGroupId(expenseGroupId)) return [];
+      const ownership = ownedPlan(userId);
+      return db.repaymentPlan.findMany({
+        where: {
+          creditAccount: { ...ownership.creditAccount, key: spayLaterProduct.key },
+          expense: { ...ownership.expense, expenseGroupId },
+        },
+        select: {
+          id: true,
+          expense: { select: { id: true, title: true, amountCentavos: true, date: true } },
+          installments: installmentsFor(userId),
+        },
+        orderBy: [{ expense: { date: "desc" } }, { expenseId: "desc" }],
+      });
     },
 
     async getCreditAccountSettings(expenseGroupId: number) {

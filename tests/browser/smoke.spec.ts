@@ -119,7 +119,7 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   const navigation = drawer.getByRole("navigation", { name: "Main navigation" });
   await expect(drawer).toBeHidden();
   await openNavigation.click();
-  await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups", "Loans"]);
+  await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups", "Accounts", "Loans"]);
   await expect(navigation.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();
@@ -370,6 +370,123 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await expect(page).toHaveURL("/expense-groups");
   await expect(page.getByRole("link", { name: /Browser daily expenses/ })).toBeVisible();
   await expect(groupLink).toHaveCount(0);
+});
+
+test("Accounts lists owned accounts and the Shopee account created from an expense group", async ({ page }) => {
+  const privateAccount = "Private browser savings fixture";
+  await db.query(
+    `INSERT INTO "FinancialAccount" ("userId", "name", "type", "updatedAt")
+      SELECT "userId", $1, 'SAVINGS', CURRENT_TIMESTAMP FROM "Spending" WHERE "publicId" = $2::uuid`,
+    [privateAccount, data.foreign.publicId],
+  );
+
+  await page.setViewportSize({ width: 1024, height: 844 });
+  await page.goto("/");
+  const accountsLink = page.getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "Accounts", exact: true });
+  await accountsLink.click();
+  await expect(page).toHaveURL("/accounts");
+  await expect(accountsLink).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText(privateAccount, { exact: true })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Add Account", exact: true }).click();
+  const add = page.getByRole("dialog", { name: "Add Account", exact: true });
+  await add.getByLabel("Account name", { exact: true }).fill("Browser BPI Savings");
+  await expect(add.getByRole("combobox", { name: "Account type", exact: true })).toHaveText("Savings");
+  await expect(add.getByLabel("Currency", { exact: true })).toHaveValue("PHP");
+  await add.getByRole("combobox", { name: /^Bank/ }).click();
+  await add.getByRole("option", { name: "BPI", exact: true }).click();
+  await add.getByRole("button", { name: "Save account", exact: true }).click();
+  await expect(add).toBeHidden();
+  await expect(page.getByText("Browser BPI Savings", { exact: true })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/spending/${data.olderHistory.publicId}?tab=payment-providers&provider=pay-later`);
+  await page.getByRole("button", { name: "Shopee Not enabled", exact: true }).click();
+  const shopee = page.getByRole("dialog", { name: "Shopee", exact: true });
+  await shopee.getByLabel("Enable for this expense group").check();
+  await shopee.getByRole("checkbox", { name: "SPayLater", exact: true }).check();
+  await shopee.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(shopee).toBeHidden();
+
+  await page.getByRole("button", { name: "Open navigation", exact: true }).click();
+  const drawer = page.getByRole("dialog", { name: "Navigation", exact: true });
+  await drawer.getByRole("link", { name: "Accounts", exact: true }).click();
+  await expect(drawer).toBeHidden();
+  await expect(page).toHaveURL("/accounts");
+  await expect(page.getByText("SPayLater", { exact: true })).toHaveCount(1);
+  await expect(page.getByText("Browser BPI Savings", { exact: true })).toBeVisible();
+  await expect(page.getByText(privateAccount, { exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("Pay Later shows SPayLater purchases and their schedules for the selected group", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/expense-groups");
+  await page.getByRole("button", { name: /New.*Group/ }).click();
+  const groupDialog = page.getByRole("dialog", { name: "New Expense Group" });
+  await groupDialog.getByLabel("Name", { exact: true }).fill("SPayLater browser group");
+  await groupDialog.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByRole("link", { name: /SPayLater browser group/ }).click();
+  await page.getByRole("button", { name: "+ New Category", exact: true }).click();
+  const category = page.getByRole("dialog", { name: "New Category" });
+  await category.getByLabel("Name", { exact: true }).fill("Shopping");
+  await category.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(category).not.toBeVisible();
+
+  const groupViews = page.getByRole("navigation", { name: "Expense group views" });
+  const paymentProviders = groupViews.getByRole("link", { name: "Payment Provider", exact: true });
+  const providerViews = page.getByRole("navigation", { name: "Payment provider views" });
+  const payLater = providerViews.getByRole("link", { name: "Pay Later", exact: true });
+  await paymentProviders.click();
+  await payLater.click();
+  await page.getByRole("button", { name: "Shopee Not enabled", exact: true }).click();
+  const shopee = page.getByRole("dialog", { name: "Shopee", exact: true });
+  await shopee.getByLabel("Enable for this expense group").check();
+  await shopee.getByRole("checkbox", { name: "SPayLater", exact: true }).check();
+  await shopee.getByRole("button", { name: "Save changes" }).click();
+  await expect(shopee).not.toBeVisible();
+
+  await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
+  const title = "SPayLater test purchase";
+  const expense = await newExpense(page);
+  await expense.getByLabel("Title", { exact: true }).fill(title);
+  await expense.getByLabel("Amount (PHP)", { exact: true }).fill("125");
+  await expense.getByLabel("Date", { exact: true }).fill("2026-11-18");
+  await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await expect(expense.getByRole("combobox", { name: "Credit account", exact: true })).toHaveText("SPayLater");
+  await expense.getByRole("combobox", { name: "Term", exact: true }).click();
+  await expense.getByRole("option", { name: "2 installments", exact: true }).click();
+  await expense.getByLabel("Payment 1 due date", { exact: true }).fill("2026-12-18");
+  await expense.getByLabel("Payment 1 amount (PHP)", { exact: true }).fill("50");
+  await expense.getByLabel("Payment 2 due date", { exact: true }).fill("2027-01-18");
+  await expense.getByLabel("Payment 2 amount (PHP)", { exact: true }).fill("75");
+  await expense.getByRole("button", { name: "Save expense", exact: true }).click();
+  await expect(expense).not.toBeVisible();
+
+  await paymentProviders.click();
+  await payLater.click();
+  await expect(payLater).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "SPayLater Purchases", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Repayment Schedule", exact: true })).toBeVisible();
+  const schedule = page.getByRole("table");
+  await expect(schedule.getByRole("columnheader")).toHaveText(["Due Date", "Scheduled", "Remaining"]);
+  await expect(schedule.getByRole("row", { name: /Dec 18, 2026/ }).getByRole("cell", { name: "₱50.00" })).toHaveCount(2);
+  await expect(schedule.getByRole("row", { name: /Jan 18, 2027/ }).getByRole("cell", { name: "₱75.00" })).toHaveCount(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await page.getByRole("link", { name: `View plan for ${title}`, exact: true }).click();
+  await expect(page).toHaveURL(/\/loans\/plans\//);
+  await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
+  await page.goBack();
+  await page.getByRole("button", { name: "SPayLater browser group, switch expense group", exact: true }).click();
+  await page.getByRole("navigation", { name: "Switch expense group" })
+    .getByRole("link", { name: "Browser older history", exact: true }).click();
+  await expect(page).toHaveURL(`/spending/${data.olderHistory.publicId}?tab=payment-providers&provider=pay-later`);
+  await expect(page.getByText("No SPayLater purchases in this expense group.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: title, exact: true })).toHaveCount(0);
 });
 
 test("a lost schedule response can be retried from the dialog and posts one expense", async ({ page }) => {
