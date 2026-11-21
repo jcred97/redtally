@@ -58,6 +58,6 @@ Open **Payment Provider → Pay Later** in the expense group and select a preset
 2. Select **Pay Later** and choose an enabled credit account. To record a purchase with a new provider, select **Add credit account** and enter its name. This enables the new account in that expense group.
 3. Select the **Term** and enter the provider's due dates and installment amounts. Then select **Save expense**.
 
-The full purchase counts once toward spending. For SPayLater, **Payment Provider → Pay Later** shows the purchases, outstanding balances, and installment schedules for the current group. Select **View plan** there or in expense history to see the payment history and record a repayment.
+The full purchase counts once toward spending. In the expense group’s **Expenses** view, select **View plan** on the purchase to see its installment schedule, outstanding balance, and payment history or to record a repayment.
 
 Editing a financed expense can change its descriptive fields while preserving the original repayment plan. Duplicating an expense group copies its provider settings and expense history. The repayment plans stay with the original expenses.

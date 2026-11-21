@@ -482,7 +482,7 @@ test("Accounts lists owned accounts and the Shopee account created from an expen
   await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeFocused();
 });
 
-test("Pay Later shows SPayLater purchases and their schedules for the selected group", async ({ page }) => {
+test("SPayLater purchases open their repayment schedules from Expenses", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/expense-groups");
   await page.getByRole("button", { name: /New.*Group/ }).click();
@@ -530,25 +530,24 @@ test("Pay Later shows SPayLater purchases and their schedules for the selected g
   await paymentProviders.click();
   await payLater.click();
   await expect(payLater).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("heading", { name: "SPayLater Purchases", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Shopee Enabled", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "SPayLater Purchases", exact: true })).toHaveCount(0);
+
+  await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
+  await page.goto(`${new URL(page.url()).pathname}?allMonths=1`);
   await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "View plan", exact: true }).click();
+  await expect(page).toHaveURL(/\/loans\/plans\//);
+  await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Repayment Schedule", exact: true })).toBeVisible();
-  const schedule = page.getByRole("table");
+  const schedule = page.getByRole("table").filter({ hasText: "Due Date" });
   await expect(schedule.getByRole("columnheader")).toHaveText(["Due Date", "Scheduled", "Remaining"]);
   await expect(schedule.getByRole("row", { name: /Dec 18, 2026/ }).getByRole("cell", { name: "₱50.00" })).toHaveCount(2);
   await expect(schedule.getByRole("row", { name: /Jan 18, 2027/ }).getByRole("cell", { name: "₱75.00" })).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-  await page.getByRole("link", { name: `View plan for ${title}`, exact: true }).click();
-  await expect(page).toHaveURL(/\/loans\/plans\//);
-  await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
-  await page.goBack();
-  await page.getByRole("button", { name: "SPayLater browser group, switch expense group", exact: true }).click();
-  await page.getByRole("navigation", { name: "Switch expense group" })
-    .getByRole("link", { name: "Browser older history", exact: true }).click();
-  await expect(page).toHaveURL(`/spending/${data.olderHistory.publicId}?tab=payment-providers&provider=pay-later`);
-  await expect(page.getByText("No SPayLater purchases in this expense group.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: title, exact: true })).toHaveCount(0);
+  await page.getByRole("link", { name: "Back to Expense", exact: true }).click();
+  await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
 });
 
 test("a lost schedule response can be retried from the dialog and posts one expense", async ({ page }) => {

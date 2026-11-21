@@ -22,7 +22,7 @@ function paymentDraft(allocations: { installmentId: string; amount: string }[]) 
   ]);
 }
 
-test("Pay Later providers, financing, and SPayLater purchases are scoped to the selected expense group", async () => {
+test("Pay Later providers and financing are scoped to the selected expense group", async () => {
   const fixture = await createTestDatabase();
   const { client } = fixture;
   try {
@@ -110,38 +110,6 @@ test("Pay Later providers, financing, and SPayLater purchases are scoped to the 
       (await loans.getCreditAccountSettings(travel.id)).find((account) => account.id === customAccount.id)?.assignment,
       { active: true, supportsPayLater: true },
     );
-
-    const [installment] = await client.loanInstallment.findMany({ where: { planId: plan.id } });
-    const payment = await loans.recordLoanPayment(paymentDraft([{ installmentId: installment.id, amount: "40" }]));
-    await expenses.create(
-      household.id, household.categories[0].id, purchase, randomUUID(), financing("creditAccountName", "Other provider"),
-    );
-    await loans.setGroupCreditAccountSettings(settings(travel.id, true));
-    const travelPurchase = await expenses.create(
-      travel.id, travel.categories[0].id, purchase, randomUUID(), financing("creditAccountId", id),
-    );
-    const { id: otherAccount } = await otherLoans.setGroupCreditAccountSettings(settings(privateGroup.id, true));
-    const privatePurchase = await otherExpenses.create(
-      privateGroup.id, privateGroup.categories[0].id, purchase, randomUUID(), financing("creditAccountId", otherAccount),
-    );
-
-    const householdPurchases = await loans.getGroupSPayLaterPurchases(household.id);
-    assert.deepEqual(householdPurchases.map(({ id, expense }) => ({ id, expense })), [{
-      id: plan.id,
-      expense: { id: financed.id, title: purchase.title, amountCentavos: 10000, date: new Date(purchase.date) },
-    }]);
-    const [scheduledPayment] = householdPurchases[0].installments;
-    assert.equal(scheduledPayment.dueDate.toISOString().slice(0, 10), "2026-12-15");
-    assert.equal(scheduledPayment.amountCentavos, 10000);
-    assert.deepEqual(
-      scheduledPayment.allocations.map(({ amountCentavos, payment: { id } }) => ({ amountCentavos, id })),
-      [{ amountCentavos: 4000, id: payment.id }],
-    );
-    assert.deepEqual((await loans.getGroupSPayLaterPurchases(travel.id)).map(({ expense }) => expense.id), [travelPurchase.id]);
-    assert.deepEqual((await otherLoans.getGroupSPayLaterPurchases(privateGroup.id)).map(({ expense }) => expense.id), [privatePurchase.id]);
-    assert.deepEqual(await loans.getGroupSPayLaterPurchases(privateGroup.id), []);
-    assert.deepEqual(await otherLoans.getGroupSPayLaterPurchases(household.id), []);
-    assert.deepEqual(await loans.getGroupSPayLaterPurchases(0), []);
   } finally {
     await fixture.close();
   }
