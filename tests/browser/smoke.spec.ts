@@ -372,6 +372,42 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await expect(groupLink).toHaveCount(0);
 });
 
+test("Pay Later presets can be enabled for one group and selected in New Expense", async ({ page }) => {
+  await page.goto(groupPath());
+  const groupViews = page.getByRole("navigation", { name: "Expense group views" });
+  await groupViews.getByRole("link", { name: "Payment Provider", exact: true }).click();
+  await page.getByRole("navigation", { name: "Payment provider views" })
+    .getByRole("link", { name: "Pay Later", exact: true }).click();
+
+  for (const product of ["LazPayLater", "GGives", "Atome Card", "BillEase", "Home Credit Installment Shopping"]) {
+    await expect(page.getByRole("button", { name: `${product} Not enabled`, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "LazPayLater Not enabled", exact: true }).click();
+  const lazada = page.getByRole("dialog", { name: "Lazada", exact: true });
+  await lazada.getByLabel("Enable for this expense group").check();
+  await lazada.getByRole("checkbox", { name: "LazPayLater", exact: true }).check();
+  await lazada.getByRole("button", { name: "Save changes" }).click();
+  await expect(lazada).toBeHidden();
+  await expect(page.getByRole("button", { name: "LazPayLater Enabled", exact: true })).toBeVisible();
+
+  await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
+  const expense = await newExpense(page);
+  await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  const creditAccount = expense.getByRole("combobox", { name: "Credit account", exact: true });
+  await creditAccount.click();
+  await expense.getByRole("option", { name: "LazPayLater", exact: true }).click();
+  await expect(creditAccount).toHaveText("LazPayLater");
+
+  await page.goto(groupPath(data.olderHistory.publicId));
+  await newExpense(page);
+  await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await creditAccount.click();
+  await expect(expense.getByRole("option", { name: "Add credit account", exact: true })).toBeVisible();
+  await expect(expense.getByRole("option", { name: "LazPayLater", exact: true })).toHaveCount(0);
+});
+
 test("Accounts lists owned accounts and the Shopee account created from an expense group", async ({ page }) => {
   const privateAccount = "Private browser savings fixture";
   await db.query(

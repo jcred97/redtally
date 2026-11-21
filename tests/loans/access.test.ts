@@ -4,6 +4,7 @@ import test from "node:test";
 import { createExpenseGroupAccess } from "../../app/(dashboard)/_lib/expense-groups/access";
 import { createExpenseAccess } from "../../app/(dashboard)/_lib/expenses/access";
 import { createLoanAccess } from "../../app/lib/loans/access";
+import { creditProducts, spayLaterProduct } from "../../app/lib/loans/credit-products";
 import { createTestDatabase } from "../helpers/database";
 
 function form(entries: ReadonlyArray<readonly [string, string]>) {
@@ -141,6 +142,56 @@ test("Pay Later providers, financing, and SPayLater purchases are scoped to the 
     assert.deepEqual(await loans.getGroupSPayLaterPurchases(privateGroup.id), []);
     assert.deepEqual(await otherLoans.getGroupSPayLaterPurchases(household.id), []);
     assert.deepEqual(await loans.getGroupSPayLaterPurchases(0), []);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("Pay Later presets opt in per group and reuse a matching custom provider", async () => {
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
+  try {
+    await client.user.create({ data: { id: "alice", name: "Alice", email: "alice@example.test" } });
+    const { id: expenseGroupId, categories } = await client.expenseGroup.create({
+      data: { name: "Household", userId: "alice", categories: { create: { name: "Purchases" } } },
+      include: { categories: true },
+    });
+    const otherGroup = await client.expenseGroup.create({ data: { name: "Travel", userId: "alice" } });
+    const loans = createLoanAccess(client, async () => "alice");
+    const expenses = createExpenseAccess(client, async () => "alice");
+    const purchase = await expenses.create(
+      expenseGroupId, categories[0].id,
+      { title: "Purchase", amount: "100", date: "2026-11-20", paymentMethod: "PAY_LATER" },
+      randomUUID(),
+      form([["creditAccountName", "ATOME CARD"], ["installmentDate", "2026-12-15"], ["installmentAmount", "100"]]),
+    );
+    const { creditAccountId } = await client.repaymentPlan.findUniqueOrThrow({ where: { expenseId: purchase.id } });
+    await client.financialAccount.update({
+      where: { payLaterAccountId_userId: { payLaterAccountId: creditAccountId, userId: "alice" } },
+      data: { name: "My Atome Card" },
+    });
+
+    const presets = creditProducts.filter(({ key }) => key !== spayLaterProduct.key);
+    for (const { key, name } of presets) {
+      const settings = form([
+        ["expenseGroupId", String(expenseGroupId)], ["productKey", key], ["active", "on"], ["supportsPayLater", "on"],
+      ]);
+      const { id } = await loans.setGroupCreditAccountSettings(settings);
+      assert.equal((await loans.setGroupCreditAccountSettings(settings)).id, id);
+      const provider = await client.payLaterAccount.findUniqueOrThrow({ where: { id }, include: { financialAccount: true } });
+      assert.equal(provider.key, key);
+      if (key === "atome card") {
+        assert.equal(provider.id, creditAccountId);
+        assert.equal(provider.name, "ATOME CARD");
+        assert.equal(provider.financialAccount?.name, "My Atome Card");
+      } else {
+        assert.equal(provider.name, name);
+        assert.equal(provider.financialAccount?.name, name);
+      }
+    }
+    assert.equal(await client.payLaterAccount.count(), presets.length);
+    assert.equal((await loans.getEnabledCreditAccounts(expenseGroupId)).length, presets.length);
+    assert.deepEqual(await loans.getEnabledCreditAccounts(otherGroup.id), []);
   } finally {
     await fixture.close();
   }

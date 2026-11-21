@@ -15,7 +15,7 @@ In **Receipt scanning**, choose **OpenAI** or **Anthropic**, enter your API key,
 
 Open **Accounts → Add Account** to save a name, account type, and three-letter currency code. The form starts with **Savings** and **PHP**. A savings, checking, or credit card account can also reference a bank from the catalog.
 
-Pay Later accounts appear automatically. Enable Shopee from the expense group’s **Payment Provider → Pay Later** tab or add a custom provider when recording a Pay Later purchase.
+Pay Later accounts appear automatically. Enable a preset from the expense group’s **Payment Provider → Pay Later** tab or add a custom provider when recording a Pay Later purchase.
 
 ## Receipt scanning
 
@@ -50,7 +50,7 @@ Open a cash loan and choose **Record Payment**. Enter the funding bank account o
 
 ### Managing Pay Later in an expense group
 
-Open **Payment Provider → Pay Later** in the expense group and select a provider. For Shopee, check **Enable for this expense group** and select **SPayLater** under **Credit methods**. Save the setting to make the provider available for new purchases in that group. Clearing **Enable for this expense group** preserves existing purchases and schedules.
+Open **Payment Provider → Pay Later** in the expense group and select a preset. Choices include Shopee SPayLater, LazPayLater, GGives, Atome Card, BillEase, and Home Credit Installment Shopping. Check **Enable for this expense group**, select the product under **Credit methods**, and save. The account then appears in **New Expense → Pay Later** for that group. Clearing **Enable for this expense group** preserves existing purchases and schedules.
 
 ### Recording a Pay Later purchase
 

@@ -6,6 +6,7 @@ import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/SettingsTileLabel";
+import { spayLaterProduct } from "@/app/lib/loans/credit-products";
 import { setGroupCreditAccountSettings } from "@/app/lib/loans/mutations";
 
 type GroupCreditAccount = {
@@ -16,9 +17,10 @@ type GroupCreditAccount = {
 
 const saveError = "Unable to save credit account settings. Please try again.";
 
-export default function GroupCreditAccountCard({ expenseGroupId, title, method, productKey, account }: {
+export default function GroupCreditAccountCard({ expenseGroupId, title, tileLabel = title, method, productKey, account }: {
   expenseGroupId: number;
   title: string;
+  tileLabel?: string;
   method: string;
 } & ({ productKey: string; account?: GroupCreditAccount } | { productKey?: never; account: GroupCreditAccount })) {
   const savedActive = account?.assignment?.active ?? account?.enabled ?? false;
@@ -40,7 +42,7 @@ export default function GroupCreditAccountCard({ expenseGroupId, title, method, 
   return (
     <FormDialog
       triggerLabel={(
-        <SettingsTileLabel name={title} status={savedEnabled ? "Enabled" : "Not enabled"} enabled={savedEnabled} icon={productKey === "spaylater" ? (
+        <SettingsTileLabel name={tileLabel} status={savedEnabled ? "Enabled" : "Not enabled"} enabled={savedEnabled} icon={productKey === spayLaterProduct.key ? (
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white">
             <Image src="/branding/shopee.svg" alt="" width={32} height={32} unoptimized />
           </span>

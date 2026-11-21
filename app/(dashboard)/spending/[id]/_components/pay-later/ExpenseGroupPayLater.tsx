@@ -1,5 +1,5 @@
 import { settingsTileGridClass } from "@/app/components/tiles/SettingsTileLabel";
-import { creditProducts } from "@/app/lib/loans/credit-products";
+import { creditProducts, spayLaterProduct } from "@/app/lib/loans/credit-products";
 import { getCreditAccountSettings, getGroupSPayLaterPurchases } from "@/app/lib/loans/queries";
 import GroupCreditAccountCard from "./GroupCreditAccountCard";
 import SPayLaterPurchases from "./SPayLaterPurchases";
@@ -21,6 +21,7 @@ export default async function ExpenseGroupPayLater({ expenseGroupId }: { expense
               <GroupCreditAccountCard
                 expenseGroupId={expenseGroupId}
                 title={product.provider}
+                tileLabel={product.key === spayLaterProduct.key ? product.provider : product.name}
                 method={product.name}
                 productKey={product.key}
                 account={accounts.find((account) => account.key === product.key)}
