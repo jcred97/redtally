@@ -23,12 +23,20 @@ export async function createFinancialAccount(formData: FormData) {
   if (formData.get("type") !== "PAY_LATER") return saveAccountChange(() => access.create(formData));
 
   const result = await saveAccountChange(() => access.createPayLater(formData));
-  if ("success" in result) revalidatePath("/spending/[id]", "page");
+  if ("success" in result) {
+    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/");
+  }
   return result;
 }
 
 export async function renameFinancialAccount(id: string, formData: FormData) {
-  return saveAccountChange(() => access.rename(id, formData));
+  const result = await saveAccountChange(() => access.rename(id, formData));
+  if ("success" in result) {
+    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/");
+  }
+  return result;
 }
 
 export async function deleteFinancialAccount(id: string) {

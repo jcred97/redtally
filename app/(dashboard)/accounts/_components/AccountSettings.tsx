@@ -96,7 +96,7 @@ export default function AccountSettings({ account }: { account: { id: string; na
           destructive
           returnFocusId={settingsId}
           title="Delete account?"
-          description="This permanently removes the account and its expense group settings."
+          description="This permanently removes the account."
           onOpenAction={() => setOpen(false)}
           submitLabel="Delete account"
           pendingLabel="Deleting…"

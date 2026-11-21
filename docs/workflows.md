@@ -16,7 +16,7 @@ In **Receipt scanning**, choose **OpenAI** or **Anthropic**, enter your API key,
 
 Open **Accounts → Add Account** and enter an account name and type. The form starts with **Savings** and **PHP**. A savings, checking, or credit card account can also reference a bank from the catalog.
 
-Pay Later accounts use PHP. For other account types, enter a three-letter currency code. **Accounts** lists custom Pay Later accounts and any accounts created by enabling a preset. [Pay Later setup and purchases](#pay-later-setup-and-purchases)
+Pay Later accounts use PHP and have a **Credit provider**. For other account types, enter a three-letter currency code. [Pay Later setup and purchases](#pay-later-setup-and-purchases)
 
 ## Receipt scanning
 
@@ -53,20 +53,18 @@ Open a cash loan and choose **Record Payment**. Enter the funding bank account o
 
 ### Managing Pay Later in an expense group
 
-- **Custom provider.** Open **Accounts → Add Account**, enter the provider’s name as the **Account name**, choose **Pay Later** as the **Account type**, and select **Save account**.
-- **Preset provider.** Choose a preset in the group settings below. Available presets include SPayLater, LazPayLater, GGives, Atome Card, BillEase, and Home Credit Installment Shopping. Enabling a preset creates its account if needed.
+1. To add a Pay Later account, open **Accounts → Add Account**. Enter the **Account name**, choose **Pay Later** as the **Account type**, and choose its **Credit provider**. Presets include Shopee, Lazada, GCash, Atome, BillEase, and Home Credit. For a custom provider, choose **Other** and enter the **Custom provider name**. Select **Save account**.
+2. Open **Payment Provider → Pay Later** in the expense group where you use the provider. Select the provider, check **Enable for this expense group**, and select **Save changes**. Repeat for each group where you use it.
 
-1. Open **Payment Provider → Pay Later** in the expense group where you use the provider and select the provider.
-2. Check **Enable for this expense group**, select the product or **Pay Later** under **Credit methods**, and select **Save changes**. Repeat for each group where you use the provider.
-
-Clearing **Enable for this expense group** preserves existing purchases and repayment schedules.
+Enabling a provider only changes its availability in that group. For example, a named **SPayLater** account can use **Shopee** as its provider. Clearing **Enable for this expense group** preserves existing purchases and repayment schedules.
 
 ### Recording a Pay Later purchase
 
 1. In the expense group, open **New Expense** and enter the full purchase amount, date, and category.
-2. Set **Payment method** to **Pay Later** and choose a **Credit provider**. If the field shows **No credit accounts available**, use the **?** beside it for setup directions or follow the steps above. Once the provider is enabled in that group, it appears in the dropdown.
-3. Select the **Term** and enter the provider's due dates and installment amounts. Then select **Save expense**.
+2. Set **Payment method** to **Pay Later** and choose a **Credit provider** enabled for that expense group. If the field shows **No credit providers available**, use the **?** beside it for setup directions.
+3. Choose an existing **Account** for that provider above **Term**. If you see **No Pay Later accounts available**, add a Pay Later account for the selected provider in **Accounts**.
+4. Select the **Term** and enter the provider's due dates and installment amounts. Then select **Save expense**.
 
-The full purchase counts once toward spending. The **Payment Provider** column in **Expenses** shows the provider’s name. Select **View plan** on the purchase to see its installment schedule, outstanding balance, and payment history or to record a repayment.
+The full purchase counts once toward spending. The **Payment Provider** column in **Expenses** shows the provider’s name. Select **View plan** on the purchase to see the account, installment schedule, outstanding balance, and payment history or to record a repayment.
 
 Editing a financed expense can change its descriptive fields while preserving the original repayment plan. Duplicating an expense group copies its provider settings and expense history. The repayment plans stay with the original expenses.

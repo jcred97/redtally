@@ -1,3 +1,4 @@
+import { getPayLaterProviderName } from "@/app/lib/loans/credit-products";
 import AccountSettings from "./_components/AccountSettings";
 import AddAccountDialog from "./_components/AddAccountDialog";
 import { getFinancialAccountBanks, getFinancialAccounts } from "./_lib/queries";
@@ -14,16 +15,21 @@ export default async function AccountsPage() {
       </header>
       {accounts.length > 0 ? (
         <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {accounts.map(({ id, name, type, currency, bank }) => (
-            <li key={id} className="relative min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-6">
-              <h2 className="mb-4 wrap-anywhere pr-10 text-lg leading-tight font-semibold">{name}</h2>
-              <p className="text-sm text-gray-400">{financialAccountTypeLabels[type]} · {currency}</p>
-              {bank && <p className="mt-2 wrap-anywhere text-sm text-gray-300">{bank.name}</p>}
-              <div className="absolute top-4 right-4">
-                <AccountSettings account={{ id, name }} />
-              </div>
-            </li>
-          ))}
+          {accounts.map(({ id, name, type, currency, bank, payLaterAccount }) => {
+            const institution = payLaterAccount
+              ? getPayLaterProviderName(payLaterAccount.providerKey, payLaterAccount.providerName)
+              : bank?.name;
+            return (
+              <li key={id} className="relative min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-6">
+                <h2 className="mb-4 wrap-anywhere pr-10 text-lg leading-tight font-semibold">{name}</h2>
+                <p className="text-sm text-gray-400">{financialAccountTypeLabels[type]} · {currency}</p>
+                {institution && <p className="mt-2 wrap-anywhere text-sm text-gray-300">{institution}</p>}
+                <div className="absolute top-4 right-4">
+                  <AccountSettings account={{ id, name }} />
+                </div>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="mt-5 rounded-xl border border-gray-800 bg-gray-900/45 p-4 text-sm text-gray-300 sm:p-5">

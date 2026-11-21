@@ -17,8 +17,8 @@ import { isBankPaymentMethod, isPaymentMethod, paymentMethodLabels, type Expense
 import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import ReceiptImageInput from "./ReceiptImageInput";
-import CreditAccountFields, { type CreditAccountOption } from "./CreditAccountFields";
-import FinancedPurchaseFields from "./FinancedPurchaseFields";
+import CreditProviderField, { type CreditProviderOption } from "./CreditProviderField";
+import FinancedPurchaseFields, { type CreditAccountOption } from "./FinancedPurchaseFields";
 
 export type EditableExpense = {
   id: number;
@@ -39,6 +39,7 @@ type ExpenseFormDialogProps = {
   expenseGroupId: number;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
+  creditProviders?: CreditProviderOption[];
   creditAccounts?: CreditAccountOption[];
   expense?: EditableExpense;
   focusKey?: string;
@@ -49,6 +50,7 @@ export default function ExpenseFormDialog({
   expenseGroupId,
   categories,
   bankOptions,
+  creditProviders = [],
   creditAccounts = [],
   expense,
   focusKey,
@@ -66,9 +68,16 @@ export default function ExpenseFormDialog({
   const [categoryId, setCategoryId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [bankAssignmentId, setBankAssignmentId] = useState("");
+  const [creditProviderKey, setCreditProviderKey] = useState("");
+  const [creditAccountId, setCreditAccountId] = useState("");
   const hasCategories = categories.length > 0;
   const financed = paymentMethod === "PAY_LATER";
   const showSchedule = !expense && financed;
+  const selectedCreditProvider = creditProviders.find(({ key }) => key === creditProviderKey);
+  const matchingCreditAccounts = selectedCreditProvider
+    ? creditAccounts.filter(({ providerKey }) => providerKey === selectedCreditProvider.key)
+    : [];
+  const selectedCreditAccount = matchingCreditAccounts.find(({ id }) => id === creditAccountId);
   const hasRepaymentPlan = Boolean(expense?.repaymentPlanId);
   const canSelectBank = isBankPaymentMethod(paymentMethod);
   const eligibleBanks = canSelectBank
@@ -115,6 +124,8 @@ export default function ExpenseFormDialog({
       setCategoryId(String(categories[0]?.id ?? ""));
       setPaymentMethod("");
       setBankAssignmentId("");
+      setCreditProviderKey("");
+      setCreditAccountId("");
     }
   }
 
@@ -190,7 +201,7 @@ export default function ExpenseFormDialog({
         submitLabel={expense ? "Save changes" : "Save expense"}
         pendingLabel="Saving..."
         disabled={!hasCategories}
-        submitDisabled={showSchedule && creditAccounts.length === 0}
+        submitDisabled={showSchedule && !selectedCreditAccount}
         onOpenAction={resetFields}
         submitAction={saveExpenseInGroup}
       >
@@ -320,7 +331,17 @@ export default function ExpenseFormDialog({
             {hasRecordedBank && (!canSelectBank || bankAssignmentId === "") && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
-            {!expense && <CreditAccountFields creditAccounts={creditAccounts} hidden={!showSchedule} />}
+            {!expense && (
+              <CreditProviderField
+                providers={creditProviders}
+                value={selectedCreditProvider?.key ?? ""}
+                onChange={(key) => {
+                  if (key !== creditProviderKey) setCreditAccountId("");
+                  setCreditProviderKey(key);
+                }}
+                hidden={!showSchedule}
+              />
+            )}
             {showSchedule && (
               <button
                 type="button"
@@ -334,7 +355,14 @@ export default function ExpenseFormDialog({
 
           {!expense && (
             <div className={`grid min-w-0 gap-4 ${showSchedule ? "lg:contents" : ""}`}>
-              <FinancedPurchaseFields purchaseDate={date} hidden={!showSchedule} />
+              <FinancedPurchaseFields
+                purchaseDate={date}
+                provider={selectedCreditProvider?.name}
+                accounts={matchingCreditAccounts}
+                accountId={selectedCreditAccount?.id ?? ""}
+                onAccountChange={setCreditAccountId}
+                hidden={!showSchedule}
+              />
               <ReceiptImageInput headingRef={receiptHeading} paymentMethod={paymentMethod} bankOptions={bankOptions} onApply={applyReceiptSuggestion} />
             </div>
           )}

@@ -5,15 +5,22 @@ import FormDialog from "@/app/components/dialogs/FormDialog";
 import Select from "@/app/components/forms/Select";
 import TextInput from "@/app/components/forms/TextInput";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
+import { payLaterProviders } from "@/app/lib/loans/credit-products";
 import { createFinancialAccount } from "../_lib/mutations";
 import { financialAccountTypeLabels, manualFinancialAccountTypes, supportsFinancialAccountBank } from "../_lib/types";
 
 const accountTypeOptions = [...manualFinancialAccountTypes, { value: "PAY_LATER", label: financialAccountTypeLabels.PAY_LATER }];
+const providerOptions = [
+  { value: "", label: "Choose a credit provider", disabled: true },
+  ...payLaterProviders.map(({ key, name }) => ({ value: key, label: name })),
+  { value: "other", label: "Other" },
+];
 
 export default function AddAccountDialog({ banks }: { banks: { id: number; name: string }[] }) {
   const fieldId = useId();
   const [accountId, setAccountId] = useState("");
   const [type, setType] = useState("SAVINGS");
+  const [providerKey, setProviderKey] = useState("");
 
   return (
     <FormDialog
@@ -26,6 +33,7 @@ export default function AddAccountDialog({ banks }: { banks: { id: number; name:
       onOpenAction={() => {
         setAccountId(crypto.randomUUID());
         setType("SAVINGS");
+        setProviderKey("");
       }}
       submitAction={createFinancialAccount}
     >
@@ -46,7 +54,29 @@ export default function AddAccountDialog({ banks }: { banks: { id: number; name:
         />
       </div>
       {type === "PAY_LATER" ? (
-        <p className="text-sm text-gray-400">Pay Later accounts use PHP. After saving, enable the provider under Payment Provider → Pay Later in the expense groups where you use it.</p>
+        <>
+          <div>
+            <label htmlFor={`${fieldId}-provider`} className={fieldLabelClass}>Credit provider</label>
+            <Select
+              id={`${fieldId}-provider`}
+              name="providerKey"
+              value={providerKey}
+              onChange={setProviderKey}
+              options={providerOptions}
+              aria-describedby={`${fieldId}-provider-help`}
+              required
+            />
+          </div>
+          {providerKey === "other" && (
+            <div>
+              <label htmlFor={`${fieldId}-provider-name`} className={fieldLabelClass}>Custom provider name</label>
+              <TextInput id={`${fieldId}-provider-name`} name="providerName" maxLength={120} required />
+            </div>
+          )}
+          <p id={`${fieldId}-provider-help`} className="text-sm text-gray-400">
+            Pay Later accounts use PHP. Enable the provider under Payment Provider → Pay Later in each expense group where you use it.
+          </p>
+        </>
       ) : (
         <div>
           <label htmlFor={`${fieldId}-currency`} className={fieldLabelClass}>Currency</label>

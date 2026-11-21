@@ -71,9 +71,6 @@ export async function createExpense(
   revalidatePath("/spending/[id]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
-  if (formData.get("paymentMethod") === "PAY_LATER" && formData.has("creditAccountName")) {
-    revalidatePath("/accounts");
-  }
 
   return { success: true };
 }

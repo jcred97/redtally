@@ -3,26 +3,28 @@
 import { useId, useState } from "react";
 import Select from "@/app/components/forms/Select";
 
-export type CreditAccountOption = { id: string; name: string };
+export type CreditProviderOption = { key: string; name: string };
 
-export default function CreditAccountFields({ creditAccounts, hidden }: {
-  creditAccounts: CreditAccountOption[];
+export default function CreditProviderField({ providers, value, onChange, hidden }: {
+  providers: CreditProviderOption[];
+  value: string;
+  onChange: (key: string) => void;
   hidden: boolean;
 }) {
   const id = useId();
-  const [selectedId, setSelectedId] = useState<string>();
   const [helpOpen, setHelpOpen] = useState(false);
-  const account = creditAccounts.find(({ id }) => id === selectedId) ?? creditAccounts[0];
   const helpId = `${id}-help`;
-  const options = account
-    ? creditAccounts.map(({ id, name }) => ({ value: id, label: name }))
-    : [{ value: "", label: "No credit accounts available" }];
+  const hasProviders = providers.length > 0;
+  const options = [
+    { value: "", label: hasProviders ? "Select a credit provider" : "No credit providers available", disabled: true },
+    ...providers.map(({ key, name }) => ({ value: key, label: name })),
+  ];
 
   return (
     <fieldset disabled={hidden} hidden={hidden} className={hidden ? undefined : "grid min-w-0 gap-4"}>
       <div className="min-w-0">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <label htmlFor={`${id}-account`} className="text-sm font-medium">Credit provider</label>
+          <label htmlFor={`${id}-provider`} className="text-sm font-medium">Credit provider</label>
           <div
             className="relative"
             onPointerEnter={(event) => { if (event.pointerType === "mouse") setHelpOpen(true); }}
@@ -50,13 +52,13 @@ export default function CreditAccountFields({ creditAccounts, hidden }: {
             </button>
             <div className="absolute right-0 bottom-full z-10 w-56 pb-1" hidden={!helpOpen}>
               <p id={helpId} role="tooltip" className="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200 shadow-lg">
-                Create a Pay Later account in <strong>Accounts → Add Account</strong>. To make it available here, enable the provider in this group’s <strong>Payment Provider → Pay Later</strong> settings.
+                Enable a supported provider in this group’s <strong>Payment Provider → Pay Later</strong> settings.
               </p>
             </div>
           </div>
         </div>
-        <Select id={`${id}-account`} name="creditAccountId" value={account?.id ?? ""}
-          onChange={setSelectedId} options={options} disabled={!account} />
+        <Select id={`${id}-provider`} name="creditProviderKey" value={value}
+          onChange={onChange} options={options} disabled={!hasProviders} required />
       </div>
     </fieldset>
   );

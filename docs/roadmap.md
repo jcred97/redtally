@@ -70,7 +70,7 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 **Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Payment Provider tabs. Payment Provider contains the group's **Banks** and **Pay Later** settings. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
-**Accounts** lets users create and view their named financial accounts, including custom Pay Later accounts. Use an expense group's **Payment Provider → Pay Later** settings to enable a provider for that group. **Loans** lists cash loans, their balances, and their payments. Open **View plan** from a Pay Later expense to see its schedule and payments. [Financial accounts and loans](workflows.md) · [Production rollout](../README.md#loans-production-rollout)
+**Accounts** lets users create and view named financial accounts, including Pay Later accounts linked to their providers. Use an expense group's **Payment Provider → Pay Later** settings to enable a provider for that group. **Loans** lists cash loans, their balances, and their payments. Open **View plan** from a Pay Later expense to see its schedule and payments. [Financial accounts and loans](workflows.md) · [Production rollout](../README.md#loans-production-rollout)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 
@@ -87,13 +87,13 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 
 ### Phase 2: financial accounts, income, and bills
 
-- [x] Add the Accounts registry for named financial accounts, link existing Pay Later profiles, and support custom Pay Later account creation through **Add Account**.
+- [x] Add the Accounts registry for named financial accounts, link existing Pay Later profiles, and let users choose a preset or custom provider when adding a Pay Later account.
 - [ ] Track balances, income, linked transfers, opening balances, and statement reconciliation for financial accounts.
 - [ ] Extend recurring scheduling into a bills and payday timeline with planned, due, overdue, and paid states, reminders, and matching between expected items and actual transactions. Include subscriptions and annual renewals.
 - [ ] Add account balances, income, expenses, and net cash flow to Dashboard. Internal transfers and credit-card repayments must not count purchases as expenses twice.
 - [ ] Add credit-card statement/current balances, minimum payments, due dates, installments, and debt payoff progress.
 - [x] Implement user-owned cash loans with a lender, original amount, manually entered receiving account, repayment schedule, and an optional expense-group link. Show outstanding balance, next payment, and payment history.
-- [x] Add Pay Later to **New Expense**. List enabled accounts in **Credit provider**, save the purchase and repayment plan together, and show the selected provider in expense history.
+- [x] Add Pay Later to **New Expense**. Let users choose an enabled **Credit provider** and an existing matching **Account**. Save the purchase and repayment plan together and show the selected provider in expense history.
 - [x] Record cash loan and financed purchase repayments with the name of the bank account or wallet used. Allocate each payment to the installments it covers.
 - [ ] Link disbursements and repayments to the financial-account ledger. Track principal, interest, and fees separately when the underlying transactions support that breakdown.
 

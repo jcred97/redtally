@@ -5,7 +5,7 @@ import { createExpenseGroupAccess } from "../../app/(dashboard)/_lib/expense-gro
 import { createExpenseAccess } from "../../app/(dashboard)/_lib/expenses/access";
 import { createFinancialAccountAccess } from "../../app/(dashboard)/accounts/_lib/access";
 import { createLoanAccess } from "../../app/lib/loans/access";
-import { creditProducts, spayLaterProduct } from "../../app/lib/loans/credit-products";
+import { customPayLaterProviderKey, payLaterProviders } from "../../app/lib/loans/credit-products";
 import { createTestDatabase } from "../helpers/database";
 
 function form(entries: ReadonlyArray<readonly [string, string]>) {
@@ -23,7 +23,7 @@ function paymentDraft(allocations: { installmentId: string; amount: string }[], 
   ]);
 }
 
-test("Pay Later providers and financing are scoped to the selected expense group", async () => {
+test("Pay Later purchases require an enabled provider and an owned matching account", async () => {
   const fixture = await createTestDatabase();
   const { client } = fixture;
   try {
@@ -43,146 +43,89 @@ test("Pay Later providers and financing are scoped to the selected expense group
     const otherLoans = createLoanAccess(client, async () => "bob");
     const expenses = createExpenseAccess(client, async () => "alice");
     const otherExpenses = createExpenseAccess(client, async () => "bob");
-    const settings = (expenseGroupId: number, active: boolean) => form([
-      ["expenseGroupId", String(expenseGroupId)], ["productKey", "spaylater"],
-      ...(active ? [["active", "on"], ["supportsPayLater", "on"]] as const : []),
+    const accounts = createFinancialAccountAccess(client, async () => "alice");
+    const settings = (groupId: number, providerKey: string, active = true) => form([
+      ["expenseGroupId", String(groupId)], ["providerKey", providerKey],
+      ...(active ? [["active", "on"]] as const : []),
     ]);
-    const financing = (field: "creditAccountId" | "creditAccountName", value: string) => form([
-      [field, value], ["installmentDate", "2026-12-15"], ["installmentAmount", "100"],
+    const financing = (id: string, providerKey = "shopee") => form([
+      ["creditAccountId", id], ["creditProviderKey", providerKey],
+      ["installmentDate", "2026-12-15"], ["installmentAmount", "100"],
     ]);
     const purchase = { title: "Purchase", amount: "100", date: "2026-11-20", paymentMethod: "PAY_LATER" };
 
-    await assert.rejects(loans.setGroupCreditAccountSettings(settings(privateGroup.id, true)), /expense groups/i);
-    await assert.rejects(loans.setGroupCreditAccountSettings(form([
-      ["expenseGroupId", String(household.id)], ["productKey", "spaylater"], ["active", "on"],
-    ])), /credit method/i);
-    assert.equal(await client.payLaterAccount.count(), 0);
+    await assert.rejects(loans.setGroupCreditAccountSettings(settings(privateGroup.id, "shopee")), /expense groups/i);
+    await assert.rejects(loans.setGroupCreditAccountSettings(settings(household.id, "custom:unknown")), /unavailable/i);
+    await loans.setGroupCreditAccountSettings(settings(household.id, "shopee"));
+    await loans.setGroupCreditAccountSettings(settings(household.id, "shopee"));
+    assert.equal(await client.financialAccount.count(), 0);
+    assert.equal(await client.expenseGroupPayLaterProvider.count(), 1);
+    assert.deepEqual((await loans.getExpenseGroupPayLater(household.id)).providers.filter(({ active }) => active),
+      [{ key: "shopee", name: "Shopee", active: true }]);
+    assert.deepEqual((await loans.getExpenseGroupPayLater(household.id)).accounts, []);
+    assert.deepEqual(await otherLoans.getExpenseGroupPayLater(household.id), { providers: [], accounts: [] });
 
-    const { id } = await loans.setGroupCreditAccountSettings(settings(household.id, true));
-    assert.equal((await loans.setGroupCreditAccountSettings(settings(household.id, true))).id, id);
-    assert.deepEqual(await client.financialAccount.findMany({
-      where: { payLaterAccountId: id },
-      select: { name: true, userId: true, type: true, currency: true },
-    }), [{ name: "SPayLater", userId: "alice", type: "PAY_LATER", currency: "PHP" }]);
-    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), [{ id, name: "SPayLater" }]);
-    assert.deepEqual(await loans.getEnabledCreditAccounts(travel.id), []);
-    assert.deepEqual(await otherLoans.getCreditAccountSettings(household.id), []);
-    assert.deepEqual(await otherLoans.getEnabledCreditAccounts(household.id), []);
-    await assert.rejects(otherLoans.setGroupCreditAccountSettings(form([
-      ["expenseGroupId", String(privateGroup.id)], ["creditAccountId", id],
-      ["active", "on"], ["supportsPayLater", "on"],
-    ])), /credit account is unavailable/i);
-
+    const { id } = await accounts.createPayLater(form([["name", "Personal installments"], ["providerKey", "shopee"]]));
+    const secondary = await accounts.createPayLater(form([["name", "Other Shopee account"], ["providerKey", "shopee"]]));
+    await loans.setGroupCreditAccountSettings(settings(household.id, "lazada"));
+    await otherLoans.setGroupCreditAccountSettings(settings(privateGroup.id, "shopee"));
+    assert.equal((await loans.getExpenseGroupPayLater(household.id)).accounts.length, 2);
     await assert.rejects(expenses.create(
-      travel.id, travel.categories[0].id, purchase, randomUUID(), financing("creditAccountId", id),
+      travel.id, travel.categories[0].id, purchase, randomUUID(), financing(id),
+    ), /credit account is unavailable/i);
+    await assert.rejects(expenses.create(
+      household.id, household.categories[0].id, purchase, randomUUID(), financing(id, "lazada"),
     ), /credit account is unavailable/i);
     await assert.rejects(otherExpenses.create(
-      privateGroup.id, privateGroup.categories[0].id, purchase, randomUUID(), financing("creditAccountId", id),
+      privateGroup.id, privateGroup.categories[0].id, purchase, randomUUID(), financing(id),
     ), /credit account is unavailable/i);
-    assert.equal(await client.expense.count(), 0);
-
-    const financed = await expenses.create(
-      household.id, household.categories[0].id, purchase, randomUUID(), financing("creditAccountId", id),
-    );
-    const plan = await client.repaymentPlan.findUniqueOrThrow({ where: { expenseId: financed.id } });
-    await loans.setGroupCreditAccountSettings(settings(household.id, false));
-    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), []);
-    assert.equal((await loans.getRepaymentPlan(plan.id))?.creditAccount.name, "SPayLater");
     await assert.rejects(expenses.create(
-      household.id, household.categories[0].id, purchase, randomUUID(), financing("creditAccountId", id),
+      household.id, household.categories[0].id, purchase, randomUUID(), form([["creditAccountName", "Inline account"]]),
+    ), /existing Pay Later account/i);
+    assert.equal(await client.expense.count(), 0);
+    assert.equal(await client.financialAccount.count(), 2);
+
+    const draftId = randomUUID();
+    const financed = await expenses.create(household.id, household.categories[0].id, purchase, draftId, financing(secondary.id));
+    assert.equal((await expenses.create(household.id, household.categories[0].id, purchase, draftId, financing(secondary.id))).id, financed.id);
+    const plan = await client.repaymentPlan.findUniqueOrThrow({ where: { expenseId: financed.id } });
+    assert.equal(plan.creditAccountId, secondary.id);
+    await loans.setGroupCreditAccountSettings(settings(household.id, "shopee", false));
+    assert.equal((await loans.getRepaymentPlan(plan.id))?.creditAccount.name, "Other Shopee account");
+    await assert.rejects(expenses.create(
+      household.id, household.categories[0].id, purchase, randomUUID(), financing(id),
     ), /credit account is unavailable/i);
     assert.equal(await client.expense.count(), 1);
 
-    const customDraftId = randomUUID();
-    const customPurchase = await expenses.create(
-      travel.id, travel.categories[0].id, purchase, customDraftId, financing("creditAccountName", "Example Pay Later"),
-    );
-    assert.equal((await expenses.create(
-      travel.id, travel.categories[0].id, purchase, customDraftId, financing("creditAccountName", "Example Pay Later"),
-    )).id, customPurchase.id);
-    const [customAccount] = await loans.getEnabledCreditAccounts(travel.id);
-    assert.equal(customAccount.name, "Example Pay Later");
-    assert.deepEqual(await client.financialAccount.findMany({
-      where: { payLaterAccountId: customAccount.id },
-      select: { name: true, userId: true, type: true, currency: true },
-    }), [{ name: "Example Pay Later", userId: "alice", type: "PAY_LATER", currency: "PHP" }]);
-    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), []);
-    assert.deepEqual(
-      (await loans.getCreditAccountSettings(travel.id)).find((account) => account.id === customAccount.id)?.assignment,
-      { active: true, supportsPayLater: true },
-    );
-
-    const accounts = createFinancialAccountAccess(client, async () => "alice");
-    await assert.rejects(accounts.createPayLater(form([["name", "  "]])), /account name/i);
-    assert.equal(await client.payLaterAccount.count(), 2);
-    const configured = await accounts.createPayLater(form([["name", " Store installments "]]));
-    assert.equal((await accounts.createPayLater(form([["name", "store   installments"]]))).id, configured.id);
-    assert.ok((await accounts.list()).some(({ name, type }) => name === "Store installments" && type === "PAY_LATER"));
-    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), []);
-
-    const customSettings = (expenseGroupId: number) => form([
-      ["expenseGroupId", String(expenseGroupId)], ["creditAccountId", configured.id], ["active", "on"], ["supportsPayLater", "on"],
-    ]);
-    await assert.rejects(loans.setGroupCreditAccountSettings(customSettings(privateGroup.id)), /expense groups/i);
-    await loans.setGroupCreditAccountSettings(customSettings(household.id));
-    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), [{ id: configured.id, name: "Store installments" }]);
-    assert.deepEqual(await loans.getEnabledCreditAccounts(travel.id), [customAccount]);
-    const configuredPurchase = await expenses.create(
-      household.id, household.categories[0].id, purchase, randomUUID(), financing("creditAccountId", configured.id),
-    );
-    assert.equal((await client.repaymentPlan.findUniqueOrThrow({
-      where: { expenseId: configuredPurchase.id },
-    })).creditAccountId, configured.id);
+    const customName = "Local Store";
+    const customKey = customPayLaterProviderKey(customName);
+    await accounts.createPayLater(form([["name", "Store installments"], ["providerKey", "other"], ["providerName", customName]]));
+    await loans.setGroupCreditAccountSettings(settings(travel.id, customKey));
+    assert.deepEqual((await loans.getExpenseGroupPayLater(travel.id)).providers.filter(({ active }) => active),
+      [{ key: customKey, name: customName, active: true }]);
+    const customAccount = (await accounts.list()).find(({ name }) => name === "Store installments")!;
+    await accounts.remove(customAccount.id);
+    assert.deepEqual((await loans.getExpenseGroupPayLater(travel.id)).providers.filter(({ active }) => active),
+      [{ key: customKey, name: customName, active: true }]);
   } finally {
     await fixture.close();
   }
 });
 
-test("Pay Later presets opt in per group and reuse a matching custom provider", async () => {
+test("every preset can be enabled without creating a financial account", async () => {
   const fixture = await createTestDatabase();
   const { client } = fixture;
   try {
     await client.user.create({ data: { id: "alice", name: "Alice", email: "alice@example.test" } });
-    const { id: expenseGroupId, categories } = await client.expenseGroup.create({
-      data: { name: "Household", userId: "alice", categories: { create: { name: "Purchases" } } },
-      include: { categories: true },
-    });
-    const otherGroup = await client.expenseGroup.create({ data: { name: "Travel", userId: "alice" } });
+    const { id } = await client.expenseGroup.create({ data: { name: "Household", userId: "alice" } });
+    const { id: otherId } = await client.expenseGroup.create({ data: { name: "Travel", userId: "alice" } });
     const loans = createLoanAccess(client, async () => "alice");
-    const expenses = createExpenseAccess(client, async () => "alice");
-    const purchase = await expenses.create(
-      expenseGroupId, categories[0].id,
-      { title: "Purchase", amount: "100", date: "2026-11-20", paymentMethod: "PAY_LATER" },
-      randomUUID(),
-      form([["creditAccountName", "ATOME CARD"], ["installmentDate", "2026-12-15"], ["installmentAmount", "100"]]),
-    );
-    const { creditAccountId } = await client.repaymentPlan.findUniqueOrThrow({ where: { expenseId: purchase.id } });
-    await client.financialAccount.update({
-      where: { payLaterAccountId_userId: { payLaterAccountId: creditAccountId, userId: "alice" } },
-      data: { name: "My Atome Card" },
-    });
-
-    const presets = creditProducts.filter(({ key }) => key !== spayLaterProduct.key);
-    for (const { key, name } of presets) {
-      const settings = form([
-        ["expenseGroupId", String(expenseGroupId)], ["productKey", key], ["active", "on"], ["supportsPayLater", "on"],
-      ]);
-      const { id } = await loans.setGroupCreditAccountSettings(settings);
-      assert.equal((await loans.setGroupCreditAccountSettings(settings)).id, id);
-      const provider = await client.payLaterAccount.findUniqueOrThrow({ where: { id }, include: { financialAccount: true } });
-      assert.equal(provider.key, key);
-      if (key === "atome card") {
-        assert.equal(provider.id, creditAccountId);
-        assert.equal(provider.name, "ATOME CARD");
-        assert.equal(provider.financialAccount?.name, "My Atome Card");
-      } else {
-        assert.equal(provider.name, name);
-        assert.equal(provider.financialAccount?.name, name);
-      }
+    for (const { key } of payLaterProviders) {
+      await loans.setGroupCreditAccountSettings(form([["expenseGroupId", String(id)], ["providerKey", key], ["active", "on"]]));
     }
-    assert.equal(await client.payLaterAccount.count(), presets.length);
-    assert.equal((await loans.getEnabledCreditAccounts(expenseGroupId)).length, presets.length);
-    assert.deepEqual(await loans.getEnabledCreditAccounts(otherGroup.id), []);
+    assert.equal((await loans.getExpenseGroupPayLater(id)).providers.filter(({ active }) => active).length, payLaterProviders.length);
+    assert.equal((await loans.getExpenseGroupPayLater(otherId)).providers.filter(({ active }) => active).length, 0);
+    assert.equal(await client.financialAccount.count(), 0);
   } finally {
     await fixture.close();
   }
@@ -222,7 +165,7 @@ test("cash loans and existing repayment plans stay private and payable one oblig
     assert.equal(await client.loan.count(), 1);
 
     const account = await client.payLaterAccount.create({
-      data: { userId: "alice", name: "SPayLater", key: "spaylater" },
+      data: { userId: "alice", name: "SPayLater", key: "spaylater", providerKey: "shopee" },
     });
     async function seedExistingPurchase(title: string, amountCentavos: number) {
       const expense = await client.expense.create({

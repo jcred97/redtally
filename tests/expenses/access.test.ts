@@ -672,7 +672,7 @@ test("expense writes validate money, dates, category membership, and current own
       const payLater = { ...validInput, title: "Financed purchase", paymentMethod: "PAY_LATER" };
       const createPurchase = (financing?: FormData) =>
         alice.create(aliceGroup.id, aliceCategory.id, payLater, submissionId, financing);
-      await assert.rejects(createPurchase(), /Enter a schedule with/);
+      await assert.rejects(createPurchase(), /Choose a credit provider and an existing Pay Later account/);
 
       const ordinary = await alice.create(aliceGroup.id, aliceCategory.id, validInput, randomUUID());
       await assert.rejects(
@@ -682,12 +682,20 @@ test("expense writes validate money, dates, category membership, and current own
       assert.equal((await client.expense.findUniqueOrThrow({ where: { id: ordinary.id } })).paymentMethod, null);
 
       const financing = new FormData();
-      financing.set("creditAccountName", "Test installment provider");
+      const account = await client.payLaterAccount.create({
+        data: { userId: "alice", name: "Test installment account", key: "test installment account", providerKey: "shopee" },
+      });
+      await client.expenseGroupPayLaterProvider.create({
+        data: { expenseGroupId: aliceGroup.id, userId: "alice", providerKey: "shopee", active: true },
+      });
+      financing.set("creditAccountId", account.id);
+      financing.set("creditProviderKey", "shopee");
+      await assert.rejects(createPurchase(financing), /Enter a schedule with/);
       financing.append("installmentDate", "2026-11-27");
       financing.append("installmentAmount", "75.00");
       await assert.rejects(createPurchase(financing), /Scheduled payments must cover the full amount/);
       assert.equal(await client.expenseSubmission.count({ where: { expenseGroupId: aliceGroup.id, id: submissionId } }), 0);
-      assert.equal(await client.payLaterAccount.count({ where: { userId: "alice", name: "Test installment provider" } }), 0);
+      assert.equal(await client.repaymentPlan.count(), 0);
 
       financing.append("installmentDate", "2026-12-27");
       financing.append("installmentAmount", "75.75");
@@ -698,6 +706,7 @@ test("expense writes validate money, dates, category membership, and current own
         include: { installments: { orderBy: { dueDate: "asc" } } },
       });
       assert.deepEqual(repaymentPlan.installments.map(({ amountCentavos }) => amountCentavos), [7500, 7575]);
+      assert.equal(repaymentPlan.creditAccountId, account.id);
 
       const renamed = await alice.update(
         aliceGroup.id, historical.id, aliceCategory.id,

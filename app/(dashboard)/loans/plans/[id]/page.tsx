@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRepaymentPlan } from "@/app/lib/loans/queries";
+import { getPayLaterProviderName } from "@/app/lib/loans/credit-products";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import LoanDetail from "../../_components/LoanDetail";
@@ -24,7 +25,8 @@ export default async function RepaymentPlanPage({ params }: { params: Promise<{ 
         facts={[
           { label: "Expense group", value: group.name },
           { label: "Purchase amount", value: formatPesoAmount(expense.amountCentavos) },
-          { label: "Provider", value: creditAccount.name },
+          { label: "Credit provider", value: getPayLaterProviderName(creditAccount.providerKey, creditAccount.providerName) },
+          { label: "Pay Later account", value: creditAccount.financialAccount?.name ?? creditAccount.name },
           { label: "Repayment type", value: installments.length === 1 ? "One-time" : "Installments" },
         ]}
       />

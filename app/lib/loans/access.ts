@@ -2,12 +2,11 @@ import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { MAX_AMOUNT_CENTAVOS, sumCentavos } from "@/app/lib/expenses/money";
-import { creditProducts } from "./credit-products";
+import { getPayLaterProviderName, payLaterProviders } from "./credit-products";
 import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, readText, validateInstallmentTotal } from "./form";
 
 const cashFrequencies = ["One-time", "Weekly", "Monthly", "Other"];
 const groupSelect = { id: true, publicId: true, name: true } as const;
-const creditAccountSelect = { id: true, name: true } as const;
 const expenseInclude = { category: { include: { expenseGroup: { select: groupSelect } } } } as const;
 
 function isExpenseGroupId(id: number) {
@@ -37,7 +36,7 @@ function loanInclude(userId: string) {
 
 function planInclude(userId: string) {
   return {
-    creditAccount: { select: { name: true } },
+    creditAccount: { select: { name: true, providerKey: true, providerName: true, financialAccount: { select: { name: true } } } },
     expense: { include: expenseInclude },
     installments: installmentsFor(userId),
   } as const;
@@ -154,63 +153,53 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       return db.repaymentPlan.findUnique({ where: { id, ...ownedPlan(userId) }, include: planInclude(userId) });
     },
 
-    async getCreditAccountSettings(expenseGroupId: number) {
+    async getExpenseGroupPayLater(expenseGroupId: number) {
       const userId = await requireUserId();
-      if (!isExpenseGroupId(expenseGroupId)) return [];
-
-      const accounts = await db.payLaterAccount.findMany({
-        where: { userId, user: { expenseGroups: { some: { id: expenseGroupId } } } },
+      if (!isExpenseGroupId(expenseGroupId)) return { providers: [], accounts: [] };
+      const group = await db.expenseGroup.findUnique({
+        where: { id: expenseGroupId, userId },
         select: {
-          ...creditAccountSelect,
-          key: true,
-          enabled: true,
-          assignments: { where: { expenseGroupId }, select: { active: true, supportsPayLater: true } },
+          payLaterProviders: { select: { providerKey: true, providerName: true, active: true } },
+          user: { select: { payLaterAccounts: {
+            where: { financialAccount: { active: true, type: "PAY_LATER" } },
+            select: { id: true, providerKey: true, providerName: true, financialAccount: { select: { name: true } } },
+            orderBy: [{ financialAccount: { name: "asc" } }, { id: "asc" }],
+          } } },
         },
-        orderBy: { name: "asc" },
       });
-      return accounts.map(({ assignments, ...account }) => ({ ...account, assignment: assignments[0] ?? null }));
-    },
+      if (!group?.user) return { providers: [], accounts: [] };
 
-    async getEnabledCreditAccounts(expenseGroupId: number) {
-      const userId = await requireUserId();
-      if (!isExpenseGroupId(expenseGroupId)) return [];
-
-      return db.payLaterAccount.findMany({
-        where: {
-          userId,
-          user: { expenseGroups: { some: { id: expenseGroupId } } },
-          OR: [
-            { assignments: { some: { expenseGroupId, active: true, supportsPayLater: true } } },
-            { enabled: true, assignments: { none: { expenseGroupId } } },
-          ],
-        },
-        select: creditAccountSelect,
-        orderBy: { name: "asc" },
+      const providers = new Map<string, { key: string; name: string; active: boolean }>(
+        payLaterProviders.map((provider) => [provider.key, { ...provider, active: false }]),
+      );
+      for (const { providerKey, providerName, active } of group.payLaterProviders) {
+        providers.set(providerKey, { key: providerKey, name: getPayLaterProviderName(providerKey, providerName), active });
+      }
+      const accounts = group.user.payLaterAccounts.flatMap(({ id, providerKey, providerName, financialAccount }) => {
+        if (!providers.has(providerKey)) {
+          providers.set(providerKey, { key: providerKey, name: getPayLaterProviderName(providerKey, providerName), active: false });
+        }
+        return financialAccount ? [{ id, providerKey, name: financialAccount.name }] : [];
       });
+      return { providers: [...providers.values()], accounts };
     },
 
     async setGroupCreditAccountSettings(formData: FormData) {
       const userId = await requireUserId();
       const [rawGroupId, extraGroupId] = formData.getAll("expenseGroupId");
-      const [productKey, extraKey] = formData.getAll("productKey");
-      const [accountId, extraAccountId] = formData.getAll("creditAccountId");
+      const [providerKey, extraKey] = formData.getAll("providerKey");
       const [activeValue, extraActive] = formData.getAll("active");
-      const [methodValue, extraMethod] = formData.getAll("supportsPayLater");
       const expenseGroupId = Number(rawGroupId);
-      const product = creditProducts.find((candidate) => candidate.key === productKey);
       const active = activeValue === "on";
-      const supportsPayLater = methodValue === "on";
 
       if (typeof rawGroupId !== "string" || !/^[1-9]\d{0,9}$/.test(rawGroupId) ||
         !isExpenseGroupId(expenseGroupId) || extraGroupId !== undefined) {
         throw new TypeError("Choose one of your expense groups.");
       }
-      if ((productKey === undefined ? !isLoanId(accountId) : !product || accountId !== undefined) ||
-        extraKey !== undefined || extraAccountId !== undefined || extraActive !== undefined || extraMethod !== undefined ||
-        (activeValue !== undefined && !active) || (methodValue !== undefined && !supportsPayLater)) {
-        throw new TypeError("Choose a valid credit account and setting.");
+      if (typeof providerKey !== "string" || !providerKey || providerKey.length > 127 ||
+        extraKey !== undefined || extraActive !== undefined || (activeValue !== undefined && !active)) {
+        throw new TypeError("Choose a valid credit provider and setting.");
       }
-      if (active && !supportsPayLater) throw new TypeError("Choose at least one credit method to enable this credit account.");
 
       return db.$transaction(async (tx) => {
         const [group] = await tx.$queryRaw<{ id: number }[]>`
@@ -218,31 +207,20 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
         `;
         if (!group) throw new TypeError("Choose one of your expense groups.");
 
-        if (product) {
-          // The first group setting must leave other groups at their default availability.
-          await tx.payLaterAccount.createMany({
-            data: { userId, key: product.key, name: product.name, enabled: false },
-            skipDuplicates: true,
-          });
+        const key = { expenseGroupId, providerKey };
+        const where = { expenseGroupId_providerKey: key };
+        let providerName: string | null = null;
+        if (!payLaterProviders.some((provider) => provider.key === providerKey)) {
+          const provider = await tx.expenseGroupPayLaterProvider.findUnique({ where, select: { providerName: true } })
+            ?? await tx.payLaterAccount.findFirst({ where: { userId, providerKey }, select: { providerName: true } });
+          if (!provider) throw new TypeError("This credit provider is unavailable.");
+          providerName = provider.providerName;
         }
-
-        // Use the same account lock as financed purchases before changing eligibility.
-        const [account] = product
-          ? await tx.$queryRaw<{ id: string }[]>`
-            SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND key = ${product.key} FOR UPDATE
-          `
-          : await tx.$queryRaw<{ id: string }[]>`
-            SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND id = ${accountId}::uuid FOR UPDATE
-          `;
-        if (!account) throw new TypeError("This credit account is unavailable.");
-
-        const assignment = { expenseGroupId, creditAccountId: account.id };
-        await tx.creditAccountAssignment.upsert({
-          where: { expenseGroupId_creditAccountId: assignment },
-          create: { ...assignment, userId, active },
-          update: active ? { active, supportsPayLater } : { active },
+        return tx.expenseGroupPayLaterProvider.upsert({
+          where,
+          create: { ...key, userId, providerName, active },
+          update: { active },
         });
-        return account;
       });
     },
 

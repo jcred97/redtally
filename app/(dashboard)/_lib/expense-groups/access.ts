@@ -1,5 +1,6 @@
 import { PaymentMethod, Prisma, type Expense, type PrismaClient } from "@/generated/prisma/client";
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
+import { getPayLaterProviderName } from "@/app/lib/loans/credit-products";
 
 // Expense-group IDs use PostgreSQL's signed INTEGER column.
 const MAX_EXPENSE_GROUP_ID = 2_147_483_647;
@@ -21,6 +22,7 @@ type ExpensePageRow = {
       bankName: string | null;
       repaymentPlanId: string | null;
       creditProviderName: string | null;
+      creditProviderKey: string | null;
       dayExpenseCount: bigint | null;
       dayTotalCentavos: bigint | null;
     })
@@ -369,7 +371,7 @@ export function createExpenseGroupAccess(
           expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName",
-          plan.id AS "repaymentPlanId", credit.name AS "creditProviderName"
+          plan.id AS "repaymentPlanId", credit."providerKey" AS "creditProviderKey", credit."providerName" AS "creditProviderName"
         FROM pagination
         LEFT JOIN LATERAL (
           SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
@@ -420,7 +422,7 @@ export function createExpenseGroupAccess(
           category: { name: row.categoryName, icon: row.categoryIcon },
           bankAssignment: row.bankName === null ? null : { bank: { name: row.bankName } },
           repaymentPlanId: row.repaymentPlanId,
-          creditProviderName: row.creditProviderName,
+          creditProviderName: row.creditProviderKey ? getPayLaterProviderName(row.creditProviderKey, row.creditProviderName) : null,
         })),
       };
     },
@@ -502,6 +504,7 @@ export function createExpenseGroupAccess(
             budgets: true,
             bankAssignments: true,
             creditAccountAssignments: { select: { creditAccountId: true, active: true, supportsPayLater: true } },
+            payLaterProviders: { select: { providerKey: true, providerName: true, active: true } },
             categories: { orderBy: { id: "asc" } },
           },
         });
@@ -545,6 +548,14 @@ export function createExpenseGroupAccess(
           await tx.creditAccountAssignment.createMany({
             data: source.creditAccountAssignments.map((assignment) => ({
               ...assignment, expenseGroupId: copy.id, userId,
+            })),
+          });
+        }
+
+        if (source.payLaterProviders.length > 0) {
+          await tx.expenseGroupPayLaterProvider.createMany({
+            data: source.payLaterProviders.map((provider) => ({
+              ...provider, expenseGroupId: copy.id, userId,
             })),
           });
         }

@@ -39,6 +39,7 @@ test("financial account registry scopes owners, validates new accounts, and safe
     await assert.rejects(anonymous.list(), /Sign in required/);
     await assert.rejects(anonymous.listBanks(), /Sign in required/);
     await assert.rejects(anonymous.create(draft({ accountId: "invalid" })), /Sign in required/);
+    await assert.rejects(anonymous.createPayLater(draft({ type: "PAY_LATER" })), /Sign in required/);
     const banks = await alice.listBanks();
     assert.ok(banks.some(({ id }) => id === bank.id));
     assert.ok(!banks.some(({ id }) => id === inactive.id));
@@ -54,6 +55,8 @@ test("financial account registry scopes owners, validates new accounts, and safe
     ] as const) {
       await assert.rejects(alice.create(draft(fields)), error);
     }
+    await assert.rejects(alice.createPayLater(draft({ type: "PAY_LATER", providerKey: "invalid" })), /credit provider/i);
+    await assert.rejects(alice.createPayLater(draft({ type: "PAY_LATER", providerKey: "other", providerName: " " })), /custom provider name/i);
     assert.equal(await client.financialAccount.count(), 0);
 
     const savings = draft({ name: "  BPI Savings  ", currency: "php", bankId: String(bank.id), userId: "bob" });
@@ -65,15 +68,30 @@ test("financial account registry scopes owners, validates new accounts, and safe
     savings.set("currency", "USD");
     await assert.rejects(alice.create(savings), /draft could not be saved/);
     await bob.create(draft({ name: "Bob's wallet", type: "WALLET", currency: "USD" }));
-    const provider = await client.payLaterAccount.create({
-      data: { userId: "alice", name: "SPayLater", key: "spaylater", enabled: false },
+    const { id: providerId } = await alice.createPayLater(draft({ name: "Shopee purchases", type: "PAY_LATER", providerKey: "shopee" }));
+    const retry = await alice.createPayLater(draft({ name: "  shopee   purchases  ", type: "PAY_LATER", providerKey: "shopee" }));
+    assert.equal(retry.id, providerId);
+    await assert.rejects(alice.createPayLater(draft({ name: "Shopee purchases", type: "PAY_LATER", providerKey: "lazada" })), /provider/i);
+    const provider = await client.payLaterAccount.findUniqueOrThrow({
+      where: { id: providerId },
       select: { financialAccount: { select: { id: true } } },
     });
     assert.ok(provider.financialAccount);
+    const { id: customId } = await alice.createPayLater(draft({
+      name: "Weekend purchases", type: "PAY_LATER", providerKey: "other", providerName: "  Store   installments  ",
+    }));
+    const custom = await client.payLaterAccount.findUniqueOrThrow({
+      where: { id: customId },
+      select: { financialAccount: { select: { id: true } } },
+    });
+    assert.ok(custom.financialAccount);
 
     assert.deepEqual(await alice.list(), [
-      { id, name: "BPI Savings", type: "SAVINGS", currency: "PHP", bank: { name: bank.name } },
-      { id: provider.financialAccount.id, name: "SPayLater", type: "PAY_LATER", currency: "PHP", bank: null },
+      { id, name: "BPI Savings", type: "SAVINGS", currency: "PHP", bank: { name: bank.name }, payLaterAccount: null },
+      { id: provider.financialAccount.id, name: "Shopee purchases", type: "PAY_LATER", currency: "PHP", bank: null,
+        payLaterAccount: { providerKey: "shopee", providerName: null } },
+      { id: custom.financialAccount.id, name: "Weekend purchases", type: "PAY_LATER", currency: "PHP", bank: null,
+        payLaterAccount: { providerKey: "custom:store installments", providerName: "Store installments" } },
     ]);
     assert.deepEqual((await bob.list()).map(({ name, currency }) => ({ name, currency })), [
       { name: "Bob's wallet", currency: "USD" },
@@ -109,7 +127,7 @@ test("account edits are owner-scoped and deletion preserves financed purchases",
     });
     for (const withPurchase of [true, false]) {
       const provider = await client.payLaterAccount.create({
-        data: { userId: "alice", name: "Example provider", key: String(withPurchase) },
+        data: { userId: "alice", name: "Example provider", key: String(withPurchase), providerKey: "shopee" },
         include: { financialAccount: true },
       });
       assert.ok(provider.financialAccount);

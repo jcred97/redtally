@@ -11,6 +11,5 @@ export const {
   getCashLoansForExpenseGroup,
   getCashLoan,
   getRepaymentPlan,
-  getCreditAccountSettings,
-  getEnabledCreditAccounts,
+  getExpenseGroupPayLater,
 } = access;

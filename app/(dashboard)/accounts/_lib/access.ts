@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { customPayLaterProviderKey, payLaterProviders } from "@/app/lib/loans/credit-products";
 import { saveCreditAccount } from "@/app/lib/loans/financing";
 import { manualFinancialAccountTypes, supportsFinancialAccountBank } from "./types";
 
@@ -18,7 +19,11 @@ export function createFinancialAccountAccess(db: PrismaClient, requireUserId: ()
       const userId = await requireUserId();
       return db.financialAccount.findMany({
         where: { userId },
-        select: { id: true, name: true, type: true, currency: true, bank: { select: { name: true } } },
+        select: {
+          id: true, name: true, type: true, currency: true,
+          bank: { select: { name: true } },
+          payLaterAccount: { select: { providerKey: true, providerName: true } },
+        },
         orderBy: [{ name: "asc" }, { id: "asc" }],
       });
     },
@@ -94,7 +99,16 @@ export function createFinancialAccountAccess(db: PrismaClient, requireUserId: ()
     async createPayLater(formData: FormData) {
       const userId = await requireUserId();
       const name = readAccountName(formData.get("name"));
-      return db.$transaction((tx) => saveCreditAccount(tx, userId, name));
+      const providerKey = formData.get("providerKey");
+      if (providerKey === "other") {
+        const rawName = formData.get("providerName");
+        const providerName = typeof rawName === "string" ? rawName.trim().replace(/\s+/g, " ") : "";
+        if (!providerName || providerName.length > 120) throw new TypeError("Enter a custom provider name up to 120 characters.");
+        return db.$transaction((tx) => saveCreditAccount(tx, userId, name, customPayLaterProviderKey(providerName), providerName));
+      }
+      const provider = payLaterProviders.find(({ key }) => key === providerKey);
+      if (!provider) throw new TypeError("Choose a valid credit provider.");
+      return db.$transaction((tx) => saveCreditAccount(tx, userId, name, provider.key));
     },
 
     async remove(id: string) {

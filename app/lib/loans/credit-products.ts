@@ -1,10 +1,16 @@
-export const spayLaterProduct = { provider: "Shopee", key: "spaylater", name: "SPayLater" } as const;
-
-export const creditProducts = [
-  spayLaterProduct,
-  { provider: "Lazada", key: "lazpaylater", name: "LazPayLater" },
-  { provider: "GCash", key: "ggives", name: "GGives" },
-  { provider: "Atome", key: "atome card", name: "Atome Card" },
-  { provider: "BillEase", key: "billease", name: "BillEase" },
-  { provider: "Home Credit", key: "home credit installment shopping", name: "Home Credit Installment Shopping" },
+export const payLaterProviders = [
+  { key: "shopee", name: "Shopee" },
+  { key: "lazada", name: "Lazada" },
+  { key: "gcash", name: "GCash" },
+  { key: "atome", name: "Atome" },
+  { key: "billease", name: "BillEase" },
+  { key: "home-credit", name: "Home Credit" },
 ] as const;
+
+export function customPayLaterProviderKey(name: string) {
+  return `custom:${name.trim().replace(/\s+/g, " ").toLowerCase()}`;
+}
+
+export function getPayLaterProviderName(key: string, customName?: string | null) {
+  return payLaterProviders.find((provider) => provider.key === key)?.name ?? customName ?? key.replace(/^custom:/, "");
+}

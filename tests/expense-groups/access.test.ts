@@ -340,10 +340,16 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         data: { expenseGroupId: source.id, budgetMonth, amountCentavos: 500_000, description: "November trip" },
       });
       const provider = await client.payLaterAccount.create({
-        data: { userId: "alice", name: "Pay Later provider", key: "pay later provider", enabled: false },
+        data: { userId: "alice", name: "Pay Later provider", key: "pay later provider", enabled: false, providerKey: "custom:pay later provider", providerName: "Pay Later provider" },
       });
       await client.creditAccountAssignment.create({
         data: { expenseGroupId: source.id, creditAccountId: provider.id, userId: "alice", active: true, supportsPayLater: true },
+      });
+      await client.expenseGroupPayLaterProvider.createMany({
+        data: [
+          { expenseGroupId: source.id, userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true },
+          { expenseGroupId: source.id, userId: "alice", providerKey: "shopee", active: false },
+        ],
       });
 
       const date = new Date("2026-11-06T00:00:00Z");
@@ -408,6 +414,14 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
           { expenseGroupId: id, active: true, supportsPayLater: true },
         ],
       );
+      assert.deepEqual(await client.expenseGroupPayLaterProvider.findMany({
+        where: { expenseGroupId: id },
+        select: { userId: true, providerKey: true, providerName: true, active: true },
+        orderBy: { providerKey: "asc" },
+      }), [
+        { userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true },
+        { userId: "alice", providerKey: "shopee", providerName: null, active: false },
+      ]);
       assert.equal(copy.expenseSubmissions.length, 0);
       assert.equal(copy.budgets.length, 1);
       assert.equal(copy.budgets[0].amountCentavos, 500_000);

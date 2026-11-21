@@ -30,11 +30,11 @@ export async function createCashLoan(_previous: LoanActionState, formData: FormD
 
 export async function setGroupCreditAccountSettings(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
   try {
-    const { id } = await access.setGroupCreditAccountSettings(formData);
+    await access.setGroupCreditAccountSettings(formData);
     revalidatePath("/spending/[id]", "page");
     revalidatePath("/accounts");
     revalidatePath("/");
-    return { success: true, id };
+    return { success: true };
   } catch (error) {
     if (error instanceof TypeError) return { error: error.message };
     throw error;
