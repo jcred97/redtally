@@ -303,7 +303,8 @@ test("empty current month offers older history", async ({ page }) => {
   await expect(history.getByText("No expenses this month", { exact: true })).toHaveCount(0);
 });
 
-test("an owner can delete an empty group after disabling its bank", async ({ page }) => {
+test("an owner can switch payment provider tabs and delete an empty group after disabling its bank", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/expense-groups");
   await page.getByRole("button", { name: /New.*Group/ }).click();
   const create = page.getByRole("dialog", { name: "New Expense Group" });
@@ -313,7 +314,21 @@ test("an owner can delete an empty group after disabling its bank", async ({ pag
   await groupLink.click();
   await page.getByRole("link", { name: "Payment Provider", exact: true }).click();
 
+  const providers = page.getByRole("navigation", { name: "Payment provider views" });
+  const banks = providers.getByRole("link", { name: "Banks", exact: true });
+  const payLater = providers.getByRole("link", { name: "Pay Later", exact: true });
+  await expect(banks).toHaveAttribute("aria-current", "page");
+  await expect(payLater).toBeInViewport();
+  await expect(page.getByRole("link", { name: "Jump to Pay Later" })).toHaveCount(0);
   const disabledBank = page.getByRole("button", { name: "BPI Not enabled", exact: true });
+  await payLater.click();
+  await expect(payLater).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: /^Shopee / })).toBeInViewport();
+  await expect(disabledBank).toHaveCount(0);
+  await page.reload();
+  await expect(payLater).toHaveAttribute("aria-current", "page");
+  await page.goBack();
+  await expect(banks).toHaveAttribute("aria-current", "page");
   await disabledBank.click();
   const bank = page.getByRole("dialog", { name: "BPI", exact: true });
   const enabled = bank.getByLabel("Enable for this expense group");

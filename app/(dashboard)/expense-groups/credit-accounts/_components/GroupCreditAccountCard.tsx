@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
@@ -40,7 +41,11 @@ export default function GroupCreditAccountCard({ expenseGroupId, title, initials
   return (
     <FormDialog
       triggerLabel={(
-        <SettingsTileLabel name={title} status={savedEnabled ? "Enabled" : "Not enabled"} enabled={savedEnabled} icon={(
+        <SettingsTileLabel name={title} status={savedEnabled ? "Enabled" : "Not enabled"} enabled={savedEnabled} icon={productKey === "spaylater" ? (
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white">
+            <Image src="/branding/shopee.svg" alt="" width={32} height={32} unoptimized />
+          </span>
+        ) : (
           <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-gray-700 text-xs font-semibold uppercase text-gray-100">
             {initials}
           </span>

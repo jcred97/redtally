@@ -97,16 +97,27 @@ test("the Payment Provider tab preserves the group and the grouped-history prefe
   const links = expenseGroupLinks("public-id", view);
 
   assert.equal(view.showPaymentProviders, true);
+  assert.equal(view.showPayLater, false);
   assert.equal(view.showExpenses, false);
   assert.equal(links.groupPath + links.paymentProvidersTab, "/spending/public-id?tab=payment-providers&view=grouped");
   assert.equal(links.tabSuffix, links.paymentProvidersTab);
   assert.equal(links.expensesHref, "/spending/public-id?view=grouped");
+
+  const payLater = parseExpenseGroupQuery({ tab: "payment-providers", provider: "pay-later", view: "grouped" }, today);
+  assert.equal(payLater.showPayLater, true);
+  assert.equal(links.groupPath + links.payLaterTab, "/spending/public-id?tab=payment-providers&view=grouped&provider=pay-later");
+  assert.equal(expenseGroupLinks("public-id", payLater).tabSuffix, links.payLaterTab);
+
+  for (const provider of ["invalid", ["pay-later", "banks"]]) {
+    assert.equal(parseExpenseGroupQuery({ tab: "payment-providers", provider }, today).showPayLater, false);
+  }
+  assert.equal(parseExpenseGroupQuery({ provider: "pay-later" }, today).showPayLater, false);
 });
 
-test("old provider tabs redirect to the combined tab without dropping query parameters", () => {
+test("old provider tabs redirect to their provider view without dropping other query parameters", () => {
   assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "payment-providers" }), null);
-  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "banks", view: "grouped" }),
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "banks", view: "grouped", provider: "pay-later" }),
     "/spending/public-id?tab=payment-providers&view=grouped");
   assert.equal(expenseGroupRedirectHref("42", "public-id", { tab: "credit-accounts", view: "grouped" }),
-    "/spending/public-id?tab=payment-providers&view=grouped#pay-later-title");
+    "/spending/public-id?tab=payment-providers&view=grouped&provider=pay-later");
 });

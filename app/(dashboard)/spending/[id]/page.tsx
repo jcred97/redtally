@@ -52,15 +52,16 @@ export default async function ExpenseGroupPage({
   const today = getManilaToday();
   const view = parseExpenseGroupQuery(query, today);
   const {
-    showCategories, showPaymentProviders, showRecurring, showDashboard, showExpenses,
+    showCategories, showPaymentProviders, showPayLater, showRecurring, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, dashboardMonth, filters, merchant,
   } = view;
+  const showBanks = showPaymentProviders && !showPayLater;
 
   const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyBankOptions, merchantLabel, recurringExpenses, dashboard, linkedLoans] = await Promise.all([
     getExpenseGroupById(id),
     getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
-    showPaymentProviders ? getBankCatalogForExpenseGroup(id) : null,
+    showBanks ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring || showDashboard ? getExpenseBankOptions(id) : [],
     showExpenses ? getExpenseHistoryBankOptionsByExpenseGroupId(id) : [],
     showExpenses && merchant && merchant !== "none" ? getExpenseHistoryMerchantLabel(id, merchant) : null,
@@ -69,7 +70,7 @@ export default async function ExpenseGroupPage({
     showDashboard ? getCashLoansForExpenseGroup(id) : [],
   ]);
 
-  if (!expenseGroup || (showExpenses && !expensePage) || (showPaymentProviders && !bankCatalog) || (showDashboard && !dashboard)) {
+  if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
     notFound();
   }
   const historyAvailability = expensePage?.totalExpenses === 0
@@ -78,7 +79,7 @@ export default async function ExpenseGroupPage({
   if (historyAvailability === null) notFound();
 
   const links = expenseGroupLinks(expenseGroup.publicId, view);
-  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, recurringTab, dashboardTab, tabSuffix } = links;
+  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
   const activeTabId = "expense-group-active-tab";
@@ -163,10 +164,27 @@ export default async function ExpenseGroupPage({
             banks={bankOptions}
             rules={recurringExpenses}
           />
-        ) : bankCatalog ? (
-          <div key={expenseGroup.id} className="space-y-8">
-            <ExpenseGroupBanks expenseGroupId={expenseGroup.id} banks={bankCatalog} />
-            <ExpenseGroupPayLater expenseGroupId={expenseGroup.id} />
+        ) : showPaymentProviders ? (
+          <div key={expenseGroup.id} className="space-y-6">
+            <nav aria-label="Payment provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">
+              {[
+                { label: "Banks", href: groupPath + paymentProvidersTab, current: showBanks },
+                { label: "Pay Later", href: groupPath + payLaterTab, current: showPayLater },
+              ].map(({ label, href, current }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  scroll={false}
+                  aria-current={current ? "page" : undefined}
+                  className={`inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-red-400 ${current ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-900 hover:text-white"}`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            {bankCatalog
+              ? <ExpenseGroupBanks expenseGroupId={expenseGroup.id} banks={bankCatalog} />
+              : <ExpenseGroupPayLater expenseGroupId={expenseGroup.id} />}
           </div>
         ) : (
           <ExpenseCategories expenseGroupId={expenseGroup.id} categories={expenseGroup.categories} />

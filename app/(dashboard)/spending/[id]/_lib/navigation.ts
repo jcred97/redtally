@@ -10,6 +10,7 @@ import {
 export type ExpenseGroupQuery = Record<string, string | string[] | undefined>;
 
 const paymentProvidersTabValue = "payment-providers";
+const payLaterProvider = "pay-later";
 
 export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQuery) {
   const params = new URLSearchParams();
@@ -25,8 +26,11 @@ export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQ
 
 export function expenseGroupRedirectHref(routeKey: string, publicId: string, query: ExpenseGroupQuery) {
   if (query.tab === "banks" || query.tab === "credit-accounts") {
-    const href = canonicalExpenseGroupHref(publicId, { ...query, tab: paymentProvidersTabValue });
-    return query.tab === "credit-accounts" ? `${href}#pay-later-title` : href;
+    return canonicalExpenseGroupHref(publicId, {
+      ...query,
+      tab: paymentProvidersTabValue,
+      provider: query.tab === "credit-accounts" ? payLaterProvider : undefined,
+    });
   }
   return routeKey === publicId ? null : canonicalExpenseGroupHref(publicId, query);
 }
@@ -35,6 +39,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view } = query;
   const showCategories = tab === "categories";
   const showPaymentProviders = tab === paymentProvidersTabValue;
+  const showPayLater = showPaymentProviders && query.provider === payLaterProvider;
   const showRecurring = tab === "recurring";
   const showDashboard = tab === "dashboard";
   const showExpenses = !showCategories && !showPaymentProviders && !showRecurring && !showDashboard;
@@ -93,7 +98,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
   const filterQuery = filterParams.toString();
 
   return {
-    showCategories, showPaymentProviders, showRecurring, showDashboard, showExpenses,
+    showCategories, showPaymentProviders, showPayLater, showRecurring, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, chosenMonth, dashboardMonth,
     day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, search,
     filters, hasOtherFilters, hasFilters, filterQuery,
@@ -104,7 +109,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) 
 export type ExpenseGroupView = ReturnType<typeof parseExpenseGroupQuery>;
 
 export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
-  const { grouped, chosenMonth, showDashboard, showRecurring, showPaymentProviders, showCategories } = view;
+  const { grouped, chosenMonth, showDashboard, showRecurring, showPaymentProviders, showPayLater, showCategories } = view;
   const groupPath = `/spending/${publicId}`;
   const expenseTab = grouped ? "?view=grouped" : "";
   const expensesHref = showDashboard && chosenMonth
@@ -113,10 +118,12 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const viewSuffix = grouped ? "&view=grouped" : "";
   const categoriesTab = `?tab=categories${viewSuffix}`;
   const paymentProvidersTab = `?tab=${paymentProvidersTabValue}${viewSuffix}`;
+  const payLaterTab = `${paymentProvidersTab}&provider=${payLaterProvider}`;
   const recurringTab = `?tab=recurring${viewSuffix}`;
   const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
   const tabSuffix = showDashboard ? dashboardTab
     : showRecurring ? recurringTab
+    : showPayLater ? payLaterTab
     : showPaymentProviders ? paymentProvidersTab
     : showCategories ? categoriesTab
     : expenseTab;
@@ -126,7 +133,7 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   allMonthsParams.delete("through");
   allMonthsParams.set("allMonths", "1");
   return {
-    groupPath, expenseTab, expensesHref, categoriesTab, paymentProvidersTab, recurringTab,
+    groupPath, expenseTab, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab,
     dashboardTab, tabSuffix,
     monthScopeHref: `${groupPath}?${view.monthScopeQuery}`,
     allMonthsHref: `${groupPath}?${allMonthsParams}`,
