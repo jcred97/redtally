@@ -667,6 +667,60 @@ test("expense writes validate money, dates, category membership, and current own
       await assert.rejects(edit(selection, unchangedPayment.updatedAt), /This expense changed since you opened it/);
     });
 
+    await t.test("financed expenses require a complete schedule and retain the saved repayment plan", async () => {
+      const submissionId = randomUUID();
+      const payLater = { ...validInput, title: "Financed purchase", paymentMethod: "PAY_LATER" };
+      const createPurchase = (financing?: FormData) =>
+        alice.create(aliceGroup.id, aliceCategory.id, payLater, submissionId, financing);
+      await assert.rejects(createPurchase(), /Enter a schedule with/);
+
+      const ordinary = await alice.create(aliceGroup.id, aliceCategory.id, validInput, randomUUID());
+      await assert.rejects(
+        alice.update(aliceGroup.id, ordinary.id, aliceCategory.id, payLater, ordinary.updatedAt.toISOString()),
+        /Add a new expense with Pay Later to set up a repayment plan/,
+      );
+      assert.equal((await client.expense.findUniqueOrThrow({ where: { id: ordinary.id } })).paymentMethod, null);
+
+      const financing = new FormData();
+      financing.set("creditAccountName", "Test installment provider");
+      financing.append("installmentDate", "2026-11-27");
+      financing.append("installmentAmount", "75.00");
+      await assert.rejects(createPurchase(financing), /Scheduled payments must cover the full amount/);
+      assert.equal(await client.expenseSubmission.count({ where: { expenseGroupId: aliceGroup.id, id: submissionId } }), 0);
+      assert.equal(await client.payLaterAccount.count({ where: { userId: "alice", name: "Test installment provider" } }), 0);
+
+      financing.append("installmentDate", "2026-12-27");
+      financing.append("installmentAmount", "75.75");
+      const historical = await createPurchase(financing);
+      assert.equal((await createPurchase(financing)).id, historical.id);
+      const repaymentPlan = await client.repaymentPlan.findUniqueOrThrow({
+        where: { expenseId: historical.id },
+        include: { installments: { orderBy: { dueDate: "asc" } } },
+      });
+      assert.deepEqual(repaymentPlan.installments.map(({ amountCentavos }) => amountCentavos), [7500, 7575]);
+
+      const renamed = await alice.update(
+        aliceGroup.id, historical.id, aliceCategory.id,
+        { ...payLater, title: "Renamed financed purchase" }, historical.updatedAt.toISOString(),
+      );
+      assert.equal(renamed.title, "Renamed financed purchase");
+      assert.equal(renamed.paymentMethod, "PAY_LATER");
+      await assert.rejects(
+        alice.update(
+          aliceGroup.id, historical.id, aliceCategory.id,
+          { ...payLater, amount: "200" }, renamed.updatedAt.toISOString(),
+        ),
+        /tied to this expense's repayment plan/,
+      );
+      await assert.rejects(alice.delete(aliceGroup.id, historical.id), /expense has a repayment plan/);
+      const stored = await client.expense.findUniqueOrThrow({
+        where: { id: historical.id },
+        include: { repaymentPlan: { include: { installments: { orderBy: { dueDate: "asc" } } } } },
+      });
+      assert.equal(stored.amountCentavos, 15075);
+      assert.deepEqual(stored.repaymentPlan, repaymentPlan);
+    });
+
     await t.test("deletion authenticates and atomically checks the expense group owner", async (deleting) => {
       const target = await alice.create(aliceGroup.id, aliceCategory.id, validInput, randomUUID());
       const foreign = await bob.create(bobGroup.id, bobCategory.id, validInput, randomUUID());

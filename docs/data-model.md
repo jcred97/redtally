@@ -43,11 +43,11 @@ Application names are mapped to the existing database identifiers. These naming 
 
 `ExpenseGroup` is the named record shown in the current **Expense Groups** navigation and list. **Spending** would fit a broader section if a future view brings together reports and expense groups. The PostgreSQL table name is `Spending`. [Current navigation](roadmap.md#purpose-and-navigation)
 
-`PaymentMethod` supports Cash, Debit Card, Credit Card, Bank Transfer, Bank Payment, and Pay Later. Saving a Pay Later purchase creates a linked repayment plan. Expense groups expose monthly targets through `budgets`. Each `budgetMonth` must be the first day of its calendar month, with one budget per expense group/month and a positive integer-centavo amount. Raw SQL and historical migration tests retain physical database names. [Loan and financed-purchase relationships](#loan-and-financed-purchase-relationships)
+New expenses support Cash, Debit Card, Credit Card, Bank Transfer, Bank Payment, and Pay Later. Expense groups expose monthly targets through `budgets`. Each `budgetMonth` must be the first day of its calendar month, with one budget per expense group/month and a positive integer-centavo amount. Raw SQL and historical migration tests retain physical database names. [Loan and financed-purchase relationships](#loan-and-financed-purchase-relationships)
 
 Bank keys are the lower-case bank name after trimming surrounding spaces and collapsing internal whitespace. The caller supplies the key; a database CHECK rejects a key that does not match that normalization. Migration `20261111130000_philippine_bank_catalog` adds a starter catalog based on Bangko Sentral ng Pilipinas listings and preserves entries with matching keys. [Universal and commercial banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Commercial/assets.aspx) · [Digital banks](https://www.bsp.gov.ph/PaymentAndSettlement/PPDD_Payments_Bulletin.pdf) · [Rural banks](https://www.bsp.gov.ph/Statistics/Financial%20Statements/Rural/assets.aspx)
 
-The **Banks** section of **Payment Provider** lets owners enable a catalog bank for their group and choose one or more payment methods they use with it. The expense form offers active assignments for the selected payment method. The server checks the same eligibility when a new bank is selected. Deactivation preserves the assignment, its method preferences, and historical expense links. Editing other expense details preserves the saved payment details. Deleting a group with no categories or budgets removes its bank settings in the same transaction.
+**Payment Provider** lets owners enable a catalog bank for their group and choose one or more payment methods they use with it. The expense form offers active assignments for the selected payment method. The server checks the same eligibility when a new bank is selected. Deactivation preserves the assignment, its method preferences, and historical expense links. Editing other expense details preserves the saved payment details. Deleting a group with no categories or budgets removes its bank settings in the same transaction.
 
 `Expense.expenseGroupId` is backfilled from its category. Composite foreign keys to `Category(id, expenseGroupId)` and `BankAssignment(id, expenseGroupId)` enforce group consistency even outside the UI. The category's Prisma field maps to the physical `spendingId` column. These keys also prevent reparenting an assigned expense, category, or assignment into an incompatible group.
 
@@ -59,12 +59,12 @@ Migration `20261115120000_recurring_expenses` adds the schedule and occurrence t
 
 ## Loan and financed-purchase relationships
 
-The Loans workflow persists `Loan`, `PayLaterAccount`, `CreditAccountAssignment`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Receiving and funding account names are stored as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans workflows](workflows.md#loans-and-pay-later)
+The loan and financed-purchase records use `Loan`, `PayLaterAccount`, `CreditAccountAssignment`, `RepaymentPlan`, `LoanInstallment`, `LoanPayment`, and `LoanPaymentAllocation`. Receiving and funding account names are stored as text until the financial-account ledger is available. [Production rollout](../README.md#loans-production-rollout) · [Loans and repayments](workflows.md#loans-and-repayments)
 
 - **Cash loan.** `Loan` has its own owner, lender, terms, and schedule. Its optional `expenseGroupId` must belong to the same user. A linked group opens the same loan record. Purchases funded with loan proceeds count toward group spending as they occur.
-- **Credit account availability.** Each `PayLaterAccount` belongs to a user. A `CreditAccountAssignment` controls eligibility for new purchases in one expense group. The group and account must share an owner. A group with no assignment inherits the account's default availability. Disabling an assignment preserves its credit method and the account's existing plans, bills, and payments. Duplicating a group copies its assignments, and deleting it removes its assignments.
-- **Financed purchase.** One `Expense` represents the full purchase. Its `RepaymentPlan` belongs to a reusable provider account and gets its expense group from that expense. Each plan has its own schedule and outstanding balance. The provider balance rolls up those same plans.
-- **Payments.** A `LoanPayment` records the actual payment once. Allocations apply it to the covered installments, including installments from different plans on one provider bill. Payment allocations preserve the original purchase amount and reduce outstanding balances.
+- **Provider settings.** A `PayLaterAccount` belongs to a user. `CreditAccountAssignment` controls the account's availability in an expense group owned by the same user. Groups without an assignment inherit the account's stored default. A new account created with a purchase is enabled in that expense group. Duplicating a group copies its assignments.
+- **Financed purchase.** One `Expense` represents the full purchase. Its `RepaymentPlan` belongs to the recorded provider and gets its expense group from that expense. Each plan has its own schedule and outstanding balance.
+- **Payments.** A `LoanPayment` records the actual payment once. A new payment applies to the covered installments of a single loan or repayment plan. Historical provider payments can have allocations across multiple plans. Payment allocations preserve the original purchase amount and reduce outstanding balances.
 - **History.** Duplicating an expense group can copy expense history without creating payable balances. A future correction workflow must preserve recorded payments. Validate ownership on both ends of links between user-owned records.
 
 ## Planned financial-model dependencies
@@ -92,7 +92,7 @@ User
 │   ├── Terms and repayment schedule
 │   ├── Optional ExpenseGroup link
 │   └── Disbursement link → transaction into receiving bank account or wallet
-├── PayLaterAccount (reusable provider account, such as SPayLater)
+├── PayLaterAccount (historical provider record)
 │   └── RepaymentPlan → original Expense
 │       └── Scheduled installments
 ├── FinancialTransaction
@@ -127,7 +127,7 @@ Migration `20261022150000_core_expense_group_model` runs in one transaction. It 
 
 Back up the existing application rows and migration history before applying it. Afterward, compare all original columns per ID, verify the group backfill and null bank assignments, and reconcile counts/totals. Apply migrations before running the new application build, which reads the new optional bank relation. The previous deployed read/create-group workflows remain compatible with the retained physical tables. Older external expense writers would need to supply the new required group ID and are outside this app's current implemented workflows.
 
-Apply `20261120150000_credit_account_availability` and `20261120160000_group_credit_account_settings` before deploying group credit account settings. Existing groups inherit their accounts' current `enabled` values until they save group settings.
+Migrations `20261120150000_credit_account_availability` and `20261120160000_group_credit_account_settings` define the historical provider settings retained in existing databases.
 
 ## Deferred
 

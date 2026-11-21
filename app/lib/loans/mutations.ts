@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { requireUserId } from "@/app/lib/auth/session";
 import { prisma } from "@/server/db/client";
 import { createLoanAccess } from "./access";
-import { creditAccountsHref } from "./credit-account-links";
 
 const access = createLoanAccess(prisma, requireUserId);
 
@@ -15,8 +14,6 @@ async function submit(operation: () => Promise<{ id?: string }>): Promise<LoanAc
     const { id } = await operation();
     revalidatePath("/");
     revalidatePath("/loans");
-    revalidatePath(creditAccountsHref);
-    revalidatePath(`${creditAccountsHref}/[id]`, "page");
     revalidatePath("/loans/cash/[id]", "page");
     revalidatePath("/loans/plans/[id]", "page");
     revalidatePath("/spending/[id]", "page");
@@ -31,16 +28,16 @@ export async function createCashLoan(_previous: LoanActionState, formData: FormD
   return submit(() => access.createCashLoan(formData));
 }
 
-export async function createCreditAccount(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
-  return submit(() => access.createCreditAccount(formData));
-}
-
-export async function setCreditProductEnabled(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
-  return submit(() => access.setCreditProductEnabled(formData));
-}
-
 export async function setGroupCreditAccountSettings(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {
-  return submit(() => access.setGroupCreditAccountSettings(formData));
+  try {
+    const { id } = await access.setGroupCreditAccountSettings(formData);
+    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/");
+    return { success: true, id };
+  } catch (error) {
+    if (error instanceof TypeError) return { error: error.message };
+    throw error;
+  }
 }
 
 export async function recordLoanPayment(_previous: LoanActionState, formData: FormData): Promise<LoanActionState> {

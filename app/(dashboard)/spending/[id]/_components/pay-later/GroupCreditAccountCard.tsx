@@ -8,7 +8,7 @@ import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/SettingsTileLabel";
 import { setGroupCreditAccountSettings } from "@/app/lib/loans/mutations";
 
-export type GroupCreditAccount = {
+type GroupCreditAccount = {
   id: string;
   enabled: boolean;
   assignment?: { active: boolean; supportsPayLater: boolean } | null;
@@ -16,10 +16,9 @@ export type GroupCreditAccount = {
 
 const saveError = "Unable to save credit account settings. Please try again.";
 
-export default function GroupCreditAccountCard({ expenseGroupId, title, initials, method, productKey, account }: {
+export default function GroupCreditAccountCard({ expenseGroupId, title, method, productKey, account }: {
   expenseGroupId: number;
   title: string;
-  initials: string;
   method: string;
 } & ({ productKey: string; account?: GroupCreditAccount } | { productKey?: never; account: GroupCreditAccount })) {
   const savedActive = account?.assignment?.active ?? account?.enabled ?? false;
@@ -47,7 +46,7 @@ export default function GroupCreditAccountCard({ expenseGroupId, title, initials
           </span>
         ) : (
           <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-gray-700 text-xs font-semibold uppercase text-gray-100">
-            {initials}
+            {Array.from(title)[0]}
           </span>
         )} />
       )}

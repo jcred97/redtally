@@ -2,13 +2,11 @@ import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { MAX_AMOUNT_CENTAVOS, sumCentavos } from "@/app/lib/expenses/money";
 import { creditProducts } from "./credit-products";
-import { saveCreditAccount } from "./financing";
 import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, readText, validateInstallmentTotal } from "./form";
 
 const cashFrequencies = ["One-time", "Weekly", "Monthly", "Other"];
 const groupSelect = { id: true, publicId: true, name: true } as const;
 const creditAccountSelect = { id: true, name: true } as const;
-const creditAccountSettingsSelect = { ...creditAccountSelect, key: true, enabled: true } as const;
 const expenseInclude = { category: { include: { expenseGroup: { select: groupSelect } } } } as const;
 
 function isExpenseGroupId(id: number) {
@@ -38,7 +36,7 @@ function loanInclude(userId: string) {
 
 function planInclude(userId: string) {
   return {
-    creditAccount: { select: creditAccountSelect },
+    creditAccount: { select: { name: true } },
     expense: { include: expenseInclude },
     installments: installmentsFor(userId),
   } as const;
@@ -162,7 +160,9 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       const accounts = await db.payLaterAccount.findMany({
         where: { userId, user: { expenseGroups: { some: { id: expenseGroupId } } } },
         select: {
-          ...creditAccountSettingsSelect,
+          ...creditAccountSelect,
+          key: true,
+          enabled: true,
           assignments: { where: { expenseGroupId }, select: { active: true, supportsPayLater: true } },
         },
         orderBy: { name: "asc" },
@@ -170,25 +170,8 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       return accounts.map(({ assignments, ...account }) => ({ ...account, assignment: assignments[0] ?? null }));
     },
 
-    async getCreditAccounts() {
+    async getEnabledCreditAccounts(expenseGroupId: number) {
       const userId = await requireUserId();
-      return db.payLaterAccount.findMany({
-        where: { userId },
-        select: {
-          ...creditAccountSettingsSelect,
-          plans: { where: ownedPlan(userId), select: { installments: installmentsFor(userId) } },
-        },
-        orderBy: { name: "asc" },
-      });
-    },
-
-    async getEnabledCreditAccounts(expenseGroupId?: number) {
-      const userId = await requireUserId();
-      if (expenseGroupId === undefined) {
-        return db.payLaterAccount.findMany({
-          where: { userId, enabled: true }, select: creditAccountSelect, orderBy: { name: "asc" },
-        });
-      }
       if (!isExpenseGroupId(expenseGroupId)) return [];
 
       return db.payLaterAccount.findMany({
@@ -205,52 +188,7 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       });
     },
 
-    async getCreditAccount(id: string) {
-      const userId = await requireUserId();
-      if (!isLoanId(id)) return null;
-      return db.payLaterAccount.findUnique({
-        where: { id, userId },
-        select: {
-          ...creditAccountSelect,
-          plans: { where: ownedPlan(userId), include: planInclude(userId), orderBy: { createdAt: "desc" } },
-        },
-      });
-    },
-
-    async createCreditAccount(formData: FormData) {
-      const userId = await requireUserId();
-      const name = readText(formData.get("name"), "Credit account name");
-      return db.$transaction((tx) => saveCreditAccount(tx, userId, name));
-    },
-
-    async setCreditProductEnabled(formData: FormData): Promise<{ id?: string }> {
-      const userId = await requireUserId();
-      const [key, extraKey] = formData.getAll("productKey");
-      const product = creditProducts.find((candidate) => candidate.key === key);
-      const [checked, extraChecked] = formData.getAll("enabled");
-      if (!product || extraKey !== undefined || extraChecked !== undefined ||
-        (checked !== undefined && checked !== "on")) {
-        throw new TypeError("Choose a valid credit product and setting.");
-      }
-
-      if (checked === "on") {
-        // Keep the account ID and history even if another request created it first.
-        const [account] = await db.$queryRaw<{ id: string }[]>`
-          INSERT INTO "PayLaterAccount" ("userId", name, key, enabled)
-          VALUES (${userId}, ${product.name}, ${product.key}, true)
-          ON CONFLICT ("userId", key) DO UPDATE SET enabled = true
-          RETURNING id
-        `;
-        return account;
-      }
-
-      const [account] = await db.payLaterAccount.updateManyAndReturn({
-        where: { userId, key: product.key }, data: { enabled: false }, select: { id: true },
-      });
-      return account ?? {};
-    },
-
-    async setGroupCreditAccountSettings(formData: FormData): Promise<{ id?: string }> {
+    async setGroupCreditAccountSettings(formData: FormData) {
       const userId = await requireUserId();
       const [rawGroupId, extraGroupId] = formData.getAll("expenseGroupId");
       const [productKey, extraKey] = formData.getAll("productKey");
@@ -350,14 +288,14 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
           include: {
             allocations: { select: { amountCentavos: true } },
             loan: { select: { disbursementDate: true } },
-            plan: { select: { creditAccountId: true, expense: { select: { date: true } } } },
+            plan: { select: { expense: { select: { date: true } } } },
           },
         });
         if (installments.length !== allocations.length) throw new TypeError("One or more installments are unavailable.");
-        const targets = new Set(installments.map(({ loanId, plan }) =>
-          loanId ? `cash:${loanId}` : `credit:${plan!.creditAccountId}`,
+        const targets = new Set(installments.map(({ loanId, planId }) =>
+          loanId ? `cash:${loanId}` : `plan:${planId}`,
         ));
-        if (targets.size !== 1) throw new TypeError("Choose installments from a single loan or credit account.");
+        if (targets.size !== 1) throw new TypeError("Choose installments from a single loan or repayment plan.");
 
         const requested = new Map(allocations.map((allocation) => [allocation.installmentId, allocation.amountCentavos]));
         for (const installment of installments) {

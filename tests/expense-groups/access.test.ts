@@ -339,6 +339,12 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       await client.budget.create({
         data: { expenseGroupId: source.id, budgetMonth, amountCentavos: 500_000, description: "November trip" },
       });
+      const provider = await client.payLaterAccount.create({
+        data: { userId: "alice", name: "Pay Later provider", key: "pay later provider", enabled: false },
+      });
+      await client.creditAccountAssignment.create({
+        data: { expenseGroupId: source.id, creditAccountId: provider.id, userId: "alice", active: true, supportsPayLater: true },
+      });
 
       const date = new Date("2026-11-06T00:00:00Z");
       const ticket = await client.expense.create({
@@ -391,6 +397,17 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(await alice.resolveRoute(publicId), { id, publicId });
       assert.equal(copy.name, "Travel (copy)");
       assert.equal(await bob.getById(id), null);
+      assert.deepEqual(
+        await client.creditAccountAssignment.findMany({
+          where: { creditAccountId: provider.id },
+          select: { expenseGroupId: true, active: true, supportsPayLater: true },
+          orderBy: { expenseGroupId: "asc" },
+        }),
+        [
+          { expenseGroupId: source.id, active: true, supportsPayLater: true },
+          { expenseGroupId: id, active: true, supportsPayLater: true },
+        ],
+      );
       assert.equal(copy.expenseSubmissions.length, 0);
       assert.equal(copy.budgets.length, 1);
       assert.equal(copy.budgets[0].amountCentavos, 500_000);

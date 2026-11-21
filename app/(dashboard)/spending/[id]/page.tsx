@@ -8,7 +8,7 @@ import {
 } from "./_lib/navigation";
 import DashboardTab from "./_components/dashboard/DashboardTab";
 import ExpensesTab from "./_components/expenses/ExpensesTab";
-import ExpenseGroupPayLater from "@/app/(dashboard)/expense-groups/credit-accounts/_components/ExpenseGroupPayLater";
+import ExpenseGroupPayLater from "./_components/pay-later/ExpenseGroupPayLater";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { getBankCatalogForExpenseGroup, getExpenseBankOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";

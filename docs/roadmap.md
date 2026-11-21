@@ -68,9 +68,9 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 ### Purpose and navigation
 
-**Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Payment Provider tabs. Payment Provider has separate Banks and Pay Later sections for group settings. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
+**Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Payment Provider tabs. Payment Provider contains the group's **Banks** and **Pay Later** settings. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
-**Loans** lists cash loans and their balances and payments. **All Expense Groups → Pay Later Bills** shows upcoming and overdue bills and manages reusable provider accounts such as SPayLater. [Loans and Pay Later workflows](workflows.md#loans-and-pay-later) · [Production rollout](../README.md#loans-production-rollout)
+**Loans** lists cash loans and their balances and payments. Pay Later schedules and payments are accessible from the original expenses. [Loans and repayments](workflows.md#loans-and-repayments) · [Production rollout](../README.md#loans-production-rollout)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 
@@ -92,8 +92,8 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 - [ ] Add account balances, income, expenses, and net cash flow to Dashboard. Internal transfers and credit-card repayments must not count purchases as expenses twice.
 - [ ] Add credit-card statement/current balances, minimum payments, due dates, installments, and debt payoff progress.
 - [x] Implement user-owned cash loans with a lender, original amount, manually entered receiving account, repayment schedule, and an optional expense-group link. Show outstanding balance, next payment, and payment history.
-- [x] Add Pay Later to **New Expense**. Save the purchase and its repayment plan together under a reusable provider account. Each plan gets its group from its original expense and tracks its own installments.
-- [x] Record a loan or provider bill payment once with the name of the bank account or wallet used. Allocate one provider payment across the installments it covers.
+- [x] Add Pay Later to **New Expense**. Save the purchase and its repayment plan together under a provider account enabled in the expense group.
+- [x] Record cash loan and financed purchase repayments with the name of the bank account or wallet used. Allocate each payment to the installments it covers.
 - [ ] Link disbursements and repayments to the financial-account ledger. Track principal, interest, and fees separately when the underlying transactions support that breakdown.
 
 ### Phase 3: goals, forecasts, and net worth

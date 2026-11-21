@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list and provides access to **Pay Later Bills** across groups. Each group's **Payment Provider** tab has **Banks** and **Pay Later** sections. **Loans** opens the cash loan list. [Loans workflows](docs/workflows.md#loans-and-pay-later) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** has **Banks** and **Pay Later** settings. **Loans** opens the cash loan list. [Loans workflows](docs/workflows.md#loans-and-repayments) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -23,7 +23,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 
 Implemented source includes:
 
-- **Loans** supports cash loans with an optional expense-group link. **Pay Later Bills** shows upcoming and overdue bills and supports allocating one provider payment across multiple purchases. Receiving and funding account names are entered manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
+- **Loans** supports cash loans with an optional expense-group link. **New Expense** can record a Pay Later purchase and its repayment schedule. Open **View plan** in expense history to see the balance, schedule, and payments for that purchase. Enter receiving and funding account names manually until the financial-account ledger is available. [Loans production rollout](#loans-production-rollout)
 - Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
 - Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
@@ -156,7 +156,7 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/layout.tsx` | Shared navigation for signed-in pages |
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
 | `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Dashboard route and cross-group reporting feature |
-| `app/(dashboard)/expense-groups/` | Expense Groups list and Pay Later Bills, including shared account settings |
+| `app/(dashboard)/expense-groups/` | Expense Groups list and redirects from retired credit-account pages |
 | `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
 | `app/(dashboard)/loans/` | Cash loan list and details, financed-purchase plans, and repayment forms |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
@@ -197,7 +197,7 @@ Authenticated pages render per request because their session check uses request 
 | `docs/branding/archive/` | Logo concepts, generation prompts, and previous branding |
 | `docs/roadmap.md` | Planned milestones and completion criteria |
 | `docs/data-model.md` | Core model, integrity rules, and preservation strategy |
-| `docs/workflows.md` | Account settings, receipt scanning, cash loans, Pay Later purchases, and repayments |
+| `docs/workflows.md` | Account settings, receipt scanning, cash loans, and Pay Later purchases |
 | `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
 Application code uses grouped feature routes, the private Dashboard home feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.

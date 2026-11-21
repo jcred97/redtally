@@ -16,21 +16,19 @@ export function readFinancing(formData: FormData, expenseDate: Date): FinancingI
   return { creditAccountId: id.toLowerCase(), installments };
 }
 
-export async function saveCreditAccount(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  name: string,
-  { enabled = true }: { enabled?: boolean } = {},
-) {
+async function saveCreditAccount(tx: Prisma.TransactionClient, userId: string, name: string) {
   const key = name.replace(/\s+/g, " ").toLowerCase();
   if (key.length > 120) throw new TypeError("Enter a shorter credit account name.");
   // Keep the account reusable across simultaneous Add Credit Account requests.
-  const { count } = await tx.payLaterAccount.createMany({ data: { userId, name, key, enabled }, skipDuplicates: true });
-  const account = await tx.payLaterAccount.findUniqueOrThrow({
-    where: { userId_key: { userId, key } },
-    select: { id: true, name: true },
+  const { count } = await tx.payLaterAccount.createMany({
+    data: { userId, name, key, enabled: false },
+    skipDuplicates: true,
   });
-  return { ...account, created: count === 1 };
+  const { id } = await tx.payLaterAccount.findUniqueOrThrow({
+    where: { userId_key: { userId, key } },
+    select: { id: true },
+  });
+  return { id, created: count === 1 };
 }
 
 export async function createFinancedPurchase(
@@ -48,7 +46,7 @@ export async function createFinancedPurchase(
 
   const { id: creditAccountId, created } = "creditAccountId" in financing
     ? { id: financing.creditAccountId, created: false }
-    : await saveCreditAccount(tx, userId, financing.creditAccountName, { enabled: false });
+    : await saveCreditAccount(tx, userId, financing.creditAccountName);
   const [account] = await tx.$queryRaw<{ enabled: boolean }[]>`
     SELECT enabled FROM "PayLaterAccount"
     WHERE id = ${creditAccountId}::uuid AND "userId" = ${userId}
@@ -62,8 +60,7 @@ export async function createFinancedPurchase(
       data: { expenseGroupId, creditAccountId, userId, active: true, supportsPayLater: true },
     });
   } else {
-    // Group settings writers lock the account before changing assignments. Read after acquiring
-    // that lock so a purchase that waited for a settings update sees the saved assignment.
+    // Read eligibility after taking the lock shared with group settings updates.
     const assignment = await tx.creditAccountAssignment.findUnique({
       where: { expenseGroupId_creditAccountId: { expenseGroupId, creditAccountId }, userId },
       select: { active: true, supportsPayLater: true },

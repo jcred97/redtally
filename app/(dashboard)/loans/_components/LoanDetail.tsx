@@ -12,13 +12,11 @@ export default function LoanDetail({
   installments,
   today,
   facts,
-  paymentAccountLink,
 }: {
   title: string;
   installments: Installment[];
   today: string;
   facts: { label: string; value: ReactNode }[];
-  paymentAccountLink?: ReactNode;
 }) {
   const { schedule, unpaid, outstanding, next } = summarizeInstallments(installments);
   const final = schedule.at(-1);
@@ -35,7 +33,6 @@ export default function LoanDetail({
       {next && (
         <div className="flex flex-wrap gap-2">
           <a href={`#${paymentFormId}`} className={`${primaryAction} hover:bg-red-600`}>Record Payment</a>
-          {paymentAccountLink}
         </div>
       )}
       <InstallmentSchedule installments={installments} today={today} />

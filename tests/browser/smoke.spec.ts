@@ -303,9 +303,11 @@ test("empty current month offers older history", async ({ page }) => {
   await expect(history.getByText("No expenses this month", { exact: true })).toHaveCount(0);
 });
 
-test("an owner can switch payment provider tabs and delete an empty group after disabling its bank", async ({ page }) => {
+test("an owner can manage Banks and Pay Later settings for an expense group", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/expense-groups");
+  await page.goto("/expense-groups/credit-accounts");
+  await expect(page).toHaveURL("/expense-groups");
+  await expect(page.getByRole("link", { name: "Pay Later Bills", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: /New.*Group/ }).click();
   const create = page.getByRole("dialog", { name: "New Expense Group" });
   await create.getByLabel("Name", { exact: true }).fill("Unused bank group");
@@ -319,15 +321,36 @@ test("an owner can switch payment provider tabs and delete an empty group after 
   const payLater = providers.getByRole("link", { name: "Pay Later", exact: true });
   await expect(banks).toHaveAttribute("aria-current", "page");
   await expect(payLater).toBeInViewport();
-  await expect(page.getByRole("link", { name: "Jump to Pay Later" })).toHaveCount(0);
   const disabledBank = page.getByRole("button", { name: "BPI Not enabled", exact: true });
   await payLater.click();
   await expect(payLater).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("button", { name: /^Shopee / })).toBeInViewport();
   await expect(disabledBank).toHaveCount(0);
+
+  const disabledShopee = page.getByRole("button", { name: "Shopee Not enabled", exact: true });
+  await expect(disabledShopee).toBeInViewport();
+  await disabledShopee.click();
+  const shopee = page.getByRole("dialog", { name: "Shopee", exact: true });
+  const groupPayLater = shopee.getByLabel("Enable for this expense group");
+  const spayLater = shopee.getByRole("checkbox", { name: "SPayLater", exact: true });
+  const savePayLater = shopee.getByRole("button", { name: "Save changes" });
+  await expect(spayLater).toBeDisabled();
+  await groupPayLater.check();
+  await spayLater.uncheck();
+  await savePayLater.click();
+  await expect(shopee.getByRole("alert")).toContainText("Choose at least one credit method");
+  await spayLater.check();
+  await savePayLater.click();
+  const enabledShopee = page.getByRole("button", { name: "Shopee Enabled", exact: true });
+  await expect(enabledShopee).toBeVisible();
   await page.reload();
   await expect(payLater).toHaveAttribute("aria-current", "page");
-  await page.goBack();
+  await enabledShopee.click();
+  await expect(spayLater).toBeChecked();
+  await groupPayLater.uncheck();
+  await savePayLater.click();
+  await expect(disabledShopee).toBeVisible();
+
+  await banks.click();
   await expect(banks).toHaveAttribute("aria-current", "page");
   await disabledBank.click();
   const bank = page.getByRole("dialog", { name: "BPI", exact: true });

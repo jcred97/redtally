@@ -20,19 +20,17 @@ export default function RecordPaymentForm({
   installments,
   today,
   submissionId,
-  bill = false,
 }: {
   installments: PayableInstallment[];
   today: string;
   submissionId: string;
-  bill?: boolean;
 }) {
   const [requestId, setRequestId] = useState(submissionId);
   const [paidOn, setPaidOn] = useState(today);
   const [fundingAccount, setFundingAccount] = useState("");
   const [amounts, setAmounts] = useState<Record<string, string>>(() => {
     const next = installments[0];
-    return !bill && next ? { [next.id]: formatPesoInput(next.balance) } : {};
+    return next ? { [next.id]: formatPesoInput(next.balance) } : {};
   });
   const [result, action, pending] = useActionState<LoanActionState, FormData>(async (previous, formData) => {
     const ids = formData.getAll("installmentId");
@@ -74,7 +72,7 @@ export default function RecordPaymentForm({
 
   return (
     <section id={paymentFormId} aria-labelledby="record-loan-payment" className={loanPanel}>
-      <h2 id="record-loan-payment" className="text-lg font-semibold">{bill ? "Record Bill Payment" : "Record Payment"}</h2>
+      <h2 id="record-loan-payment" className="text-lg font-semibold">Record Payment</h2>
       {result.success && <p role="status" className="mt-2 text-sm text-green-300">Payment recorded.</p>}
       {installments.length > 0 && (
         <form action={action} className="mt-3">
