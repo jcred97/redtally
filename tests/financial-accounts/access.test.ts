@@ -82,3 +82,64 @@ test("financial account registry scopes owners, validates new accounts, and safe
     await fixture.close();
   }
 });
+
+test("account edits are owner-scoped and deletion preserves financed purchases", async () => {
+  const fixture = await createTestDatabase();
+  const { client } = fixture;
+  try {
+    await client.user.createMany({ data: [
+      { id: "alice", name: "Alice", email: "alice@example.test" },
+      { id: "bob", name: "Bob", email: "bob@example.test" },
+    ] });
+    const alice = createFinancialAccountAccess(client, async () => "alice");
+    const bob = createFinancialAccountAccess(client, async () => "bob");
+    const { id } = await alice.create(draft());
+
+    await assert.rejects(bob.rename(id, draft()), /Account not found/);
+    await assert.rejects(bob.remove(id), /Account not found/);
+    await assert.rejects(alice.rename(id, draft({ name: " " })), /account name/i);
+    await alice.rename(id, draft({ name: "  Emergency savings  " }));
+    assert.equal((await alice.list())[0].name, "Emergency savings");
+    await alice.remove(id);
+    assert.deepEqual(await alice.list(), []);
+
+    const group = await client.expenseGroup.create({
+      data: { userId: "alice", name: "Household", categories: { create: { name: "Shopping" } } },
+      include: { categories: true },
+    });
+    for (const withPurchase of [true, false]) {
+      const provider = await client.payLaterAccount.create({
+        data: { userId: "alice", name: "Example provider", key: String(withPurchase) },
+        include: { financialAccount: true },
+      });
+      assert.ok(provider.financialAccount);
+      const financialId = provider.financialAccount.id;
+      await client.creditAccountAssignment.create({
+        data: { userId: "alice", expenseGroupId: group.id, creditAccountId: provider.id },
+      });
+      await alice.rename(financialId, draft({ name: "Household Pay Later" }));
+      assert.equal((await client.payLaterAccount.findUniqueOrThrow({ where: { id: provider.id } })).name, "Example provider");
+
+      if (withPurchase) {
+        await client.expense.create({
+          data: {
+            expenseGroupId: group.id, categoryId: group.categories[0].id,
+            title: "Cookware", amountCentavos: 120000, date: new Date("2026-11-21"), paymentMethod: "PAY_LATER",
+            repaymentPlan: { create: { creditAccountId: provider.id } },
+          },
+        });
+        await assert.rejects(alice.remove(financialId), /linked records/);
+        assert.ok(await client.financialAccount.findUnique({ where: { id: financialId } }));
+        assert.equal(await client.repaymentPlan.count({ where: { creditAccountId: provider.id } }), 1);
+        assert.equal(await client.creditAccountAssignment.count({ where: { creditAccountId: provider.id } }), 1);
+      } else {
+        await alice.remove(financialId);
+        assert.equal(await client.financialAccount.findUnique({ where: { id: financialId } }), null);
+        assert.equal(await client.payLaterAccount.findUnique({ where: { id: provider.id } }), null);
+        assert.equal(await client.creditAccountAssignment.count({ where: { creditAccountId: provider.id } }), 0);
+      }
+    }
+  } finally {
+    await fixture.close();
+  }
+});

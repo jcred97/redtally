@@ -7,9 +7,9 @@ import { createFinancialAccountAccess } from "./access";
 
 const access = createFinancialAccountAccess(prisma, requireUserId);
 
-export async function createFinancialAccount(formData: FormData): Promise<{ success: true } | { error: string }> {
+async function saveAccountChange(change: () => Promise<unknown>): Promise<{ success: true } | { error: string }> {
   try {
-    await access.create(formData);
+    await change();
   } catch (error) {
     if (error instanceof TypeError) return { error: error.message };
     throw error;
@@ -17,4 +17,21 @@ export async function createFinancialAccount(formData: FormData): Promise<{ succ
 
   revalidatePath("/accounts");
   return { success: true };
+}
+
+export async function createFinancialAccount(formData: FormData) {
+  return saveAccountChange(() => access.create(formData));
+}
+
+export async function renameFinancialAccount(id: string, formData: FormData) {
+  return saveAccountChange(() => access.rename(id, formData));
+}
+
+export async function deleteFinancialAccount(id: string) {
+  const result = await saveAccountChange(() => access.remove(id));
+  if ("success" in result) {
+    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/");
+  }
+  return result;
 }

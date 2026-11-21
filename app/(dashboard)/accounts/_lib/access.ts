@@ -1,8 +1,15 @@
-import type { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { manualFinancialAccountTypes, supportsFinancialAccountBank } from "./types";
 
 const accountIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const currencyCodes = new Set(Intl.supportedValuesOf("currency"));
+const accountNotFound = "Account not found.";
+
+function readAccountName(value: FormDataEntryValue | null) {
+  const name = typeof value === "string" ? value.trim() : "";
+  if (!name || name.length > 120) throw new TypeError("Account name must be between 1 and 120 characters.");
+  return name;
+}
 
 export function createFinancialAccountAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
   return {
@@ -32,9 +39,7 @@ export function createFinancialAccountAccess(db: PrismaClient, requireUserId: ()
       }
       const id = accountId.toLowerCase();
 
-      const rawName = formData.get("name");
-      const name = typeof rawName === "string" ? rawName.trim() : "";
-      if (!name || name.length > 120) throw new TypeError("Account name must be between 1 and 120 characters.");
+      const name = readAccountName(formData.get("name"));
 
       const rawType = formData.get("type");
       const type = manualFinancialAccountTypes.find(({ value }) => value === rawType)?.value;
@@ -73,6 +78,40 @@ export function createFinancialAccountAccess(db: PrismaClient, requireUserId: ()
         }
         return { id: saved.id };
       });
+    },
+
+    async rename(id: string, formData: FormData) {
+      const userId = await requireUserId();
+      if (typeof id !== "string" || !accountIdPattern.test(id)) throw new TypeError(accountNotFound);
+      const { count } = await db.financialAccount.updateMany({
+        where: { id, userId },
+        data: { name: readAccountName(formData.get("name")) },
+      });
+      if (!count) throw new TypeError(accountNotFound);
+    },
+
+    async remove(id: string) {
+      const userId = await requireUserId();
+      if (typeof id !== "string" || !accountIdPattern.test(id)) throw new TypeError(accountNotFound);
+
+      try {
+        await db.$transaction(async (tx) => {
+          const where = { id, userId };
+          const account = await tx.financialAccount.findUnique({ where, select: { payLaterAccountId: true } });
+          if (!account) throw new TypeError(accountNotFound);
+          const { count } = await tx.financialAccount.deleteMany({ where });
+          if (!count) throw new TypeError(accountNotFound);
+          if (account.payLaterAccountId) {
+            // The repayment plan FK blocks the deletion and rolls back both records if a purchase exists.
+            await tx.payLaterAccount.delete({ where: { id: account.payLaterAccountId, userId } });
+          }
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+          throw new TypeError("This account has linked records and cannot be deleted.");
+        }
+        throw error;
+      }
     },
   };
 }

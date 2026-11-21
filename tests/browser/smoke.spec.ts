@@ -418,6 +418,32 @@ test("Accounts lists owned accounts and the Shopee account created from an expen
   await expect(page.getByText("Browser BPI Savings", { exact: true })).toBeVisible();
   await expect(page.getByText(privateAccount, { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  const settings = page.getByRole("button", { name: "Settings for Browser BPI Savings", exact: true });
+  await settings.press("ArrowDown");
+  const editName = page.getByRole("button", { name: "Edit Name", exact: true });
+  await expect(editName).toBeFocused();
+  await editName.press("Enter");
+  const rename = page.getByRole("dialog", { name: "Edit account name", exact: true });
+  await expect(rename.getByLabel("Name", { exact: true })).toHaveValue("Browser BPI Savings");
+  await rename.getByLabel("Name", { exact: true }).fill("Browser Emergency Savings");
+  await rename.getByRole("button", { name: "Save name", exact: true }).click();
+  await expect(rename).toBeHidden();
+
+  const renamedSettings = page.getByRole("button", { name: "Settings for Browser Emergency Savings", exact: true });
+  const deleteOption = page.getByRole("button", { name: "Delete Account", exact: true });
+  const remove = page.getByRole("dialog", { name: "Delete account?", exact: true });
+  await renamedSettings.click();
+  await deleteOption.click();
+  const cancel = remove.getByRole("button", { name: "Cancel", exact: true });
+  await expect(cancel).toBeFocused();
+  await cancel.click();
+  await expect(renamedSettings).toBeFocused();
+  await renamedSettings.click();
+  await deleteOption.click();
+  await remove.getByRole("button", { name: "Delete account", exact: true }).click();
+  await expect(renamedSettings).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Accounts", exact: true })).toBeFocused();
 });
 
 test("Pay Later shows SPayLater purchases and their schedules for the selected group", async ({ page }) => {
