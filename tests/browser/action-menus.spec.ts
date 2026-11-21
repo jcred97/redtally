@@ -99,3 +99,47 @@ test("expense group switcher preserves keyboard navigation and isolates its dial
   await merchantGroup.press("Enter");
   await expect.poll(() => new URL(page.url()).pathname).toBe(`/spending/${data.merchants.publicId}`);
 });
+
+test("expense dialogs restore focus to the matching action after resizing and to history after deletion", async ({ page }) => {
+  const phone = { width: 390, height: 840 };
+  const desktop = { width: 1024, height: 840 };
+  const title = "Responsive dialog focus expense";
+  await page.setViewportSize(phone);
+  await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
+  const create = page.getByRole("dialog", { name: "New Expense", exact: true });
+  await create.getByLabel("Title", { exact: true }).fill(title);
+  await create.getByLabel("Amount (PHP)", { exact: true }).fill("25");
+  await create.getByRole("button", { name: "Save expense", exact: true }).click();
+  await expect(create).not.toBeVisible();
+
+  const actions = page.getByRole("button", { name: `Actions for ${title}`, exact: true });
+  for (const { label, dialogTitle } of [
+    { label: "Edit", dialogTitle: "Edit Expense" },
+    { label: "Delete", dialogTitle: "Delete expense?" },
+  ]) {
+    const action = page.getByRole("button", { name: `${label} expense: ${title}`, exact: true });
+    const dialog = page.getByRole("dialog", { name: dialogTitle, exact: true });
+    await action.press("Enter");
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize(desktop);
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(actions).toBeFocused();
+
+    await actions.press("ArrowDown");
+    await action.press("Enter");
+    await expect(dialog).toBeVisible();
+    await page.setViewportSize(phone);
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(action).toBeFocused();
+  }
+
+  await page.keyboard.press("Enter");
+  const deletion = page.getByRole("dialog", { name: "Delete expense?", exact: true });
+  await expect(deletion.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+  await deletion.getByRole("button", { name: "Delete expense", exact: true }).click();
+  const history = page.getByRole("region", { name: "Expenses", exact: true });
+  await expect(history.getByRole("heading", { name: title, exact: true })).toHaveCount(0);
+  await expect(history.getByRole("heading", { name: "Expenses", exact: true })).toBeFocused();
+});

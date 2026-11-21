@@ -19,6 +19,7 @@ export default async function RepaymentPlanPage({ params }: { params: Promise<{ 
       <LoanDetail
         title={expense.title}
         installments={installments}
+        startDate={expense.date}
         today={getManilaToday()}
         facts={[
           { label: "Expense group", value: group.name },

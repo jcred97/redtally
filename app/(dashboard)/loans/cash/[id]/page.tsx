@@ -13,7 +13,7 @@ export default async function CashLoanPage({ params }: { params: Promise<{ id: s
 
   return (
     <LoanPage title={loan.title} back={backToLoanList}>
-      <LoanDetail title={loan.title} installments={loan.installments} today={getManilaToday()} facts={[
+      <LoanDetail title={loan.title} installments={loan.installments} startDate={loan.disbursementDate} today={getManilaToday()} facts={[
         { label: "Lender", value: loan.lender },
         { label: "Amount borrowed", value: formatPesoAmount(loan.amountCentavos) },
         { label: "Disbursement date", value: formatExpenseDate(loan.disbursementDate) },

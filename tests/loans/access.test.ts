@@ -13,9 +13,9 @@ function form(entries: ReadonlyArray<readonly [string, string]>) {
   return data;
 }
 
-function paymentDraft(allocations: { installmentId: string; amount: string }[]) {
+function paymentDraft(allocations: { installmentId: string; amount: string }[], paidOn = "2026-12-15") {
   return form([
-    ["submissionId", randomUUID()], ["paidOn", "2026-12-15"], ["fundingAccount", "Checking"],
+    ["submissionId", randomUUID()], ["paidOn", paidOn], ["fundingAccount", "Checking"],
     ...allocations.flatMap(({ installmentId, amount }): [string, string][] => [
       ["installmentId", installmentId], ["allocationAmount", amount],
     ]),
@@ -178,8 +178,10 @@ test("cash loans and existing repayment plans stay private and payable one oblig
       include: { categories: true },
     });
     const otherGroup = await client.expenseGroup.create({ data: { name: "Private group", userId: "bob" } });
-    const loans = createLoanAccess(client, async () => "alice");
-    const otherLoans = createLoanAccess(client, async () => "bob");
+    // December 15 has already started in Manila, while UTC is still December 14.
+    const now = () => new Date("2026-12-14T16:05:00Z");
+    const loans = createLoanAccess(client, async () => "alice", now);
+    const otherLoans = createLoanAccess(client, async () => "bob", now);
     const cashDraft = form([
       ["submissionId", randomUUID()], ["title", "Renovation cash loan"], ["lender", "Example Bank"],
       ["amount", "2000"], ["disbursementDate", "2026-11-20"], ["receivingAccount", "Checking"],
@@ -202,7 +204,7 @@ test("cash loans and existing repayment plans stay private and payable one oblig
     async function seedExistingPurchase(title: string, amountCentavos: number) {
       const expense = await client.expense.create({
         data: {
-          title, amountCentavos, date: new Date("2026-11-20"), paymentMethod: "PAY_LATER",
+          title, amountCentavos, date: new Date("2026-11-22T13:00:00Z"), paymentMethod: "PAY_LATER",
           expenseGroupId: group.id, categoryId: group.categories[0].id,
           repaymentPlan: { create: {
             creditAccountId: account.id,
@@ -250,6 +252,11 @@ test("cash loans and existing repayment plans stay private and payable one oblig
       { installmentId: cashInstallment, amount: "500" },
       { installmentId: sprayerInstallment, amount: "1000" },
     ])), /single loan or repayment plan/i);
+    for (const [installmentId, dayBeforeStart] of [[cashInstallment, "2026-11-19"], [sprayerInstallment, "2026-11-21"]]) {
+      const allocations = [{ installmentId, amount: "1" }];
+      await assert.rejects(loans.recordLoanPayment(paymentDraft(allocations, dayBeforeStart)), /cannot precede/i);
+      await assert.rejects(loans.recordLoanPayment(paymentDraft(allocations, "2026-12-16")), /cannot be in the future/i);
+    }
     assert.equal(await client.loanPayment.count(), 1);
 
     const planDraft = paymentDraft([{ installmentId: sprayerInstallment, amount: "1000" }]);
@@ -261,12 +268,20 @@ test("cash loans and existing repayment plans stay private and payable one oblig
     ])), /remaining balance/i);
     const updatedPlan = await loans.getRepaymentPlan(sprayer.id);
     assert.deepEqual(updatedPlan?.installments[0].allocations.map(({ amountCentavos }) => amountCentavos), [20000, 100000]);
+    assert.equal(updatedPlan?.installments[0].allocations[1].payment.paidOn.toISOString(), "2026-12-15T00:00:00.000Z");
     assert.equal(await client.repaymentPlan.count(), 2);
     assert.equal(await client.expense.count(), 2);
 
-    const cashPayment = paymentDraft([{ installmentId: cashInstallment, amount: "500" }]);
+    // A repayment on the purchase's stored calendar day is valid despite the legacy timestamp.
+    const drillPayment = paymentDraft([{ installmentId: drillInstallment, amount: "1" }], "2026-11-22");
+    assert.ok((await loans.recordLoanPayment(drillPayment)).id);
+    assert.equal((await loans.getRepaymentPlan(drill.id))?.installments[0].allocations[0].payment.paidOn.toISOString(), "2026-11-22T00:00:00.000Z");
+
+    const cashPayment = paymentDraft([{ installmentId: cashInstallment, amount: "500" }], "2026-11-20");
     assert.ok((await loans.recordLoanPayment(cashPayment)).id);
-    assert.equal((await loans.getCashLoan(loanId))?.installments[0].allocations[0].amountCentavos, 50000);
+    const cashAllocation = (await loans.getCashLoan(loanId))?.installments[0].allocations[0];
+    assert.equal(cashAllocation?.amountCentavos, 50000);
+    assert.equal(cashAllocation?.payment.paidOn.toISOString(), "2026-11-20T00:00:00.000Z");
 
     const expenseGroups = createExpenseGroupAccess(client, async () => "alice");
     const emptyGroup = await client.expenseGroup.create({ data: { name: "Empty group", userId: "alice" } });

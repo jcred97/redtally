@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import SpendingTrend from "../../spending/[id]/_components/dashboard/SpendingTrend";
-import { canonicalExpenseGroupHref } from "../../spending/[id]/_lib/navigation";
+import { canonicalExpenseGroupHref, recurringExpenseAnchor } from "../../spending/[id]/_lib/navigation";
 import { lastDayOfDashboardMonth } from "../../spending/[id]/_lib/dashboard/period";
 import type { getHomeDashboard } from "./queries";
 
@@ -123,7 +123,7 @@ export default function DashboardReport({ data, today }: { data: DashboardData; 
               {upcoming.map(({ id, title, amountCentavos, nextDueDate, group }) => (
                 <ReportRow
                   key={id}
-                  href={canonicalExpenseGroupHref(group.publicId, { tab: "recurring" })}
+                  href={`${canonicalExpenseGroupHref(group.publicId, { tab: "recurring" })}#${recurringExpenseAnchor(id)}`}
                   label={title}
                   description={`${group.name} · ${formatExpenseDate(nextDueDate)}`}
                   amount={amountCentavos}
@@ -140,7 +140,7 @@ export default function DashboardReport({ data, today }: { data: DashboardData; 
             {attention.map(({ id, title, amountCentavos, nextDueDate, group, reason }) => (
               <ReportRow
                 key={id}
-                href={canonicalExpenseGroupHref(group.publicId, { tab: "recurring" })}
+                href={`${canonicalExpenseGroupHref(group.publicId, { tab: "recurring" })}#${recurringExpenseAnchor(id)}`}
                 label={title}
                 description={`${group.name} · ${reason === "blocked" ? "Check bank and payment settings, then resume" : "Run due expenses"} · ${formatExpenseDate(nextDueDate)}`}
                 amount={amountCentavos}
@@ -161,7 +161,7 @@ export default function DashboardReport({ data, today }: { data: DashboardData; 
                 {recentExpenses.map(({ id, title, merchant, date, timeMinutes, category, group, amountCentavos }) => (
                   <ReportRow
                     key={id}
-                    href={canonicalExpenseGroupHref(group.publicId, { day: date.toISOString().slice(0, 10), category: String(category.id) })}
+                    href={`${canonicalExpenseGroupHref(group.publicId, { allMonths: "1", expense: String(id) })}#expense-history-title`}
                     label={title}
                     description={[
                       group.name, category.name, merchant, formatExpenseDate(date),

@@ -19,6 +19,10 @@ const dialogWidths = {
   "extra-wide": "max-w-3xl lg:max-w-6xl",
 };
 
+const actionSize = "min-h-10 rounded-lg px-4 text-sm font-medium";
+const primaryAction = `${actionSize} cursor-pointer bg-red-500 text-white transition-colors enabled:hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50`;
+const secondaryAction = `${actionSize} button-secondary`;
+
 type FormDialogProps = {
   triggerLabel: ReactNode;
   triggerAriaLabel?: string;
@@ -133,14 +137,14 @@ export default function FormDialog({
       return;
     }
 
-    // A responsive layout may have hidden the original Edit button.
+    // A responsive layout or closed popover may have hidden the original trigger.
     if (triggerFocusKey) {
       const buttons = document.querySelectorAll<HTMLButtonElement>(
         "button[data-dialog-focus-key]"
       );
       const visibleTrigger = Array.from(buttons).find(
         (button) =>
-          button.dataset.dialogFocusKey === triggerFocusKey &&
+          button.dataset.dialogFocusKey?.split(" ").includes(triggerFocusKey) &&
           button.getClientRects().length > 0
       );
       if (visibleTrigger) {
@@ -207,17 +211,14 @@ export default function FormDialog({
     });
   }
 
-  let triggerClass =
-    "flex cursor-pointer items-center gap-1.5 bg-red-500 enabled:hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  let triggerClass = `${primaryAction} flex items-center gap-1.5 py-2`;
 
   if (triggerVariant === "secondary") {
-    triggerClass =
-      "button-secondary rounded-lg px-3 py-2 text-sm font-medium";
+    triggerClass = `${secondaryAction} py-2`;
   }
 
   if (triggerVariant === "danger") {
-    triggerClass =
-      "cursor-pointer rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-400 transition-colors hover:border-red-400 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50";
+    triggerClass = `${actionSize} cursor-pointer border border-red-500/30 py-2 text-red-400 transition-colors enabled:hover:border-red-400 enabled:hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50`;
   }
 
   if (triggerVariant === "menu") {
@@ -297,14 +298,14 @@ export default function FormDialog({
                   autoFocus={destructive}
                   onClick={closeDialog}
                   disabled={pending}
-                  className="cursor-pointer px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`${secondaryAction} py-2`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={pending || submitDisabled}
-                  className={`cursor-pointer px-4 py-2 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 ${pending ? "disabled:cursor-wait" : "disabled:cursor-not-allowed"}`}
+                  className={`${primaryAction} py-2`}
                 >
                   {pending ? pendingLabel : submitLabel}
                 </button>

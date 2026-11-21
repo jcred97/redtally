@@ -4,6 +4,11 @@ import ReceiptScannerSettings from "@/app/(dashboard)/account-settings/_componen
 import { loadReceiptConnection } from "@/app/(dashboard)/account-settings/_lib/actions";
 import { maxAiImageBytes, providers, type ReceiptConnection, type ReceiptProvider, type ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 
+type Settings =
+  | { status: "loading" }
+  | { status: "ready"; connection: ReceiptConnection | null }
+  | { status: "error"; message: string };
+
 async function prepareUpload(image: Blob) {
   if (image.size <= maxAiImageBytes) return image;
   const bitmap = await createImageBitmap(image);
@@ -36,25 +41,21 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
   const dialog = useRef<HTMLDialogElement>(null);
   const saving = useRef(false);
   const scanRequest = useRef<AbortController | null>(null);
-  const [connection, setConnection] = useState<ReceiptConnection | null>(null);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settings, setSettings] = useState<Settings>({ status: "loading" });
   const [retry, setRetry] = useState(0);
   const [setupOpen, setSetupOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState("");
+  const [scanError, setScanError] = useState("");
 
   useEffect(() => {
     let active = true;
     void loadReceiptConnection().then((result) => {
       if (!active) return;
-      if ("error" in result) {
-        setError(result.error);
-        return;
-      }
-      setConnection(result.connection);
-      setSettingsLoaded(true);
+      setSettings("error" in result
+        ? { status: "error", message: result.error }
+        : { status: "ready", connection: result.connection });
     }).catch(() => {
-      if (active) setError("Could not load receipt scanning settings. Try again.");
+      if (active) setSettings({ status: "error", message: "Could not load receipt scanning settings. Try again." });
     });
     return () => { active = false; };
   }, [retry]);
@@ -65,13 +66,18 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
     if (setupOpen) dialog.current?.showModal();
   }, [setupOpen]);
 
+  function reloadSettings() {
+    setSettings({ status: "loading" });
+    setRetry((count) => count + 1);
+  }
+
   async function scan(provider: ReceiptProvider) {
     if (scanRequest.current) return;
     const controller = new AbortController();
     scanRequest.current = controller;
     const { signal } = controller;
     setScanning(true);
-    setError("");
+    setScanError("");
     try {
       const upload = await prepareUpload(image).catch(() => {
         throw new Error("Could not prepare this image for AI scanning. Try cropping it to the receipt.");
@@ -83,16 +89,17 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
         body: upload,
         signal,
       });
+      if (signal.aborted) return;
+      if (response.status === 409) reloadSettings();
       const result: { suggestions?: ReceiptSuggestions; error?: string } = await response.json();
       if (signal.aborted) return;
       if (response.ok && result.suggestions) {
         onSuggestions(provider, result.suggestions);
       } else {
-        setError(result.error ?? "Could not scan this receipt. Try again.");
-        if (response.status === 409) setRetry((count) => count + 1);
+        setScanError(result.error ?? "Could not scan this receipt. Try again.");
       }
     } catch (cause) {
-      if (!signal.aborted) setError(cause instanceof Error && cause.message.startsWith("Could not prepare")
+      if (!signal.aborted) setScanError(cause instanceof Error && cause.message.startsWith("Could not prepare")
         ? cause.message : "Could not scan this receipt. Try again.");
     } finally {
       scanRequest.current = null;
@@ -100,10 +107,12 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
     }
   }
 
+  const connection = settings.status === "ready" ? settings.connection : null;
   const providerName = connection ? providers[connection.provider] : null;
+  const error = settings.status === "error" ? settings.message : scanError;
   return (
     <div className="grid justify-items-start gap-2 border-t border-gray-800 pt-3">
-      {settingsLoaded ? (
+      {settings.status === "ready" ? (
         <>
           <button type="button" className="button-secondary min-h-10 rounded-lg px-2.5 text-sm font-medium"
             disabled={scanning} aria-haspopup={connection ? undefined : "dialog"}
@@ -121,11 +130,10 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
           )}
           {scanning && <span role="status" className="sr-only">Scanning receipt with {providerName}.</span>}
         </>
-      ) : error ? (
-        <button type="button" className="button-secondary min-h-10 rounded-lg px-2.5 text-sm" onClick={() => {
-          setError("");
-          setRetry((count) => count + 1);
-        }}>Retry loading AI scanning</button>
+      ) : settings.status === "error" ? (
+        <button type="button" className="button-secondary min-h-10 rounded-lg px-4 text-sm font-medium" onClick={reloadSettings}>
+          Retry loading AI scanning
+        </button>
       ) : <p role="status" className="text-xs text-gray-400">Loading AI scanning options…</p>}
       {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       {setupOpen && createPortal(
@@ -144,8 +152,8 @@ export default function ReceiptAiControls({ image, onSuggestions }: {
             onPendingChange={(pending) => { saving.current = pending; }}
             onConnected={(connected) => {
               dialog.current?.close();
-              setConnection(connected);
-              setError("");
+              setSettings({ status: "ready", connection: connected });
+              setScanError("");
             }}
             onCancel={() => dialog.current?.close()} />
         </dialog>,

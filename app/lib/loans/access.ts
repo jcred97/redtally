@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { getManilaToday } from "@/app/lib/expenses/date";
 import { MAX_AMOUNT_CENTAVOS, sumCentavos } from "@/app/lib/expenses/money";
 import { creditProducts } from "./credit-products";
 import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, readText, validateInstallmentTotal } from "./form";
@@ -120,7 +121,7 @@ function previousSubmission(previous: { id: string; payloadHash: string }, paylo
   return { id: previous.id };
 }
 
-export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
+export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<string>, now: () => Date = () => new Date()) {
   return {
     async getCashLoans() {
       const userId = await requireUserId();
@@ -273,12 +274,14 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       const userId = await requireUserId();
       const submissionId = readSubmissionId(formData);
       const { allocations, ...payment } = readPayment(formData);
+      const paymentDay = payment.paidOn.toISOString().slice(0, 10);
       const payloadHash = hashPayload({ ...payment, allocations });
 
       return db.$transaction(async (tx) => {
         await lockLoanWrites(tx, userId);
         const previous = await tx.loanPayment.findUnique({ where: { userId_submissionId: { userId, submissionId } } });
         if (previous) return previousSubmission(previous, payloadHash);
+        if (paymentDay > getManilaToday(now())) throw new TypeError("Payment date cannot be in the future.");
 
         const installments = await tx.loanInstallment.findMany({
           where: {
@@ -300,7 +303,9 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
         const requested = new Map(allocations.map((allocation) => [allocation.installmentId, allocation.amountCentavos]));
         for (const installment of installments) {
           const startDate = installment.loan?.disbursementDate ?? installment.plan!.expense.date;
-          if (payment.paidOn < startDate) throw new TypeError("Payment cannot precede the loan or purchase date.");
+          if (paymentDay < startDate.toISOString().slice(0, 10)) {
+            throw new TypeError("Payment cannot precede the loan or purchase date.");
+          }
           const paidCentavos = sumCentavos(installment.allocations.map((allocation) => allocation.amountCentavos));
           if (requested.get(installment.id)! > installment.amountCentavos - paidCentavos) {
             throw new TypeError("A payment amount exceeds the remaining balance on an installment.");

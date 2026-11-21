@@ -24,6 +24,10 @@ export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQ
   return `/spending/${publicId}${params.size > 0 ? `?${params}` : ""}`;
 }
 
+export function recurringExpenseAnchor(id: number) {
+  return `recurring-expense-${id}`;
+}
+
 export function expenseGroupRedirectHref(routeKey: string, publicId: string, query: ExpenseGroupQuery) {
   if (query.tab === "banks" || query.tab === "credit-accounts") {
     return canonicalExpenseGroupHref(publicId, {

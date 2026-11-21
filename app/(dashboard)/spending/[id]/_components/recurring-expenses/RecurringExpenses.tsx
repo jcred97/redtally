@@ -4,6 +4,7 @@ import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import { recurrenceFrequencyLabels } from "@/app/lib/expenses/recurrence";
 import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-expenses/access";
+import { recurringExpenseAnchor } from "../../_lib/navigation";
 import RecurringExpenseActions from "./RecurringExpenseActions";
 import RecurringExpenseDialog, { type RecurringExpenseOptions } from "./RecurringExpenseDialog";
 import RunRecurringExpensesButton from "./RunRecurringExpensesButton";
@@ -31,7 +32,12 @@ export default function RecurringExpenses({ rules, groupPath, ...options }: Recu
             const completed = rule.endDate !== null && rule.nextDueDate > rule.endDate;
             const payment = rule.paymentMethod ? paymentMethodLabels[rule.paymentMethod] : null;
             return (
-              <li key={rule.id} className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4">
+              <li
+                key={rule.id}
+                id={recurringExpenseAnchor(rule.id)}
+                tabIndex={-1}
+                className="min-w-0 scroll-mt-4 rounded-xl border border-gray-800 bg-gray-900 p-4 target:border-red-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="min-w-0 wrap-anywhere font-semibold">{rule.title}</h3>
                   <p className="shrink-0 text-sm font-semibold tabular-nums">{formatPesoAmount(rule.amountCentavos)}</p>

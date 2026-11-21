@@ -8,11 +8,13 @@ import { deleteExpense } from "@/app/(dashboard)/_lib/expenses/mutations";
 export default function DeleteExpenseButton({
   expenseGroupId,
   expense,
-  menuFocusKey,
+  focusKey,
+  inMenu,
 }: {
   expenseGroupId: number;
   expense: { id: number; title: string; amountCentavos: number };
-  menuFocusKey?: string;
+  focusKey: string;
+  inMenu: boolean;
 }) {
   async function confirmDelete(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
@@ -24,11 +26,12 @@ export default function DeleteExpenseButton({
     <FormDialog
       triggerLabel="Delete"
       triggerAriaLabel={`Delete expense: ${expense.title}`}
-      triggerFocusKey={menuFocusKey ?? `delete-expense-${expense.id}`}
+      triggerFocusKey={focusKey}
       triggerVariant="danger"
-      triggerClassName={menuFocusKey ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm text-red-400` : undefined}
+      triggerClassName={inMenu ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm text-red-400` : undefined}
       destructive
-      returnFocusId="expense-group-title"
+      returnFocusId="expense-history-title"
+      successFocusId="expense-history-title"
       title="Delete expense?"
       description="This permanently removes the expense and updates your totals. This cannot be undone."
       onOpenAction={() => {}}

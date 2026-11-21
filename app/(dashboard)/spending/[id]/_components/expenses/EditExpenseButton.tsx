@@ -8,13 +8,15 @@ export default function EditExpenseButton({
   expense,
   categories,
   bankOptions,
-  menuFocusKey,
+  focusKey,
+  inMenu,
 }: {
   expenseGroupId: number;
   expense: EditableExpense;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
-  menuFocusKey?: string;
+  focusKey: string;
+  inMenu: boolean;
 }) {
   return (
     <ExpenseFormDialog
@@ -22,7 +24,8 @@ export default function EditExpenseButton({
       expense={expense}
       categories={categories}
       bankOptions={bankOptions}
-      menuFocusKey={menuFocusKey}
+      focusKey={focusKey}
+      inMenu={inMenu}
     />
   );
 }

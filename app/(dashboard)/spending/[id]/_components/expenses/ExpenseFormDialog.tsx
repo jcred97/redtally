@@ -41,7 +41,8 @@ type ExpenseFormDialogProps = {
   bankOptions: ExpenseBankOption[];
   creditAccounts?: CreditAccountOption[];
   expense?: EditableExpense;
-  menuFocusKey?: string;
+  focusKey?: string;
+  inMenu?: boolean;
 };
 
 export default function ExpenseFormDialog({
@@ -50,7 +51,8 @@ export default function ExpenseFormDialog({
   bankOptions,
   creditAccounts = [],
   expense,
-  menuFocusKey,
+  focusKey,
+  inMenu,
 }: ExpenseFormDialogProps) {
   const fieldId = useId();
   const submissionId = useRef("");
@@ -174,10 +176,10 @@ export default function ExpenseFormDialog({
       <FormDialog
         triggerLabel={expense ? "Edit" : "+ New Expense"}
         triggerAriaLabel={expense ? `Edit expense: ${expense.title}` : undefined}
-        triggerFocusKey={menuFocusKey ?? (expense ? `expense-${expense.id}` : undefined)}
+        triggerFocusKey={focusKey}
         triggerVariant={expense ? "secondary" : "primary"}
-        triggerClassName={menuFocusKey ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm` : undefined}
-        returnFocusId={menuFocusKey ? "expense-history-title" : undefined}
+        triggerClassName={inMenu ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm` : undefined}
+        returnFocusId={expense ? "expense-history-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
         description={hasRepaymentPlan ? "The amount, date, and payment method are tied to this expense’s repayment plan." : undefined}
         dialogSize={showSchedule ? "extra-wide" : "wide"}

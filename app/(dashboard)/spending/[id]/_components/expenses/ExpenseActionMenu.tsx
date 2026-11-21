@@ -6,11 +6,11 @@ import styles from "@/app/components/menus/action-menu.module.css";
 
 export default function ExpenseActionMenu({
   title,
-  focusKey,
+  focusKeys,
   children,
 }: {
   title: string;
-  focusKey: string;
+  focusKeys: string[];
   children: ReactNode;
 }) {
   const id = useId();
@@ -79,7 +79,7 @@ export default function ExpenseActionMenu({
         onClick={positionPopover}
         onKeyDown={onKeyDown}
         onBlur={dismissOnBlur}
-        data-dialog-focus-key={focusKey}
+        data-dialog-focus-key={focusKeys.join(" ")}
         aria-label={`Actions for ${title}`}
         aria-expanded={open}
         aria-controls={id}

@@ -18,10 +18,12 @@ export type PayableInstallment = {
 
 export default function RecordPaymentForm({
   installments,
+  startDay,
   today,
   submissionId,
 }: {
   installments: PayableInstallment[];
+  startDay: string;
   today: string;
   submissionId: string;
 }) {
@@ -82,7 +84,7 @@ export default function RecordPaymentForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="loan-paid-on" className="mb-1.5 block text-sm font-medium">Payment date</label>
-                <DateInput id="loan-paid-on" name="paidOn" required max={today} value={paidOn} onChange={(event) => setPaidOn(event.target.value)} />
+                <DateInput id="loan-paid-on" name="paidOn" required min={startDay} max={today} value={paidOn} onChange={(event) => setPaidOn(event.target.value)} />
               </div>
               <div>
                 <label htmlFor="loan-funding-account" className="mb-1.5 block text-sm font-medium">Paid from</label>

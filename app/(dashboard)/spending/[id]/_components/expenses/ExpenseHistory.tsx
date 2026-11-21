@@ -23,6 +23,10 @@ type ExpenseHistoryProps = {
 
 const pageLinkClass = "rounded-lg border px-3 py-2 text-sm font-medium";
 
+function expenseActionFocusKeys(id: number) {
+  return { edit: `expense-edit-${id}`, delete: `expense-delete-${id}` };
+}
+
 function expenseBankName(expense: ExpenseHistoryEntry) {
   return expense.bankAssignment?.bank.name ?? expense.legacyBankName;
 }
@@ -50,11 +54,13 @@ export default function ExpenseHistory({
     return `${groupPath}${search}#expense-history-title`;
   }
 
-  function expenseActions(expense: ExpenseHistoryEntry, menuFocusKey?: string) {
+  function expenseActions(expense: ExpenseHistoryEntry, inMenu = false) {
+    const keys = expenseActionFocusKeys(expense.id);
     return (
       <>
         <EditExpenseButton
-          menuFocusKey={menuFocusKey}
+          focusKey={keys.edit}
+          inMenu={inMenu}
           expenseGroupId={expenseGroupId}
           categories={categories}
           bankOptions={bankOptions}
@@ -74,7 +80,8 @@ export default function ExpenseHistory({
           }}
         />
         {!expense.repaymentPlanId && <DeleteExpenseButton
-          menuFocusKey={menuFocusKey}
+          focusKey={keys.delete}
+          inMenu={inMenu}
           expenseGroupId={expenseGroupId}
           expense={{
             id: expense.id,
@@ -87,10 +94,10 @@ export default function ExpenseHistory({
   }
 
   function expenseMenu(expense: ExpenseHistoryEntry) {
-    const focusKey = `expense-actions-${expense.id}`;
+    const keys = expenseActionFocusKeys(expense.id);
     return (
-      <ExpenseActionMenu title={expense.title} focusKey={focusKey}>
-        {expenseActions(expense, focusKey)}
+      <ExpenseActionMenu title={expense.title} focusKeys={[keys.edit, keys.delete]}>
+        {expenseActions(expense, true)}
       </ExpenseActionMenu>
     );
   }

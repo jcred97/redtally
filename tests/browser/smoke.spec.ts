@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readSheet } from "read-excel-file/node";
 import { Pool } from "pg";
 import { test as base, expect, type BrowserContext, type Page, type Route } from "@playwright/test";
+import { getManilaToday, parseExpenseDate } from "../../app/lib/expenses/date";
 import { browserData } from "./data";
 
 const data = browserData();
@@ -139,6 +140,7 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   expect(new URL(page.url()).searchParams.get("scope")).toBe("1");
   await expect(groupPicker).toContainText("0 included");
   await page.getByRole("checkbox", { name: "Dashboard household", exact: true }).check();
+  await expect(page.getByRole("region", { name: "Included expense groups" })).toContainText("Dashboard household");
   await page.getByRole("checkbox", { name: "Dashboard work", exact: true }).check();
   await expect.poll(() => new URL(page.url()).searchParams.getAll("group").sort()).toEqual([
     data.dashboard.budgeted, data.dashboard.unbudgeted,
@@ -170,16 +172,27 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   const expense = await newExpense(page);
   await expense.getByLabel("Title", { exact: true }).fill("Dashboard quick-entry ticket");
   await expense.getByLabel("Amount (PHP)", { exact: true }).fill("2.50");
-  await expense.getByLabel("Date", { exact: true }).fill(`${data.dashboard.month}-09`);
+  await expense.getByLabel("Date", { exact: true }).fill(`${data.dashboard.month}-08`);
   await expense.getByRole("button", { name: "Save expense", exact: true }).click();
   await expect(expense).not.toBeVisible();
   await expect(spent.getByText("₱35.25", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Dashboard quick-entry ticket/ })).toBeVisible();
 
+  const reportUrl = page.url();
+  for (const title of ["Scheduled internet", "Review storage renewal"]) {
+    await page.getByRole("link", { name: new RegExp(title) }).click();
+    await expect(page).toHaveURL(/\?tab=recurring#recurring-expense-\d+$/);
+    const schedule = page.locator(new URL(page.url()).hash);
+    await expect(schedule.getByRole("heading", { name: title, exact: true })).toBeInViewport();
+    await page.goto(reportUrl);
+  }
+
   const recent = page.getByRole("link", { name: /Work groceries/ });
   await recent.click();
   await expect.poll(() => new URL(page.url()).pathname).toBe(`/spending/${data.dashboard.unbudgeted}`);
+  await expect(page).toHaveURL(/expense=\d+#expense-history-title$/);
   await expect(page.getByRole("heading", { name: "Work groceries", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard quick-entry ticket", exact: true })).toHaveCount(0);
   await openNavigation.click();
   await expect(navigation.getByRole("link", { name: "Expense Groups" })).toHaveAttribute("aria-current", "location");
   await drawer.getByRole("button", { name: "Close navigation" }).click();
@@ -211,6 +224,14 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
   await page.getByRole("link", { name: "Expenses", exact: true }).click();
   await page.goto(`${new URL(page.url()).pathname}?allMonths=1`);
   const dialog = await newExpense(page);
+  const save = dialog.getByRole("button", { name: "Save expense", exact: true });
+  const cancel = dialog.getByRole("button", { name: "Cancel", exact: true });
+  await expect(save).toHaveCSS("min-height", "40px");
+  await expect(cancel).toHaveCSS("min-height", "40px");
+  await cancel.focus();
+  await page.keyboard.press("Tab");
+  await expect(save).toBeFocused();
+  await expect(save).toHaveCSS("outline-width", "2px");
   await dialog.getByLabel("Title", { exact: true }).fill("Retry breakfast");
   await dialog.getByLabel("Merchant", { exact: false }).fill("Phone Cafe");
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("0");
@@ -511,10 +532,11 @@ test("SPayLater purchases open their repayment schedules from Expenses", async (
 
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   const title = "SPayLater test purchase";
+  const purchasedOn = "2026-11-18";
   const expense = await newExpense(page);
   await expense.getByLabel("Title", { exact: true }).fill(title);
   await expense.getByLabel("Amount (PHP)", { exact: true }).fill("125");
-  await expense.getByLabel("Date", { exact: true }).fill("2026-11-18");
+  await expense.getByLabel("Date", { exact: true }).fill(purchasedOn);
   await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
   await expect(expense.getByRole("combobox", { name: "Credit account", exact: true })).toHaveText("SPayLater");
@@ -545,6 +567,34 @@ test("SPayLater purchases open their repayment schedules from Expenses", async (
   await expect(schedule.getByRole("row", { name: /Dec 18, 2026/ }).getByRole("cell", { name: "₱50.00" })).toHaveCount(2);
   await expect(schedule.getByRole("row", { name: /Jan 18, 2027/ }).getByRole("cell", { name: "₱75.00" })).toHaveCount(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  const payment = page.getByRole("region", { name: "Record Payment", exact: true });
+  const paymentDate = payment.getByLabel("Payment date", { exact: true });
+  const today = getManilaToday();
+  await expect(paymentDate).toHaveAttribute("min", purchasedOn);
+  await expect(paymentDate).toHaveAttribute("max", today);
+  await paymentDate.fill("2026-11-17");
+  expect(await paymentDate.evaluate((input: HTMLInputElement) => input.validity.rangeUnderflow)).toBe(true);
+
+  const tomorrow = parseExpenseDate(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  await paymentDate.fill(tomorrow.toISOString().slice(0, 10));
+  expect(await paymentDate.evaluate((input: HTMLInputElement) => input.validity.rangeOverflow)).toBe(true);
+  await payment.getByLabel("Paid from", { exact: true }).fill("Test wallet");
+  const paymentForm = payment.locator("form");
+  const recordPayment = payment.getByRole("button", { name: "Record Payment", exact: true });
+  await paymentForm.evaluate((form: HTMLFormElement) => { form.noValidate = true; });
+  await recordPayment.click();
+  await expect(payment.getByRole("alert")).toHaveText("Payment date cannot be in the future.");
+  await expect(page.getByText("No payments recorded.", { exact: true })).toBeVisible();
+  await expect(schedule.getByRole("row", { name: /Dec 18, 2026/ }).getByRole("cell", { name: "₱50.00" })).toHaveCount(2);
+
+  await paymentForm.evaluate((form: HTMLFormElement) => { form.noValidate = false; });
+  await paymentDate.fill(purchasedOn);
+  await recordPayment.click();
+  await expect(payment.getByRole("status")).toHaveText("Payment recorded.");
+  await expect(schedule.getByRole("row", { name: /Dec 18, 2026/ }).getByRole("cell", { name: "Paid", exact: true })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Nov 18, 2026 Test wallet ₱50\.00/ })).toBeVisible();
 
   await page.getByRole("link", { name: "Back to Expense", exact: true }).click();
   await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
