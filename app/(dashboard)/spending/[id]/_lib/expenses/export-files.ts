@@ -5,6 +5,7 @@ import writeXlsxFile, { type SheetData } from "write-excel-file/node";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import { expenseExportHeaders } from "./export";
 import { createPdfText } from "./pdf-text";
 import { drawColorEmoji } from "./pdf-emoji";
 
@@ -48,13 +49,12 @@ function fileResponse(bytes: Uint8Array<ArrayBuffer>, source: ExpenseExportSourc
 
 export async function expenseXlsxResponse(source: ExpenseExportSource, signal?: AbortSignal) {
   const expenses = await collectExpenses(source, signal);
-  const headers = ["Date", "Time (Asia/Manila)", "Title", "Merchant", "Amount (PHP)", "Category", "Payment method", "Bank", "Notes"];
-  const data: SheetData = [headers.map((value) => ({ value, type: String, fontWeight: "bold" }))];
+  const data: SheetData = [expenseExportHeaders.map((value) => ({ value, type: String, fontWeight: "bold" }))];
   for (const expense of expenses) {
     const values = [
       expense.date.toISOString().slice(0, 10), expenseTimeInput(expense.timeMinutes),
       expense.title, expense.merchant ?? "", expense.amountCentavos / 100,
-      expense.categoryName, paymentText(expense), expense.bankName ?? "", expense.notes ?? "",
+      expense.categoryName, paymentText(expense), expense.paymentProviderName ?? "", expense.notes ?? "",
     ];
     // Explicit String cells preserve user text without treating formula markers as formulas.
     data.push(values.map((value) => typeof value === "number"
@@ -104,8 +104,8 @@ export async function expensePdfResponse(source: ExpenseExportSource, signal?: A
       text: pdfText.text([
         `Category: ${expense.categoryName}`,
         `Merchant: ${expense.merchant ?? "-"}`,
-        `Payment method: ${paymentText(expense) || "-"}`,
-        `Bank: ${expense.bankName ?? "-"}`,
+        `Payment Method: ${paymentText(expense) || "-"}`,
+        `Payment Provider: ${expense.paymentProviderName ?? "-"}`,
         `Notes: ${expense.notes ?? "-"}`,
       ].join("\n")),
       lineHeight: 1.25,

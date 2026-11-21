@@ -2,7 +2,9 @@ import type { ExpenseExportRow } from "@/app/(dashboard)/_lib/expense-groups/acc
 import { expenseTimeInput } from "@/app/lib/expenses/date";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 
-const headers = ["Date", "Time (Asia/Manila)", "Title", "Merchant", "Amount (PHP)", "Category", "Payment method", "Bank", "Notes"];
+export const expenseExportHeaders = [
+  "Date", "Time (Asia/Manila)", "Title", "Merchant", "Amount (PHP)", "Category", "Payment Method", "Payment Provider", "Notes",
+];
 
 function csvCell(value: string) {
   // Quoting alone does not prevent spreadsheet formulas. Guard text even when
@@ -18,7 +20,7 @@ export function expenseCsvRow(expense: ExpenseExportRow) {
     expense.date.toISOString().slice(0, 10), expenseTimeInput(expense.timeMinutes),
     expense.title, expense.merchant ?? "", amount, expense.categoryName,
     expense.paymentMethod ? paymentMethodLabels[expense.paymentMethod] : "",
-    expense.bankName ?? "", expense.notes ?? "",
+    expense.paymentProviderName ?? "", expense.notes ?? "",
   ].map(csvCell).join(",") + "\r\n";
 }
 
@@ -35,7 +37,7 @@ export function expenseCsvResponse(
         signal?.throwIfAborted();
         if (!headerSent) {
           headerSent = true;
-          controller.enqueue(encoder.encode("\uFEFF" + headers.map(csvCell).join(",") + "\r\n"));
+          controller.enqueue(encoder.encode("\uFEFF" + expenseExportHeaders.map(csvCell).join(",") + "\r\n"));
           return;
         }
         const batch = await batches.next();

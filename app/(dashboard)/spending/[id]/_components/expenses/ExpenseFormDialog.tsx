@@ -292,7 +292,7 @@ export default function ExpenseFormDialog({
             </div>
 
             <div className="min-w-0">
-              <label htmlFor={`${fieldId}-payment-method`} className={fieldLabelClass}>Payment method</label>
+              <label htmlFor={`${fieldId}-payment-method`} className={fieldLabelClass}>Payment Method</label>
               <Select
                 id={`${fieldId}-payment-method`}
                 value={paymentMethod}
@@ -301,7 +301,7 @@ export default function ExpenseFormDialog({
               />
             </div>
             <div className="min-w-0">
-              <label htmlFor={`${fieldId}-payment-provider`} className={fieldLabelClass}>Payment provider</label>
+              <label htmlFor={`${fieldId}-payment-provider`} className={fieldLabelClass}>Payment Provider</label>
               <Select
                 id={`${fieldId}-payment-provider`}
                 value={isPayLater ? creditProviderKey : usesBank ? bankAssignmentId : ""}

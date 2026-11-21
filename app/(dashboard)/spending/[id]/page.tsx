@@ -167,7 +167,7 @@ export default async function ExpenseGroupPage({
           />
         ) : showPaymentProviders ? (
           <div key={expenseGroup.id} className="space-y-6">
-            <nav aria-label="Payment provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">
+            <nav aria-label="Payment Provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">
               {[
                 { label: "Banks", href: groupPath + paymentProvidersTab, current: showBanks },
                 { label: "Pay Later", href: groupPath + payLaterTab, current: showPayLater },

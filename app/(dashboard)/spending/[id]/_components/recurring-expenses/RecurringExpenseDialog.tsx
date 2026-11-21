@@ -140,7 +140,7 @@ export default function RecurringExpenseDialog({
           <DateInput id={`${fieldId}-end-date`} name="endDate" defaultValue={rule?.endDate?.toISOString().slice(0, 10)} />
         </div>
         <div className="min-w-0">
-          <label htmlFor={`${fieldId}-payment-method`} className={fieldLabelClass}>Payment method</label>
+          <label htmlFor={`${fieldId}-payment-method`} className={fieldLabelClass}>Payment Method</label>
           <Select
             id={`${fieldId}-payment-method`}
             name="paymentMethod"
@@ -155,7 +155,7 @@ export default function RecurringExpenseDialog({
           />
         </div>
         <div className="min-w-0">
-          <label htmlFor={providerFieldId} className={fieldLabelClass}>Payment provider</label>
+          <label htmlFor={providerFieldId} className={fieldLabelClass}>Payment Provider</label>
           <Select
             id={providerFieldId}
             name="bankAssignmentId"

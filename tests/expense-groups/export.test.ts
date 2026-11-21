@@ -67,8 +67,10 @@ test("history export uses bounded owner-only batches and the history filters", a
       assert.equal(csv.data[1]["Time (Asia/Manila)"], "00:00");
       assert.equal(csv.data[0]["Time (Asia/Manila)"], "");
       assert.equal(csv.data[1].Notes, 'A "quoted" note\nsecond line');
-      assert.equal(csv.data[1].Bank, bank.name);
-      assert.equal(csv.data[0].Bank, "Legacy bank");
+      assert.equal(csv.data[1]["Payment Method"], "Credit card");
+      assert.equal(csv.data[1]["Payment Provider"], bank.name);
+      assert.equal(csv.data[0]["Payment Method"], "Cash");
+      assert.equal(csv.data[0]["Payment Provider"], "Legacy bank");
     });
 
     await t.test("all filters reconcile with history counts and exact totals", async () => {

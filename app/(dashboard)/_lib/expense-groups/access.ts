@@ -61,8 +61,11 @@ export type ExpenseExportRow = {
   notes: string | null;
   categoryName: string;
   paymentMethod: PaymentMethod | null;
-  bankName: string | null;
+  paymentProviderName: string | null;
 };
+
+type ExpenseExportQueryRow = Omit<ExpenseExportRow, "paymentProviderName"> &
+  Pick<Expense, "payLaterProviderKey" | "payLaterProviderName"> & { bankName: string | null };
 
 export type ExpenseHistoryProviderOption = { value: string; label: string; paymentMethods: PaymentMethod[] };
 
@@ -473,10 +476,10 @@ export function createExpenseGroupAccess(
           while (afterId < group.maxId) {
             // Each batch rechecks ownership. A maximum ID excludes newer inserts;
             // concurrent edits/deletes can still affect batches not yet downloaded.
-            const rows = await db.$queryRaw<ExpenseExportRow[]>`
+            const rows = await db.$queryRaw<ExpenseExportQueryRow[]>`
               WITH matching AS (
                 SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", notes,
-                  "categoryId", "bankAssignmentId", bank, "transactionType"
+                  "categoryId", "bankAssignmentId", bank, "transactionType", "payLaterProviderKey", "payLaterProviderName"
                 FROM "Expense"
                 WHERE "expenseGroupId" = ${id} AND id > ${afterId} AND id <= ${group.maxId}
                   ${expenseFilters}
@@ -485,7 +488,8 @@ export function createExpenseGroupAccess(
               )
               SELECT matching.id, matching.title, matching.merchant, matching."amountCentavos",
                 matching.date, matching."timeMinutes", matching.notes, category.name AS "categoryName",
-                matching."transactionType" AS "paymentMethod", COALESCE(bank.name, matching.bank) AS "bankName"
+                matching."transactionType" AS "paymentMethod", COALESCE(bank.name, matching.bank) AS "bankName",
+                matching."payLaterProviderKey", matching."payLaterProviderName"
               FROM matching
               JOIN "Category" category ON category.id = matching."categoryId" AND category."spendingId" = ${id}
               LEFT JOIN "ExpenseGroupBank" assignment ON assignment.id = matching."bankAssignmentId" AND assignment."expenseGroupId" = ${id}
@@ -493,7 +497,12 @@ export function createExpenseGroupAccess(
               ORDER BY matching.id
             `;
             if (rows.length === 0) return;
-            yield rows;
+            yield rows.map(({ bankName, payLaterProviderKey, payLaterProviderName, ...expense }): ExpenseExportRow => ({
+              ...expense,
+              paymentProviderName: payLaterProviderKey
+                ? getPayLaterProviderName(payLaterProviderKey, payLaterProviderName)
+                : bankName,
+            }));
             afterId = rows[rows.length - 1].id;
           }
         },

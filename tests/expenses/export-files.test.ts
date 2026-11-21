@@ -10,7 +10,7 @@ import { expensePdfResponse, expenseXlsxResponse } from "../../app/(dashboard)/s
 const base: ExpenseExportRow = {
   id: 1, title: "Lunch", merchant: "Café", amountCentavos: 10,
   date: new Date("2026-11-18T00:00:00Z"), timeMinutes: 1439,
-  notes: null, categoryName: "Food", paymentMethod: "CASH", bankName: null,
+  notes: null, categoryName: "Food", paymentMethod: "CASH", paymentProviderName: null,
 };
 
 function source(rows: ExpenseExportRow[]) {
@@ -127,29 +127,30 @@ async function renderedEmoji(response: Response, character: string) {
 
 test("XLSX stores typed amounts and literal user text with every expense field", async () => {
   const response = await expenseXlsxResponse(source([
-    { ...base, title: "=1+1", merchant: "+cmd", notes: "one\ntwo", bankName: "@BANK" },
+    { ...base, title: "=1+1", merchant: "+cmd", notes: "one\ntwo", paymentMethod: "CREDIT_CARD", paymentProviderName: "@BANK" },
     { ...base, id: 2, amountCentavos: 2147483647 },
   ]));
   assert.equal(response.headers.get("cache-control"), "private, no-store");
   assert.match(response.headers.get("content-disposition")!, /\.xlsx"$/);
   const rows = await readSheet(Buffer.from(await response.arrayBuffer()));
-  assert.deepEqual(rows[1], ["2026-11-18", "23:59", "=1+1", "+cmd", 0.1, "Food", "Cash", "@BANK", "one\ntwo"]);
+  assert.deepEqual(rows[1], ["2026-11-18", "23:59", "=1+1", "+cmd", 0.1, "Food", "Credit card", "@BANK", "one\ntwo"]);
   assert.equal(rows[2][4], 21474836.47);
 });
 
 test("CSV and XLSX keep plain column names and preserve user-entered emoji and CJK text", async () => {
-  const expense = {
+  const expense: ExpenseExportRow = {
     ...base,
     title: "午餐 🍱",
     merchant: 'Café, "Market" 🛒',
     categoryName: "食品 🥢",
-    bankName: "銀行 🏦",
+    paymentMethod: "PAY_LATER",
+    paymentProviderName: "後払い 🏦",
     notes: "家族 👨‍👩‍👧‍👦\n日本語 한국어",
   };
-  const headers = ["Date", "Time (Asia/Manila)", "Title", "Merchant", "Amount (PHP)", "Category", "Payment method", "Bank", "Notes"];
+  const headers = ["Date", "Time (Asia/Manila)", "Title", "Merchant", "Amount (PHP)", "Category", "Payment Method", "Payment Provider", "Notes"];
   const expectedTextRow = [
     "2026-11-18", "23:59", expense.title, expense.merchant, "0.10",
-    expense.categoryName, "Cash", expense.bankName, expense.notes,
+    expense.categoryName, "Pay Later", expense.paymentProviderName, expense.notes,
   ];
   const csv = Papa.parse<string[]>(await expenseCsvResponse(source([expense])).text(), { skipEmptyLines: true });
   assert.deepEqual(csv.errors, []);
@@ -162,14 +163,16 @@ test("CSV and XLSX keep plain column names and preserve user-entered emoji and C
 });
 
 test("PDF paginates long reports and preserves fields and exact total", async () => {
-  const rows = Array.from({ length: 45 }, (_, index) => ({
-    ...base, id: index + 1, title: `Expense ${index + 1}`, notes: "A long note. ".repeat(50), bankName: "My bank",
+  const rows = Array.from({ length: 45 }, (_, index): ExpenseExportRow => ({
+    ...base, id: index + 1, title: `Expense ${index + 1}`, notes: "A long note. ".repeat(50),
+    paymentMethod: index === 0 ? "PAY_LATER" : "BANK_TRANSFER", paymentProviderName: index === 0 ? "Shopee" : "My bank",
   }));
   const response = await expensePdfResponse(source(rows));
   assert.equal(response.headers.get("content-type"), "application/pdf");
   const result = await pdfText(response);
   assert.ok(result.pages > 1);
-  for (const value of ["Expense 1", "Expense 45", "Café", "23:59", "Cash", "My bank", "Food", "4.50"])
+  for (const value of ["Expense 1", "Expense 45", "Café", "23:59", "Payment Method: Pay Later", "Payment Provider: Shopee",
+    "Payment Method: Bank transfer", "Payment Provider: My bank", "Food", "4.50"])
     assert.ok(result.text.includes(value), `Missing PDF text: ${value}`);
 });
 
@@ -179,13 +182,13 @@ test("PDF embeds visible Chinese, Japanese, Korean, and emoji glyphs in every us
     title: "午餐 🍱 中文 日本語 한국어",
     merchant: "台灣商店 🛒 𠮷野家 コーヒー・スーパー",
     categoryName: "食品・식비 🥢",
-    bankName: "中國銀行 🏦",
+    paymentProviderName: "中國銀行 🏦",
     notes: "家族 👨‍👩‍👧‍👦 | 開発者 👩🏽‍💻 | 旗 🇵🇭 🇯🇵 | café ❤️",
   };
   const result = await pdfText(await expensePdfResponse(source([expense])), true);
   // PDF text extraction may insert spaces between independently positioned CJK runs.
   const compact = (value: string) => value.replace(/\s/gu, "");
-  for (const value of [expense.title, expense.merchant, expense.categoryName, expense.bankName, expense.notes]) {
+  for (const value of [expense.title, expense.merchant, expense.categoryName, expense.paymentProviderName, expense.notes]) {
     assert.ok(compact(result.text).includes(compact(value)), `Missing or changed PDF text: ${value}`);
   }
   assert.doesNotMatch(result.text, /[\u0000\uFFFD]/u);

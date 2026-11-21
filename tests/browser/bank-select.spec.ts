@@ -41,14 +41,14 @@ test.beforeEach(async ({ page }) => {
 test.afterAll(async () => { await db.end(); });
 
 async function choosePaymentMethod(dialog: Locator, label: string) {
-  await dialog.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await dialog.getByRole("combobox", { name: "Payment Method", exact: true }).click();
   await dialog.getByRole("listbox").getByRole("option", { name: label, exact: true }).click();
 }
 
 test("payment provider dropdown supports keyboard selection, cancellation, and saving the bank", async ({ page }) => {
   await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
-  const bank = dialog.getByRole("combobox", { name: "Payment provider", exact: true });
+  const bank = dialog.getByRole("combobox", { name: "Payment Provider", exact: true });
   await expect(bank).toBeDisabled();
   await choosePaymentMethod(dialog, "Debit card");
   await expect(bank).toBeEnabled();
@@ -98,8 +98,8 @@ test("payment provider dropdown supports keyboard selection, cancellation, and s
   await expect(editAction).toBeFocused();
   await page.keyboard.press("Enter");
   const edit = page.getByRole("dialog", { name: "Edit Expense", exact: true });
-  await expect(edit.getByRole("combobox", { name: "Payment method", exact: true })).toHaveText("Debit card");
-  await expect(edit.getByRole("combobox", { name: "Payment provider", exact: true })).toHaveText(assignments[0].name);
+  await expect(edit.getByRole("combobox", { name: "Payment Method", exact: true })).toHaveText("Debit card");
+  await expect(edit.getByRole("combobox", { name: "Payment Provider", exact: true })).toHaveText(assignments[0].name);
   await edit.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(actions).toBeFocused();
   await expect(actions).toHaveAttribute("aria-expanded", "false");
@@ -109,7 +109,7 @@ test("payment provider dropdown supports keyboard selection, cancellation, and s
     await page.reload();
     await page.getByRole("button", { name: "Actions for Keyboard bank selection", exact: true }).click();
     await page.getByRole("button", { name: "Edit expense: Keyboard bank selection", exact: true }).click();
-    const historicalBank = edit.getByRole("combobox", { name: "Payment provider", exact: true });
+    const historicalBank = edit.getByRole("combobox", { name: "Payment Provider", exact: true });
     await choosePaymentMethod(edit, "Debit card");
     await expect(historicalBank).toHaveText(`${assignments[0].name} (previously selected)`);
     await historicalBank.click();
@@ -134,7 +134,7 @@ test("payment provider menu fits mobile and updates when the method changes", as
   await page.setViewportSize({ width: 360, height: 640 });
   await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
-  const bank = dialog.getByRole("combobox", { name: "Payment provider", exact: true });
+  const bank = dialog.getByRole("combobox", { name: "Payment Provider", exact: true });
   await choosePaymentMethod(dialog, "Debit card");
   await bank.click();
   const menu = dialog.getByRole("listbox");
@@ -181,8 +181,8 @@ test("recurring expense defaults to the first category and saves a different cat
   await page.getByRole("link", { name: "Recurring", exact: true }).click();
   await page.getByRole("button", { name: "+ New Recurring Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New recurring expense", exact: true });
-  const method = dialog.getByRole("combobox", { name: "Payment method", exact: true });
-  const bank = dialog.getByRole("combobox", { name: "Payment provider", exact: true });
+  const method = dialog.getByRole("combobox", { name: "Payment Method", exact: true });
+  const bank = dialog.getByRole("combobox", { name: "Payment Provider", exact: true });
   await expect(bank).toBeDisabled();
   await expect(bank).toHaveText("No provider");
   await dialog.getByLabel("Title", { exact: true }).fill("Recurring bank selection");
@@ -234,7 +234,7 @@ test("recurring expense defaults to the first category and saves a different cat
   await page.setViewportSize({ width: 360, height: 640 });
   await page.getByRole("button", { name: "Edit recurring expense: Recurring bank selection", exact: true }).click();
   const edit = page.getByRole("dialog", { name: "Edit recurring expense", exact: true });
-  const editBank = edit.getByRole("combobox", { name: "Payment provider", exact: true });
+  const editBank = edit.getByRole("combobox", { name: "Payment Provider", exact: true });
   await expect(edit.getByLabel("Start date", { exact: true })).toHaveValue("2099-01-01");
   await expect(edit.getByRole("combobox", { name: "Category", exact: true })).toHaveText("Secondary test category");
   await expect(editBank).toHaveText(assignments[1].name);

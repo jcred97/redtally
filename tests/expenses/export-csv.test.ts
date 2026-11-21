@@ -7,7 +7,7 @@ import { expenseCsvResponse, expenseCsvRow } from "../../app/(dashboard)/spendin
 const base: ExpenseExportRow = {
   id: 1, title: "Lunch", merchant: "Café 🍱", amountCentavos: 10,
   date: new Date("2026-11-18T23:59:59Z"), timeMinutes: 1439,
-  notes: null, categoryName: "Food", paymentMethod: "CASH", bankName: null,
+  notes: null, categoryName: "Food", paymentMethod: "CASH", paymentProviderName: null,
 };
 
 test("CSV preserves Unicode, quotes, line breaks, calendar days, and exact decimals", () => {
@@ -18,7 +18,7 @@ test("CSV preserves Unicode, quotes, line breaks, calendar days, and exact decim
 
 test("CSV neutralizes spreadsheet formulas in every user text field", () => {
   for (const text of ["=1+1", "+cmd", "-1+2", "@SUM(A1)", "  =SUM(A1)", "\t=1", "\r=1", "\n=1", "\u0000=1"]) {
-    const [row] = Papa.parse<string[]>(expenseCsvRow({ ...base, title: text, merchant: text, categoryName: text, bankName: text, notes: text }), { skipEmptyLines: true }).data;
+    const [row] = Papa.parse<string[]>(expenseCsvRow({ ...base, title: text, merchant: text, categoryName: text, paymentProviderName: text, notes: text }), { skipEmptyLines: true }).data;
     for (const index of [2, 3, 5, 7, 8]) assert.equal(row[index], `'${text}`);
   }
 });

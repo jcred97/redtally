@@ -183,7 +183,7 @@ export default function ExpenseHistoryFilters({
         />
       </div>
       <div className={fieldLabelClass}>
-        <label htmlFor="expense-filter-payment-method">Payment method</label>
+        <label htmlFor="expense-filter-payment-method">Payment Method</label>
         <Select
           id="expense-filter-payment-method"
           value={paymentMethod}
@@ -195,7 +195,7 @@ export default function ExpenseHistoryFilters({
         />
       </div>
       <div className={fieldLabelClass}>
-        <label htmlFor="expense-filter-payment-provider">Payment provider</label>
+        <label htmlFor="expense-filter-payment-provider">Payment Provider</label>
         <Select
           id="expense-filter-payment-provider"
           value={provider}

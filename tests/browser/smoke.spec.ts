@@ -336,7 +336,7 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await groupLink.click();
   await page.getByRole("link", { name: "Payment Provider", exact: true }).click();
 
-  const providers = page.getByRole("navigation", { name: "Payment provider views" });
+  const providers = page.getByRole("navigation", { name: "Payment Provider views" });
   const banks = providers.getByRole("link", { name: "Banks", exact: true });
   const payLater = providers.getByRole("link", { name: "Pay Later", exact: true });
   await expect(banks).toHaveAttribute("aria-current", "page");
@@ -391,7 +391,7 @@ test("New Expense lists enabled Pay Later providers for the group", async ({ pag
   await page.goto(groupPath());
   const groupViews = page.getByRole("navigation", { name: "Expense group views" });
   await groupViews.getByRole("link", { name: "Payment Provider", exact: true }).click();
-  await page.getByRole("navigation", { name: "Payment provider views" })
+  await page.getByRole("navigation", { name: "Payment Provider views" })
     .getByRole("link", { name: "Pay Later", exact: true }).click();
 
   for (const provider of ["Lazada", "GCash", "Atome", "BillEase", "Home Credit"]) {
@@ -414,8 +414,8 @@ test("New Expense lists enabled Pay Later providers for the group", async ({ pag
 
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   const expense = await newExpense(page);
-  const paymentMethod = expense.getByRole("combobox", { name: "Payment method", exact: true });
-  const paymentProvider = expense.getByRole("combobox", { name: "Payment provider", exact: true });
+  const paymentMethod = expense.getByRole("combobox", { name: "Payment Method", exact: true });
+  const paymentProvider = expense.getByRole("combobox", { name: "Payment Provider", exact: true });
   const saveExpense = expense.getByRole("button", { name: "Save expense", exact: true });
   await paymentMethod.click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
@@ -467,7 +467,7 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
 
   const groupViews = page.getByRole("navigation", { name: "Expense group views" });
   const paymentProviders = groupViews.getByRole("link", { name: "Payment Provider", exact: true });
-  const providerViews = page.getByRole("navigation", { name: "Payment provider views" });
+  const providerViews = page.getByRole("navigation", { name: "Payment Provider views" });
   const payLater = providerViews.getByRole("link", { name: "Pay Later", exact: true });
   await paymentProviders.click();
   await payLater.click();
@@ -484,9 +484,9 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   await expense.getByLabel("Title", { exact: true }).fill(title);
   await expense.getByLabel("Amount (PHP)", { exact: true }).fill("125");
   await expense.getByLabel("Date", { exact: true }).fill(purchasedOn);
-  await expense.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await expense.getByRole("combobox", { name: "Payment Method", exact: true }).click();
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
-  await expense.getByRole("combobox", { name: "Payment provider", exact: true }).click();
+  await expense.getByRole("combobox", { name: "Payment Provider", exact: true }).click();
   await expense.getByRole("option", { name: "Shopee", exact: true }).click();
   const receipt = expense.getByRole("heading", { name: "Receipt image (optional)", exact: true });
   await expect(expense.getByRole("combobox", { name: "Term", exact: true })).toHaveCount(0);
@@ -526,8 +526,8 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   await expect(purchaseCard.getByText("Shopee", { exact: true })).toBeVisible();
   await purchaseCard.getByRole("button", { name: "Edit expense: " + title, exact: true }).click();
   const edit = page.getByRole("dialog", { name: "Edit Expense", exact: true });
-  await expect(edit.getByRole("combobox", { name: "Payment method", exact: true })).toHaveText("Pay Later");
-  await expect(edit.getByRole("combobox", { name: "Payment provider", exact: true })).toHaveText("Shopee (previously selected)");
+  await expect(edit.getByRole("combobox", { name: "Payment Method", exact: true })).toHaveText("Pay Later");
+  await expect(edit.getByRole("combobox", { name: "Payment Provider", exact: true })).toHaveText("Shopee (previously selected)");
   await edit.getByLabel("Amount (PHP)", { exact: true }).fill("140");
   await edit.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(edit).toBeHidden();
@@ -536,9 +536,9 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   await expect(purchaseCard.getByRole("button", { name: "Delete expense: " + title, exact: true })).toBeVisible();
 
   const filters = page.getByRole("form", { name: "Expense history filters" });
-  await filters.getByRole("combobox", { name: "Payment method", exact: true }).click();
+  await filters.getByRole("combobox", { name: "Payment Method", exact: true }).click();
   await filters.getByRole("option", { name: "Pay Later", exact: true }).click();
-  const provider = filters.getByRole("combobox", { name: "Payment provider", exact: true });
+  const provider = filters.getByRole("combobox", { name: "Payment Provider", exact: true });
   await provider.click();
   await filters.getByRole("option", { name: "Shopee", exact: true }).click();
   await expect(page).toHaveURL(/[?&]paymentProvider=pay-later%3A[a-f0-9]{64}/);
@@ -548,7 +548,10 @@ test("Pay Later expenses save and edit with only a credit provider", async ({ pa
   const url = new URL(page.url());
   const csv = await page.request.get(`${url.pathname}/export${url.search}`);
   expect(csv.ok()).toBe(true);
-  expect(await csv.text()).toContain(title);
+  const csvText = await csv.text();
+  expect(csvText).toContain('"Payment Method","Payment Provider"');
+  expect(csvText).toContain(title);
+  expect(csvText).toContain('"Pay Later","Shopee"');
 });
 
 test("a lost schedule response can be retried from the dialog and posts one expense", async ({ page }) => {
@@ -685,8 +688,8 @@ test("an exact merchant link retains its filter until the text is edited", async
 test("expense payment provider filter follows the method and keeps bookmarked bank filters", async ({ page }) => {
   await page.goto(groupPath(data.merchants.publicId));
   const form = page.getByRole("form", { name: "Expense history filters" });
-  const payment = form.getByRole("combobox", { name: "Payment method", exact: true });
-  const provider = form.getByRole("combobox", { name: "Payment provider", exact: true });
+  const payment = form.getByRole("combobox", { name: "Payment Method", exact: true });
+  const provider = form.getByRole("combobox", { name: "Payment Provider", exact: true });
   const alpha = page.getByRole("cell", { name: /^Alpha Bakery purchase/ });
 
   await payment.click();

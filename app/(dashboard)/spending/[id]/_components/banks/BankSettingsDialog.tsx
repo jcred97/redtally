@@ -63,7 +63,7 @@ export default function BankSettingsDialog({
       </label>
 
       <fieldset disabled={!enabled || !bank.active} className="disabled:opacity-60">
-        <legend className={`mb-1 ${fieldLabelClass}`}>Payment methods</legend>
+        <legend className={`mb-1 ${fieldLabelClass}`}>Payment Methods</legend>
         {paymentMethods.map(({ name, label }) => (
           <label key={name} className={`flex min-h-10 items-center gap-3 ${fieldLabelClass}`}>
             <Checkbox

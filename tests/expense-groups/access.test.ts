@@ -802,9 +802,11 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal(payLater?.totalCentavos, BigInt(10));
       const exported = await alice.prepareExpenseExport(group.id, providerFilter);
       assert.ok(exported);
-      const titles: string[] = [];
-      for await (const batch of exported.batches()) titles.push(...batch.map(({ title }) => title));
-      assert.deepEqual(titles, ["Historical Pay Later purchase"]);
+      const payments = [];
+      for await (const batch of exported.batches()) {
+        payments.push(...batch.map(({ title, paymentMethod, paymentProviderName }) => ({ title, paymentMethod, paymentProviderName })));
+      }
+      assert.deepEqual(payments, [{ title: "Historical Pay Later purchase", paymentMethod: "PAY_LATER", paymentProviderName: providerName }]);
       assert.deepEqual(await bob.listExpenseHistoryProviderOptions(group.id), []);
       assert.deepEqual(await alice.listExpenseHistoryProviderOptions(legacy.id), []);
       await assert.rejects(anonymous.listExpenseHistoryProviderOptions(group.id), /Sign in required/);
