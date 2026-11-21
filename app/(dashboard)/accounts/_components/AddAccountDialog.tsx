@@ -6,7 +6,9 @@ import Select from "@/app/components/forms/Select";
 import TextInput from "@/app/components/forms/TextInput";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import { createFinancialAccount } from "../_lib/mutations";
-import { manualFinancialAccountTypes, supportsFinancialAccountBank } from "../_lib/types";
+import { financialAccountTypeLabels, manualFinancialAccountTypes, supportsFinancialAccountBank } from "../_lib/types";
+
+const accountTypeOptions = [...manualFinancialAccountTypes, { value: "PAY_LATER", label: financialAccountTypeLabels.PAY_LATER }];
 
 export default function AddAccountDialog({ banks }: { banks: { id: number; name: string }[] }) {
   const fieldId = useId();
@@ -18,7 +20,6 @@ export default function AddAccountDialog({ banks }: { banks: { id: number; name:
       triggerLabel="Add Account"
       triggerClassName="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-lg bg-red-500 px-4 text-sm font-medium text-white transition-colors enabled:hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50"
       title="Add Account"
-      description="Set up Pay Later accounts in an expense group's Payment Provider settings."
       submitLabel="Save account"
       pendingLabel="Saving…"
       failureMessage="Unable to save your account. Please try again."
@@ -40,23 +41,27 @@ export default function AddAccountDialog({ banks }: { banks: { id: number; name:
           name="type"
           value={type}
           onChange={setType}
-          options={manualFinancialAccountTypes}
+          options={accountTypeOptions}
           required
         />
       </div>
-      <div>
-        <label htmlFor={`${fieldId}-currency`} className={fieldLabelClass}>Currency</label>
-        <TextInput
-          id={`${fieldId}-currency`}
-          name="currency"
-          defaultValue="PHP"
-          maxLength={3}
-          pattern="[A-Za-z]{3}"
-          autoCapitalize="characters"
-          spellCheck={false}
-          required
-        />
-      </div>
+      {type === "PAY_LATER" ? (
+        <p className="text-sm text-gray-400">Pay Later accounts use PHP. After saving, enable the provider under Payment Provider → Pay Later in the expense groups where you use it.</p>
+      ) : (
+        <div>
+          <label htmlFor={`${fieldId}-currency`} className={fieldLabelClass}>Currency</label>
+          <TextInput
+            id={`${fieldId}-currency`}
+            name="currency"
+            defaultValue="PHP"
+            maxLength={3}
+            pattern="[A-Za-z]{3}"
+            autoCapitalize="characters"
+            spellCheck={false}
+            required
+          />
+        </div>
+      )}
       {supportsFinancialAccountBank(type) && (
         <div>
           <label htmlFor={`${fieldId}-bank`} className={fieldLabelClass}>Bank (optional)</label>

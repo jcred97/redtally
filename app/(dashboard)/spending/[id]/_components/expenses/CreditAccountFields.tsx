@@ -50,7 +50,7 @@ export default function CreditAccountFields({ creditAccounts, hidden }: {
             </button>
             <div className="absolute right-0 bottom-full z-10 w-56 pb-1" hidden={!helpOpen}>
               <p id={helpId} role="tooltip" className="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200 shadow-lg">
-                Open this expense group’s <strong>Payment Provider → Pay Later</strong>. Enable a preset or choose <strong>Add credit provider</strong>.
+                Create a Pay Later account in <strong>Accounts → Add Account</strong>. To make it available here, enable the provider in this group’s <strong>Payment Provider → Pay Later</strong> settings.
               </p>
             </div>
           </div>

@@ -437,6 +437,7 @@ test("New Expense lists enabled Pay Later providers for the group and handles de
   const instructions = expense.getByRole("tooltip");
   await help.hover();
   await expect(instructions).toBeVisible();
+  await expect(instructions).toContainText(/Accounts.*Add Account/);
   await expect(instructions).toContainText(/Payment Provider.*Pay Later/);
   await expense.getByLabel("Title", { exact: true }).hover();
   await expect(instructions).toBeHidden();
@@ -456,16 +457,25 @@ test("New Expense lists enabled Pay Later providers for the group and handles de
   await expect(accountSettings).toHaveCount(0);
   await openPayLaterWithNoProviders(data.group.publicId);
 
-  await expense.getByRole("button", { name: "Cancel", exact: true }).click();
-  await groupViews.getByRole("link", { name: "Payment Provider", exact: true }).click();
-  await page.getByRole("navigation", { name: "Payment provider views" })
-    .getByRole("link", { name: "Pay Later", exact: true }).click();
-  await page.getByRole("button", { name: "Add credit provider", exact: true }).click();
-  const addProvider = page.getByRole("dialog", { name: "Add credit provider", exact: true });
+  await page.goto("/accounts");
+  await page.getByRole("button", { name: "Add Account", exact: true }).click();
+  const addAccount = page.getByRole("dialog", { name: "Add Account", exact: true });
   const providerName = "Neighborhood Shop Pay Later";
-  await addProvider.getByLabel("Name", { exact: true }).fill(providerName);
-  await addProvider.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(addProvider).toBeHidden();
+  await addAccount.getByLabel("Account name", { exact: true }).fill(providerName);
+  await addAccount.getByRole("combobox", { name: "Account type", exact: true }).click();
+  await addAccount.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await addAccount.getByRole("button", { name: "Save account", exact: true }).click();
+  await expect(addAccount).toBeHidden();
+  await expect(page.getByRole("heading", { name: providerName, exact: true })).toBeVisible();
+
+  await page.goto(`/spending/${data.group.publicId}?tab=payment-providers&provider=pay-later`);
+  await expect(page.getByRole("button", { name: "Add credit provider", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: `${providerName} Not enabled`, exact: true }).click();
+  const configure = page.getByRole("dialog", { name: providerName, exact: true });
+  await configure.getByLabel("Enable for this expense group").check();
+  await configure.getByRole("checkbox", { name: "Pay Later", exact: true }).check();
+  await configure.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(configure).toBeHidden();
   await expect(page.getByRole("button", { name: `${providerName} Enabled`, exact: true })).toBeVisible();
 
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();

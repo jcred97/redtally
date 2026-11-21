@@ -20,7 +20,11 @@ async function saveAccountChange(change: () => Promise<unknown>): Promise<{ succ
 }
 
 export async function createFinancialAccount(formData: FormData) {
-  return saveAccountChange(() => access.create(formData));
+  if (formData.get("type") !== "PAY_LATER") return saveAccountChange(() => access.create(formData));
+
+  const result = await saveAccountChange(() => access.createPayLater(formData));
+  if ("success" in result) revalidatePath("/spending/[id]", "page");
+  return result;
 }
 
 export async function renameFinancialAccount(id: string, formData: FormData) {

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { createExpenseGroupAccess } from "../../app/(dashboard)/_lib/expense-groups/access";
 import { createExpenseAccess } from "../../app/(dashboard)/_lib/expenses/access";
+import { createFinancialAccountAccess } from "../../app/(dashboard)/accounts/_lib/access";
 import { createLoanAccess } from "../../app/lib/loans/access";
 import { creditProducts, spayLaterProduct } from "../../app/lib/loans/credit-products";
 import { createTestDatabase } from "../helpers/database";
@@ -111,15 +112,19 @@ test("Pay Later providers and financing are scoped to the selected expense group
       { active: true, supportsPayLater: true },
     );
 
-    const customSettings = (expenseGroupId: number, name: string) => form([
-      ["expenseGroupId", String(expenseGroupId)], ["name", name], ["active", "on"], ["supportsPayLater", "on"],
-    ]);
-    await assert.rejects(loans.setGroupCreditAccountSettings(customSettings(privateGroup.id, "Store installments")), /expense groups/i);
-    await assert.rejects(loans.setGroupCreditAccountSettings(customSettings(household.id, "  ")), /credit provider name/i);
+    const accounts = createFinancialAccountAccess(client, async () => "alice");
+    await assert.rejects(accounts.createPayLater(form([["name", "  "]])), /account name/i);
     assert.equal(await client.payLaterAccount.count(), 2);
+    const configured = await accounts.createPayLater(form([["name", " Store installments "]]));
+    assert.equal((await accounts.createPayLater(form([["name", "store   installments"]]))).id, configured.id);
+    assert.ok((await accounts.list()).some(({ name, type }) => name === "Store installments" && type === "PAY_LATER"));
+    assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), []);
 
-    const configured = await loans.setGroupCreditAccountSettings(customSettings(household.id, " Store installments "));
-    assert.equal((await loans.setGroupCreditAccountSettings(customSettings(household.id, "store   installments"))).id, configured.id);
+    const customSettings = (expenseGroupId: number) => form([
+      ["expenseGroupId", String(expenseGroupId)], ["creditAccountId", configured.id], ["active", "on"], ["supportsPayLater", "on"],
+    ]);
+    await assert.rejects(loans.setGroupCreditAccountSettings(customSettings(privateGroup.id)), /expense groups/i);
+    await loans.setGroupCreditAccountSettings(customSettings(household.id));
     assert.deepEqual(await loans.getEnabledCreditAccounts(household.id), [{ id: configured.id, name: "Store installments" }]);
     assert.deepEqual(await loans.getEnabledCreditAccounts(travel.id), [customAccount]);
     const configuredPurchase = await expenses.create(

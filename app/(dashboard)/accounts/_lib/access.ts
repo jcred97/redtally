@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { saveCreditAccount } from "@/app/lib/loans/financing";
 import { manualFinancialAccountTypes, supportsFinancialAccountBank } from "./types";
 
 const accountIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -88,6 +89,12 @@ export function createFinancialAccountAccess(db: PrismaClient, requireUserId: ()
         data: { name: readAccountName(formData.get("name")) },
       });
       if (!count) throw new TypeError(accountNotFound);
+    },
+
+    async createPayLater(formData: FormData) {
+      const userId = await requireUserId();
+      const name = readAccountName(formData.get("name"));
+      return db.$transaction((tx) => saveCreditAccount(tx, userId, name));
     },
 
     async remove(id: string) {

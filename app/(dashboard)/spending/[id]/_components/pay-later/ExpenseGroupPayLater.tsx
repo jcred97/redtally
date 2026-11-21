@@ -1,7 +1,6 @@
 import { settingsTileGridClass } from "@/app/components/tiles/SettingsTileLabel";
 import { creditProducts, spayLaterProduct } from "@/app/lib/loans/credit-products";
 import { getCreditAccountSettings } from "@/app/lib/loans/queries";
-import AddCreditProviderButton from "./AddCreditProviderButton";
 import GroupCreditAccountCard from "./GroupCreditAccountCard";
 
 export default async function ExpenseGroupPayLater({ expenseGroupId }: { expenseGroupId: number }) {
@@ -10,10 +9,7 @@ export default async function ExpenseGroupPayLater({ expenseGroupId }: { expense
 
   return (
     <section aria-labelledby="pay-later-title">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="pay-later-title" tabIndex={-1} className="text-lg font-semibold">Pay Later</h2>
-        <AddCreditProviderButton expenseGroupId={expenseGroupId} />
-      </div>
+      <h2 id="pay-later-title" tabIndex={-1} className="mb-4 text-lg font-semibold">Pay Later</h2>
       <ul className={settingsTileGridClass}>
         {creditProducts.map((product) => (
           <li key={product.key} className="min-w-0">

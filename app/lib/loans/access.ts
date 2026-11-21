@@ -3,7 +3,6 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { getManilaToday } from "@/app/lib/expenses/date";
 import { MAX_AMOUNT_CENTAVOS, sumCentavos } from "@/app/lib/expenses/money";
 import { creditProducts } from "./credit-products";
-import { saveCreditAccount } from "./financing";
 import { isLoanId, readAmount, readDate, readInstallments, readSubmissionId, readText, validateInstallmentTotal } from "./form";
 
 const cashFrequencies = ["One-time", "Weekly", "Monthly", "Other"];
@@ -195,7 +194,6 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
       const [rawGroupId, extraGroupId] = formData.getAll("expenseGroupId");
       const [productKey, extraKey] = formData.getAll("productKey");
       const [accountId, extraAccountId] = formData.getAll("creditAccountId");
-      const [providerName, extraName] = formData.getAll("name");
       const [activeValue, extraActive] = formData.getAll("active");
       const [methodValue, extraMethod] = formData.getAll("supportsPayLater");
       const expenseGroupId = Number(rawGroupId);
@@ -207,16 +205,12 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
         !isExpenseGroupId(expenseGroupId) || extraGroupId !== undefined) {
         throw new TypeError("Choose one of your expense groups.");
       }
-      const validTarget = providerName !== undefined
-        ? productKey === undefined && accountId === undefined && active
-        : productKey === undefined ? isLoanId(accountId) : product && accountId === undefined;
-      if (!validTarget || extraName !== undefined ||
+      if ((productKey === undefined ? !isLoanId(accountId) : !product || accountId !== undefined) ||
         extraKey !== undefined || extraAccountId !== undefined || extraActive !== undefined || extraMethod !== undefined ||
         (activeValue !== undefined && !active) || (methodValue !== undefined && !supportsPayLater)) {
         throw new TypeError("Choose a valid credit account and setting.");
       }
       if (active && !supportsPayLater) throw new TypeError("Choose at least one credit method to enable this credit account.");
-      const name = providerName === undefined ? null : readText(providerName, "Credit provider name");
 
       return db.$transaction(async (tx) => {
         const [group] = await tx.$queryRaw<{ id: number }[]>`
@@ -232,14 +226,13 @@ export function createLoanAccess(db: PrismaClient, requireUserId: () => Promise<
           });
         }
 
-        const targetAccountId = name ? (await saveCreditAccount(tx, userId, name)).id : accountId;
         // Use the same account lock as financed purchases before changing eligibility.
         const [account] = product
           ? await tx.$queryRaw<{ id: string }[]>`
             SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND key = ${product.key} FOR UPDATE
           `
           : await tx.$queryRaw<{ id: string }[]>`
-            SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND id = ${targetAccountId}::uuid FOR UPDATE
+            SELECT id FROM "PayLaterAccount" WHERE "userId" = ${userId} AND id = ${accountId}::uuid FOR UPDATE
           `;
         if (!account) throw new TypeError("This credit account is unavailable.");
 
