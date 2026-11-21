@@ -1,6 +1,7 @@
 "use client";
 
-import ExpenseFormDialog, { type CreditProviderOption, type EditableExpense } from "./ExpenseFormDialog";
+import ExpenseFormDialog, { type EditableExpense } from "./ExpenseFormDialog";
+import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
 import type { ExpenseBankOption } from "@/app/lib/expenses/payment";
 
 export default function EditExpenseButton({
@@ -8,7 +9,7 @@ export default function EditExpenseButton({
   expense,
   categories,
   bankOptions,
-  creditProviders,
+  payLaterProviders,
   focusKey,
   inMenu,
 }: {
@@ -16,7 +17,7 @@ export default function EditExpenseButton({
   expense: EditableExpense;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
-  creditProviders: CreditProviderOption[];
+  payLaterProviders: PayLaterProviderOption[];
   focusKey: string;
   inMenu: boolean;
 }) {
@@ -26,7 +27,7 @@ export default function EditExpenseButton({
       expense={expense}
       categories={categories}
       bankOptions={bankOptions}
-      creditProviders={creditProviders}
+      payLaterProviders={payLaterProviders}
       focusKey={focusKey}
       inMenu={inMenu}
     />

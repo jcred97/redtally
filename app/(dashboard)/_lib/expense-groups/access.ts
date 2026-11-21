@@ -1,6 +1,6 @@
 import { PaymentMethod, Prisma, type Expense, type PrismaClient } from "@/generated/prisma/client";
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
-import { getPayLaterProviderName } from "@/app/lib/pay-later/credit-products";
+import { getPayLaterProviderName } from "@/app/lib/pay-later/providers";
 
 // Expense-group IDs use PostgreSQL's signed INTEGER column.
 const MAX_EXPENSE_GROUP_ID = 2_147_483_647;
@@ -538,7 +538,7 @@ export function createExpenseGroupAccess(
           include: {
             budgets: true,
             bankAssignments: true,
-            payLaterProviders: { select: { providerKey: true, providerName: true, active: true } },
+            payLaterProviderAssignments: { select: { providerKey: true, providerName: true, active: true } },
             categories: { orderBy: { id: "asc" } },
           },
         });
@@ -578,9 +578,9 @@ export function createExpenseGroupAccess(
           },
         });
 
-        if (source.payLaterProviders.length > 0) {
-          await tx.expenseGroupPayLaterProvider.createMany({
-            data: source.payLaterProviders.map((provider) => ({
+        if (source.payLaterProviderAssignments.length > 0) {
+          await tx.payLaterProviderAssignment.createMany({
+            data: source.payLaterProviderAssignments.map((provider) => ({
               ...provider, expenseGroupId: copy.id, userId,
             })),
           });

@@ -8,14 +8,14 @@ import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
 import ExpenseActionMenu from "./ExpenseActionMenu";
 import GroupedExpenseHistory from "./GroupedExpenseHistory";
-import type { CreditProviderOption } from "./ExpenseFormDialog";
+import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
 
 type ExpenseHistoryProps = {
   expenseGroupId: number;
   groupPath: string;
   categories: { id: number; name: string }[];
   bankOptions: ExpenseBankOption[];
-  creditProviders: CreditProviderOption[];
+  payLaterProviders: PayLaterProviderOption[];
   expenses: ExpenseHistoryEntry[];
   groupedSummary?: { day?: string; month?: string; through?: string; totalExpenses: number; totalCentavos: bigint };
   page: number;
@@ -39,7 +39,7 @@ export default function ExpenseHistory({
   groupPath,
   categories,
   bankOptions,
-  creditProviders,
+  payLaterProviders,
   expenses,
   groupedSummary,
   page,
@@ -63,7 +63,7 @@ export default function ExpenseHistory({
           expenseGroupId={expenseGroupId}
           categories={categories}
           bankOptions={bankOptions}
-          creditProviders={creditProviders}
+          payLaterProviders={payLaterProviders}
           expense={{
             id: expense.id,
             title: expense.title,

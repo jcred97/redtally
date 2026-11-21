@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createPayLaterAccess, requireEnabledPayLaterProvider } from "../../app/lib/pay-later/access";
-import { payLaterProviders } from "../../app/lib/pay-later/credit-products";
+import { presetPayLaterProviders } from "../../app/lib/pay-later/providers";
 import { createTestDatabase } from "../helpers/database";
 
 function providerForm(expenseGroupId: number, fields: Record<string, string>) {
@@ -29,7 +29,7 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   );
 
   assert.deepEqual(await getExpenseGroupPayLater("alice", household.id), {
-    providers: payLaterProviders.map((provider) => ({ ...provider, active: false })),
+    providers: presetPayLaterProviders.map((provider) => ({ ...provider, active: false })),
   });
   assert.deepEqual(await getExpenseGroupPayLater("bob", household.id), { providers: [] });
   await assert.rejects(setGroupPayLaterProvider("bob", enableShopee), /expense groups/i);
@@ -39,7 +39,7 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   await setGroupPayLaterProvider("alice", enableShopee);
   await setGroupPayLaterProvider("alice", enableShopee);
   assert.deepEqual(await resolveProvider("alice", household.id, "shopee"), { providerKey: "shopee", providerName: null });
-  assert.equal(await client.expenseGroupPayLaterProvider.count(), 1);
+  assert.equal(await client.payLaterProviderAssignment.count(), 1);
   await assert.rejects(resolveProvider("bob", household.id, "shopee"), /unavailable/i);
   await assert.rejects(resolveProvider("alice", travel.id, "shopee"), /unavailable/i);
 
@@ -54,8 +54,8 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
     providerName: "Local Store",
   });
   assert.deepEqual((await getExpenseGroupPayLater("alice", household.id)).providers.filter(({ active }) => active), [
-    { key: "shopee", name: "Shopee", active: true },
-    { key: "custom:local store", name: "Local Store", active: true },
+    { providerKey: "shopee", providerName: "Shopee", active: true },
+    { providerKey: "custom:local store", providerName: "Local Store", active: true },
   ]);
 
   await setGroupPayLaterProvider("alice", providerForm(household.id, { providerKey: "shopee" }));

@@ -1,7 +1,6 @@
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { customPayLaterProviderKey, getPayLaterProviderName, payLaterProviders } from "./credit-products";
+import type { PayLaterProviderAssignment, Prisma, PrismaClient } from "@/generated/prisma/client";
+import { customPayLaterProviderKey, getPayLaterProviderName, presetPayLaterProviders, type PayLaterProviderSetting } from "./providers";
 
-type PayLaterProvider = { key: string; name: string; active: boolean };
 const groupUnavailable = "Choose one of your expense groups.";
 
 function validExpenseGroupId(id: number) {
@@ -34,7 +33,7 @@ export async function requireEnabledPayLaterProvider(
   if (!validProviderKey(providerKey)) throw new TypeError("Choose a credit provider.");
 
   // Hold the setting until the expense transaction commits so a save and a disable cannot race.
-  const [provider] = await tx.$queryRaw<{ providerKey: string; providerName: string | null }[]>`
+  const [provider] = await tx.$queryRaw<Pick<PayLaterProviderAssignment, "providerKey" | "providerName">[]>`
     SELECT "providerKey", "providerName" FROM "ExpenseGroupPayLaterProvider"
     WHERE "expenseGroupId" = ${expenseGroupId} AND "userId" = ${userId}
       AND "providerKey" = ${providerKey} AND active
@@ -48,19 +47,19 @@ export async function requireEnabledPayLaterProvider(
 
 export function createPayLaterAccess(db: PrismaClient) {
   return {
-    async getExpenseGroupPayLater(userId: string, expenseGroupId: number): Promise<{ providers: PayLaterProvider[] }> {
+    async getExpenseGroupPayLater(userId: string, expenseGroupId: number): Promise<{ providers: PayLaterProviderSetting[] }> {
       if (!validExpenseGroupId(expenseGroupId)) return { providers: [] };
       const group = await db.expenseGroup.findUnique({
         where: { id: expenseGroupId, userId },
-        select: { payLaterProviders: { select: { providerKey: true, providerName: true, active: true } } },
+        select: { payLaterProviderAssignments: { select: { providerKey: true, providerName: true, active: true } } },
       });
       if (!group) return { providers: [] };
 
-      const providers = new Map<string, PayLaterProvider>(
-        payLaterProviders.map((provider) => [provider.key, { ...provider, active: false }]),
+      const providers = new Map<string, PayLaterProviderSetting>(
+        presetPayLaterProviders.map((provider) => [provider.providerKey, { ...provider, active: false }]),
       );
-      for (const { providerKey, providerName, active } of group.payLaterProviders) {
-        providers.set(providerKey, { key: providerKey, name: getPayLaterProviderName(providerKey, providerName), active });
+      for (const { providerKey, providerName, active } of group.payLaterProviderAssignments) {
+        providers.set(providerKey, { providerKey, providerName: getPayLaterProviderName(providerKey, providerName), active });
       }
       return { providers: [...providers.values()] };
     },
@@ -79,11 +78,11 @@ export function createPayLaterAccess(db: PrismaClient) {
         await lockOwnedExpenseGroup(tx, expenseGroupId, userId);
         const key = { expenseGroupId, providerKey };
         const where = { expenseGroupId_providerKey: key };
-        if (payLaterProviders.some((provider) => provider.key === providerKey)) {
-          return tx.expenseGroupPayLaterProvider.upsert({ where, create: { ...key, userId, active }, update: { active } });
+        if (presetPayLaterProviders.some((provider) => provider.providerKey === providerKey)) {
+          return tx.payLaterProviderAssignment.upsert({ where, create: { ...key, userId, active }, update: { active } });
         }
 
-        const { count } = await tx.expenseGroupPayLaterProvider.updateMany({ where: { ...key, userId }, data: { active } });
+        const { count } = await tx.payLaterProviderAssignment.updateMany({ where: { ...key, userId }, data: { active } });
         if (!count) throw new TypeError("This credit provider is unavailable.");
       });
     },
@@ -97,14 +96,14 @@ export function createPayLaterAccess(db: PrismaClient) {
       }
       const providerKey = customPayLaterProviderKey(providerName);
       if (!validProviderKey(providerKey)) throw new TypeError("Enter a shorter credit provider name.");
-      if (payLaterProviders.some(({ name }) => customPayLaterProviderKey(name) === providerKey)) {
+      if (presetPayLaterProviders.some((provider) => customPayLaterProviderKey(provider.providerName) === providerKey)) {
         throw new TypeError("Choose this provider from the Pay Later settings list.");
       }
 
       return db.$transaction(async (tx) => {
         await lockOwnedExpenseGroup(tx, expenseGroupId, userId);
         const key = { expenseGroupId, providerKey };
-        return tx.expenseGroupPayLaterProvider.upsert({
+        return tx.payLaterProviderAssignment.upsert({
           where: { expenseGroupId_providerKey: key },
           create: { ...key, userId, providerName, active: true },
           update: { active: true },

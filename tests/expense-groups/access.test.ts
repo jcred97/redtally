@@ -340,7 +340,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       await client.budget.create({
         data: { expenseGroupId: source.id, budgetMonth, amountCentavos: 500_000, description: "November trip" },
       });
-      await client.expenseGroupPayLaterProvider.createMany({
+      await client.payLaterProviderAssignment.createMany({
         data: [
           { expenseGroupId: source.id, userId: "alice", providerKey: "custom:pay later provider", providerName: "Pay Later provider", active: true },
           { expenseGroupId: source.id, userId: "alice", providerKey: "shopee", active: false },
@@ -401,7 +401,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(await alice.resolveRoute(publicId), { id, publicId });
       assert.equal(copy.name, "Travel (copy)");
       assert.equal(await bob.getById(id), null);
-      assert.deepEqual(await client.expenseGroupPayLaterProvider.findMany({
+      assert.deepEqual(await client.payLaterProviderAssignment.findMany({
         where: { expenseGroupId: id },
         select: { userId: true, providerKey: true, providerName: true, active: true },
         orderBy: { providerKey: "asc" },

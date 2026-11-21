@@ -5,7 +5,7 @@ import { createGroupPayLaterProvider } from "@/app/lib/pay-later/mutations";
 
 const failureMessage = "Unable to add the credit provider. Please try again.";
 
-export default function AddCreditProviderButton({ expenseGroupId }: { expenseGroupId: number }) {
+export default function AddPayLaterProviderButton({ expenseGroupId }: { expenseGroupId: number }) {
   async function addProvider(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
     return createGroupPayLaterProvider(formData);

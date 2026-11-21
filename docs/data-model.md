@@ -12,7 +12,7 @@ User
        -> Budget (optional, one per calendar month)
        -> BankAssignment -> Bank (shared catalog)
             -> Expense (optional bank assignment)
-       -> ExpenseGroupPayLaterProvider (group settings)
+       -> PayLaterProviderAssignment (group settings)
        -> RecurringExpense (references a category and optionally a bank assignment)
             -> RecurringExpenseOccurrence -> Expense (until the expense is deleted)
 ```
@@ -27,7 +27,7 @@ User
 | `Budget` | Optional monthly target for a group | Positive integer centavos; month stored as a PostgreSQL DATE on the first day; unique group/month |
 | `Bank` | Shared institution catalog | Unique normalized key; active flag; assigned banks cannot be deleted |
 | `BankAssignment` | Enables a bank for a group and configures supported payment methods | Unique group/bank; four capabilities default to enabled; referenced assignments cannot be deleted |
-| `ExpenseGroupPayLaterProvider` | Enables a Pay Later provider for a group | Unique group/provider key with a same-owner group foreign key |
+| `PayLaterProviderAssignment` | Enables a Pay Later provider for a group | Unique group/provider key with a same-owner group foreign key |
 | `RecurringExpense` | Schedule and next due date for an expense in one group | Same-group category and bank assignment; positive integer centavos; calendar dates with an inclusive optional end date |
 | `RecurringExpenseSubmission` | Records a schedule draft and its original payload hash | A draft ID is unique within its group. Deleting the schedule preserves the claim so a late retry cannot recreate it. |
 | `RecurringExpenseOccurrence` | Records that the worker posted a scheduled date | Unique schedule and due date; survives expense deletion until the schedule itself is deleted |
@@ -39,6 +39,7 @@ Application names are mapped to the existing database identifiers. These naming 
 | --- | --- |
 | `ExpenseGroup` | `Spending` table |
 | `BankAssignment` | `ExpenseGroupBank` table |
+| `PayLaterProviderAssignment` | `ExpenseGroupPayLaterProvider` table |
 | `PaymentMethod` | `TransactionType` enum |
 | `Expense.paymentMethod` | `Expense.transactionType` column |
 | `Expense.legacyBankName` | `Expense.bank` column |
@@ -61,7 +62,7 @@ Migration `20261115120000_recurring_expenses` adds the schedule and occurrence t
 
 ## Pay Later
 
-Each expense group enables preset or custom providers through `ExpenseGroupPayLaterProvider`. A Pay Later purchase stores its full amount in a single `Expense` and its selected provider in `payLaterProviderKey` and `payLaterProviderName`. The name is optional for built-in providers, whose labels come from the preset catalog. Older Pay Later expenses without a known provider keep empty provider fields. Disabling a provider preserves the saved choice on existing expenses. Group duplication copies both provider settings and saved expense details. [Pay Later setup](workflows.md#pay-later-setup-and-purchases)
+Each expense group enables preset or custom providers through `PayLaterProviderAssignment`. TypeScript uses `PayLaterProviderSetting` for settings and `PayLaterProviderOption` for expense entry. Both expose the assignment’s `providerKey` and a resolved `providerName`. A Pay Later purchase stores its full amount in a single `Expense` and its selected provider in `payLaterProviderKey` and `payLaterProviderName`. The stored name is optional for built-in providers, whose labels come from the preset catalog. Older Pay Later expenses without a known provider keep empty provider fields. Disabling a provider preserves the saved choice on existing expenses. Group duplication copies both provider settings and saved expense details. [Pay Later setup](workflows.md#pay-later-setup-and-purchases)
 
 The cleanup migration copies known providers onto existing Pay Later expenses before dropping the financial account, loan, and repayment tables. It preserves expense rows, group provider settings, and sign-in records. [Cleanup migration](../server/db/migrations/20261121120000_remove_accounts_and_loans/migration.sql)
 
@@ -82,7 +83,7 @@ User
 │   ├── Expense → Category and optional BankAssignment
 │   ├── Budget
 │   ├── BankAssignment → shared Bank catalog
-│   ├── ExpenseGroupPayLaterProvider → enabled providers
+│   ├── PayLaterProviderAssignment → enabled providers
 │   └── RecurringExpense → generated occurrences
 ├── FinancialAccount
 │   ├── Cash, bank, e-wallet, and credit card accounts

@@ -43,7 +43,7 @@ model ExpenseGroup {
   categories         Category[]
   budgets            Budget[]
   bankAssignments    BankAssignment[]
-  payLaterProviders  ExpenseGroupPayLaterProvider[]
+  payLaterProviderAssignments PayLaterProviderAssignment[]
   expenseSubmissions ExpenseSubmission[]
   recurringExpenses  RecurringExpense[]
   recurringExpenseSubmissions RecurringExpenseSubmission[]
@@ -206,7 +206,7 @@ model BankAssignment {
   @@map("ExpenseGroupBank")
 }
 
-model ExpenseGroupPayLaterProvider {
+model PayLaterProviderAssignment {
   expenseGroupId Int
   userId         String
   providerKey    String       @db.VarChar(127)
@@ -215,6 +215,7 @@ model ExpenseGroupPayLaterProvider {
   expenseGroup   ExpenseGroup @relation(fields: [expenseGroupId, userId], references: [id, userId], onDelete: Cascade, onUpdate: Cascade)
 
   @@id([expenseGroupId, providerKey])
+  @@map("ExpenseGroupPayLaterProvider")
 }
 
 model User {

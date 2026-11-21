@@ -82,14 +82,14 @@ export default async function ExpenseGroupPage({
   const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab, tabSuffix } = links;
   const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
-  const creditProviders = payLater?.providers.filter(({ active }) => active) ?? [];
+  const payLaterProviders = payLater?.providers.filter(({ active }) => active) ?? [];
   const activeTabId = "expense-group-active-tab";
 
   let primaryAction = null;
   if (showCategories || ((showExpenses || showDashboard) && categoryOptions.length === 0)) {
     primaryAction = <NewCategoryButton expenseGroupId={id} successFocusId={showCategories ? undefined : activeTabId} />;
   } else if (showExpenses || showDashboard) {
-    primaryAction = <NewExpenseButton expenseGroupId={id} categories={categoryOptions} bankOptions={bankOptions} creditProviders={creditProviders} />;
+    primaryAction = <NewExpenseButton expenseGroupId={id} categories={categoryOptions} bankOptions={bankOptions} payLaterProviders={payLaterProviders} />;
   } else if (showRecurring && categoryOptions.length > 0) {
     primaryAction = <RecurringExpenseDialog expenseGroupId={id} categories={categoryOptions} banks={bankOptions} today={today} />;
   }
@@ -147,7 +147,7 @@ export default async function ExpenseGroupPage({
             expenseGroupId={id}
             categories={categoryOptions}
             bankOptions={bankOptions}
-            creditProviders={creditProviders}
+            payLaterProviders={payLaterProviders}
             historyProviderOptions={historyProviderOptions}
             merchantLabel={merchant === "none" ? "No merchant" : merchant ? merchantLabel ?? "Unavailable merchant" : undefined}
             expensePage={expensePage}

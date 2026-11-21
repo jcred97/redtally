@@ -670,37 +670,45 @@ test("expense writes validate money, dates, category membership, and current own
     await t.test("Pay Later saves the selected provider directly on the expense", async () => {
       const submissionId = randomUUID();
       const payLater = { ...validInput, title: "Pay Later purchase", paymentMethod: "PAY_LATER" };
-      const createPurchase = (creditProviderKey?: string) =>
-        alice.create(aliceGroup.id, aliceCategory.id, { ...payLater, creditProviderKey }, submissionId);
+      const createPurchase = (payLaterProviderKey?: string) =>
+        alice.create(aliceGroup.id, aliceCategory.id, { ...payLater, payLaterProviderKey }, submissionId);
       await assert.rejects(createPurchase(), /Choose a credit provider/);
       await assert.rejects(createPurchase("shopee"), /credit provider/i);
 
-      const provider = await client.expenseGroupPayLaterProvider.create({
+      const provider = await client.payLaterProviderAssignment.create({
         data: { expenseGroupId: aliceGroup.id, userId: "alice", providerKey: "custom:shop credit", providerName: "Shop Credit", active: true },
       });
       assert.equal(await client.expenseSubmission.count({ where: { expenseGroupId: aliceGroup.id, id: submissionId } }), 0);
       const purchase = await createPurchase(provider.providerKey);
+      const savedSubmission = await client.expenseSubmission.findUniqueOrThrow({
+        where: { expenseGroupId_id: { expenseGroupId: aliceGroup.id, id: submissionId } },
+      });
+      const originalHash = createHash("sha256").update(JSON.stringify([
+        aliceCategory.id, purchase.title, purchase.amountCentavos, purchase.date, "PAY_LATER", null,
+        { creditProviderKey: provider.providerKey },
+      ])).digest("hex");
+      assert.equal(savedSubmission.payloadHash, originalHash);
       assert.equal((await createPurchase(provider.providerKey)).id, purchase.id);
       await assert.rejects(createPurchase("shopee"), /already saved with different details/);
       assert.equal(purchase.payLaterProviderKey, provider.providerKey);
       assert.equal(purchase.payLaterProviderName, "Shop Credit");
 
-      await client.expenseGroupPayLaterProvider.update({
+      await client.payLaterProviderAssignment.update({
         where: { expenseGroupId_providerKey: { expenseGroupId: aliceGroup.id, providerKey: provider.providerKey } },
         data: { active: false },
       });
       await assert.rejects(
-        alice.create(aliceGroup.id, aliceCategory.id, { ...payLater, creditProviderKey: provider.providerKey }, randomUUID()),
+        alice.create(aliceGroup.id, aliceCategory.id, { ...payLater, payLaterProviderKey: provider.providerKey }, randomUUID()),
         /credit provider/i,
       );
       const edited = await alice.update(
         aliceGroup.id, purchase.id, aliceCategory.id,
-        { ...payLater, amount: "200", creditProviderKey: provider.providerKey }, purchase.updatedAt.toISOString(),
+        { ...payLater, amount: "200", payLaterProviderKey: provider.providerKey }, purchase.updatedAt.toISOString(),
       );
       assert.equal(edited.amountCentavos, 20000);
       assert.equal(edited.payLaterProviderName, "Shop Credit");
       await assert.rejects(
-        alice.update(aliceGroup.id, edited.id, aliceCategory.id, { ...payLater, creditProviderKey: "shopee" }, edited.updatedAt.toISOString()),
+        alice.update(aliceGroup.id, edited.id, aliceCategory.id, { ...payLater, payLaterProviderKey: "shopee" }, edited.updatedAt.toISOString()),
         /credit provider/i,
       );
 
@@ -717,7 +725,7 @@ test("expense writes validate money, dates, category membership, and current own
 
       const legacy = await client.expense.update({ where: { id: purchase.id }, data: { paymentMethod: "PAY_LATER" } });
       const renamed = await alice.update(
-        aliceGroup.id, legacy.id, aliceCategory.id, { ...payLater, title: "Old purchase", creditProviderKey: "" },
+        aliceGroup.id, legacy.id, aliceCategory.id, { ...payLater, title: "Old purchase", payLaterProviderKey: "" },
         legacy.updatedAt.toISOString(),
       );
       assert.equal(renamed.payLaterProviderKey, null);

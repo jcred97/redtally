@@ -18,7 +18,7 @@ type ExpenseInput = {
   time?: unknown;
   paymentMethod?: unknown;
   bankAssignmentId?: unknown;
-  creditProviderKey?: unknown;
+  payLaterProviderKey?: unknown;
 };
 
 type PaymentSelection = {
@@ -30,7 +30,7 @@ type BankPaymentSettings = Pick<BankAssignment, (typeof bankPaymentMethodFields)
 
 export class BankSelectionError extends TypeError {}
 
-function parseCreditProviderKey(value: unknown) {
+function parsePayLaterProviderKey(value: unknown) {
   if (value == null || value === "") return null;
   if (typeof value !== "string" || value.length > 127) {
     throw new TypeError("Choose a valid credit provider.");
@@ -171,10 +171,10 @@ export function createExpenseAccess(
       const merchant = parseMerchant(input.merchant);
       const timeMinutes = parseExpenseTime(input.time);
       const payment = parsePaymentSelection(input);
-      const creditProviderKey = payment?.paymentMethod === PaymentMethod.PAY_LATER
-        ? parseCreditProviderKey(input.creditProviderKey)
+      const payLaterProviderKey = payment?.paymentMethod === PaymentMethod.PAY_LATER
+        ? parsePayLaterProviderKey(input.payLaterProviderKey)
         : null;
-      if (payment?.paymentMethod === PaymentMethod.PAY_LATER && !creditProviderKey) {
+      if (payment?.paymentMethod === PaymentMethod.PAY_LATER && !payLaterProviderKey) {
         throw new TypeError("Choose a credit provider.");
       }
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
@@ -190,7 +190,8 @@ export function createExpenseAccess(
           ...paymentPayload,
           ...(timeMinutes === null ? [] : [{ timeMinutes }]),
           ...(merchant ? [{ merchant }] : []),
-          ...(creditProviderKey ? [{ creditProviderKey }] : []),
+          // The original field name is part of the persisted hash format.
+          ...(payLaterProviderKey ? [{ creditProviderKey: payLaterProviderKey }] : []),
         ]))
         .digest("hex");
 
@@ -223,8 +224,8 @@ export function createExpenseAccess(
           }
 
           if (payment) await validateBankSelection(tx, expenseGroupId, payment);
-          const provider = creditProviderKey
-            ? await requireEnabledPayLaterProvider(tx, userId, expenseGroupId, creditProviderKey)
+          const provider = payLaterProviderKey
+            ? await requireEnabledPayLaterProvider(tx, userId, expenseGroupId, payLaterProviderKey)
             : null;
 
           return tx.expense.create({
@@ -319,9 +320,9 @@ export function createExpenseAccess(
           const method = payment ? payment.paymentMethod : existing.paymentMethod;
           let providerChanges: { payLaterProviderKey: string | null; payLaterProviderName: string | null } | undefined;
           if (method === PaymentMethod.PAY_LATER) {
-            const providerKey = input.creditProviderKey === undefined
+            const providerKey = input.payLaterProviderKey === undefined
               ? existing.payLaterProviderKey
-              : parseCreditProviderKey(input.creditProviderKey);
+              : parsePayLaterProviderKey(input.payLaterProviderKey);
             if (!providerKey && (existing.paymentMethod !== method || existing.payLaterProviderKey !== null)) {
               throw new TypeError("Choose a credit provider.");
             }
