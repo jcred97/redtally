@@ -25,25 +25,22 @@ export default function RecurringExpenseDialog({
 }: RecurringExpenseOptions & { rule?: RecurringExpenseEntry }) {
   const fieldId = useId();
   const submissionId = useRef("");
-  const bankFieldId = `${fieldId}-bank`;
+  const providerFieldId = `${fieldId}-payment-provider`;
   const [method, setMethod] = useState<PaymentMethod | "">(rule?.paymentMethod ?? "");
   const [bankId, setBankId] = useState(rule?.bankAssignmentId?.toString() ?? "");
-  const eligibleBanks = isBankPaymentMethod(method)
+  const usesBank = isBankPaymentMethod(method);
+  const eligibleBanks = usesBank
     ? banks.filter((bank) => bank.paymentMethods.includes(method))
     : [];
-  const unavailableBank = bankId !== "" && !eligibleBanks.some((bank) => String(bank.id) === bankId);
-  const canSelectBank = eligibleBanks.length > 0 || unavailableBank;
-  const bankHelp = unavailableBank
-    ? "Choose an available bank or select No bank."
-    : method === ""
-      ? "Select a method first."
-      : method === "CASH"
-        ? "Unavailable for cash."
-        : !canSelectBank
-          ? "Enable a bank for this method in Payment Provider."
-          : null;
+  const unavailableBank = usesBank && bankId !== "" && !eligibleBanks.some((bank) => String(bank.id) === bankId);
+  const providerOptions = usesBank ? [
+    { value: "", label: "No bank" },
+    ...(unavailableBank ? [{ value: bankId, label: `${rule?.bankAssignment?.bank.name ?? "Bank"} (unavailable)`, disabled: true }] : []),
+    ...eligibleBanks.map(({ id, name }) => ({ value: String(id), label: name })),
+  ] : [{ value: "", label: "No provider" }];
 
   function changeMethod(nextMethod: PaymentMethod | "") {
+    if (nextMethod === method) return;
     setMethod(nextMethod);
     if (!isBankPaymentMethod(nextMethod) || !banks.some(
       (bank) => String(bank.id) === bankId && bank.paymentMethods.includes(nextMethod),
@@ -158,23 +155,19 @@ export default function RecurringExpenseDialog({
           />
         </div>
         <div className="min-w-0">
-          <label htmlFor={bankFieldId} className={fieldLabelClass}>
-            Bank <span className="text-xs">(optional)</span>
-          </label>
+          <label htmlFor={providerFieldId} className={fieldLabelClass}>Payment provider</label>
           <Select
-            id={bankFieldId}
+            id={providerFieldId}
             name="bankAssignmentId"
-            value={bankId}
+            value={usesBank ? bankId : ""}
             onChange={setBankId}
-            disabled={!canSelectBank}
-            aria-describedby={bankHelp ? `${bankFieldId}-help` : undefined}
-            options={[
-              { value: "", label: "No bank" },
-              ...(unavailableBank ? [{ value: bankId, label: `${rule?.bankAssignment?.bank.name} (unavailable)`, disabled: true }] : []),
-              ...eligibleBanks.map((bank) => ({ value: String(bank.id), label: bank.name })),
-            ]}
+            disabled={!usesBank}
+            aria-describedby={unavailableBank ? `${providerFieldId}-help` : undefined}
+            options={providerOptions}
           />
-          {bankHelp && <p id={`${bankFieldId}-help`} className="mt-1 text-xs text-gray-400">{bankHelp}</p>}
+          {unavailableBank && (
+            <p id={`${providerFieldId}-help`} className="mt-1 text-xs text-gray-400">Choose an available bank or select No bank.</p>
+          )}
         </div>
       </div>
     </FormDialog>

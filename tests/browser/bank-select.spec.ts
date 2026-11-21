@@ -181,9 +181,10 @@ test("recurring expense defaults to the first category and saves a different cat
   await page.getByRole("link", { name: "Recurring", exact: true }).click();
   await page.getByRole("button", { name: "+ New Recurring Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New recurring expense", exact: true });
-  const bank = dialog.getByRole("combobox", { name: "Bank (optional)", exact: true });
+  const method = dialog.getByRole("combobox", { name: "Payment method", exact: true });
+  const bank = dialog.getByRole("combobox", { name: "Payment provider", exact: true });
   await expect(bank).toBeDisabled();
-  await expect(bank).toHaveAccessibleDescription("Select a method first.");
+  await expect(bank).toHaveText("No provider");
   await dialog.getByLabel("Title", { exact: true }).fill("Recurring bank selection");
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("2.50");
   await dialog.getByLabel("Start date", { exact: true }).fill("2099-01-01");
@@ -213,10 +214,17 @@ test("recurring expense defaults to the first category and saves a different cat
   await category.press("Enter");
   await expect(category).toHaveText("Secondary test category");
   await expect(category).not.toHaveAttribute("aria-invalid", "true");
+  await method.click();
+  const options = dialog.getByRole("listbox");
+  await expect(options.getByRole("option", { name: "Pay Later", exact: true })).toHaveCount(0);
+  await options.getByRole("option", { name: "Credit card", exact: true }).click();
+  await bank.click();
+  await expect(options.getByRole("option", { name: assignments[0].name, exact: true })).toHaveCount(0);
+  await expect(options.getByRole("option", { name: assignments[1].name, exact: true })).toBeVisible();
+  await bank.press("Escape");
   await choosePaymentMethod(dialog, "Bank transfer");
   await bank.click();
-  await dialog.getByRole("option", { name: assignments[1].name, exact: true }).click();
-  await expect(dialog.locator('input[name="bankAssignmentId"]')).toHaveValue(String(assignments[1].id));
+  await options.getByRole("option", { name: assignments[1].name, exact: true }).click();
   await create.click();
   await expect(dialog).not.toBeVisible();
   await expect.poll(async () => (await submitted()).rows).toEqual([
@@ -226,14 +234,13 @@ test("recurring expense defaults to the first category and saves a different cat
   await page.setViewportSize({ width: 360, height: 640 });
   await page.getByRole("button", { name: "Edit recurring expense: Recurring bank selection", exact: true }).click();
   const edit = page.getByRole("dialog", { name: "Edit recurring expense", exact: true });
-  const editBank = edit.getByRole("combobox", { name: "Bank (optional)", exact: true });
+  const editBank = edit.getByRole("combobox", { name: "Payment provider", exact: true });
   await expect(edit.getByLabel("Start date", { exact: true })).toHaveValue("2099-01-01");
   await expect(edit.getByRole("combobox", { name: "Category", exact: true })).toHaveText("Secondary test category");
   await expect(editBank).toHaveText(assignments[1].name);
   await choosePaymentMethod(edit, "Cash");
   await expect(editBank).toBeDisabled();
-  await expect(editBank).toHaveText("No bank");
-  await expect(editBank).toHaveAccessibleDescription("Unavailable for cash.");
+  await expect(editBank).toHaveText("No provider");
   await edit.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(edit).not.toBeVisible();
   await expect.poll(async () => (await submitted()).rows).toEqual([
