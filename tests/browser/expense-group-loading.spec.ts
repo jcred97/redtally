@@ -4,7 +4,7 @@ import { browserData } from "./data";
 
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"], args: ["--disable-features=OverlayScrollbar"] } });
 
-test("expense group loading shows the destination tab at a consistent width", async ({ page }) => {
+test("Dashboard, Expense Groups, and group tabs share a consistent width while loading and loaded", async ({ page }) => {
   const data = browserData();
   const signIn = await page.request.post("/api/auth/sign-in/email", {
     headers: { origin: process.env.REDTALLY_BROWSER_ORIGIN!, "x-real-ip": "192.0.2.70" },
@@ -38,12 +38,42 @@ test("expense group loading shows the destination tab at a consistent width", as
     expect(viewport.gutter).toBe("stable");
     scrollStates.add(viewport.scrolls);
     const padding = page.viewportSize()!.width >= 640 ? 24 : 16;
-    expect(box.width, `${heading} keeps the group's max width and side padding`)
+    const insets = await main.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { left: parseFloat(style.paddingLeft), right: parseFloat(style.paddingRight) };
+    });
+    const frame = { x: box.x + insets.left, width: box.width - insets.left - insets.right };
+    expect(frame.width, `${heading} keeps the dashboard max width and side padding`)
       .toBe(Math.min(1280, viewport.layoutWidth) - padding * 2);
-    const frame = { x: box.x, width: box.width };
+    const header = (await page.getByRole("banner").first().locator(":scope > div").boundingBox())!;
+    expect(frame, `${heading} aligns with the header`)
+      .toEqual({ x: header.x + padding, width: header.width - padding * 2 });
     tabFrame ??= frame;
     expect(frame, `${heading} uses the same frame as the other tabs`).toEqual(tabFrame);
     return box;
+  }
+
+  async function whileGroupReadsAreBlocked<T>(check: () => Promise<T>) {
+    await database.query("BEGIN");
+    try {
+      // Pause group reads while the route streams its loading UI.
+      await database.query('LOCK TABLE "Spending" IN ACCESS EXCLUSIVE MODE');
+      return await check();
+    } finally {
+      await database.query("ROLLBACK");
+    }
+  }
+
+  async function expectTopLevelFrame(path: string, heading: string, loadingMessage: string) {
+    const loading = page.getByRole("status").filter({ hasText: loadingMessage });
+    const main = page.getByRole("main");
+    await whileGroupReadsAreBlocked(async () => {
+      await page.goto(path, { waitUntil: "commit" });
+      await expect(loading).toBeAttached();
+      await expectFrame(main, `${heading} skeleton`);
+    });
+    await expect(loading).toHaveCount(0);
+    await expectFrame(main, heading);
   }
 
   async function expectFirstRowWidth(heading: string, locator: typeof skeleton, mainWidth: number) {
@@ -60,11 +90,7 @@ test("expense group loading shows the destination tab at a consistent width", as
 
   async function expectLoading(navigate: () => Promise<unknown>, heading: string) {
     const loadingHeading = skeleton.getByRole("heading", { name: heading, exact: true, includeHidden: true });
-    let before: { top: number; headingX: number; headingY: number };
-    await database.query("BEGIN");
-    try {
-      // Pause group reads while the route streams its loading UI.
-      await database.query('LOCK TABLE "Spending" IN ACCESS EXCLUSIVE MODE');
+    const before = await whileGroupReadsAreBlocked(async () => {
       await navigate();
       await expect(status).toBeAttached();
       await expect(loadingHeading).toBeVisible();
@@ -74,11 +100,9 @@ test("expense group loading shows the destination tab at a consistent width", as
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       const mainBox = await expectFrame(skeleton, `${heading} skeleton`);
       const headingBox = (await loadingHeading.boundingBox())!;
-      before = { top: mainBox.y, headingX: headingBox.x, headingY: headingBox.y };
       await expectFirstRowWidth(heading, loadingHeading, mainBox.width);
-    } finally {
-      await database.query("ROLLBACK");
-    }
+      return { top: mainBox.y, headingX: headingBox.x, headingY: headingBox.y };
+    });
     await expect(status).toHaveCount(0);
     const loadedHeading = page.getByRole("heading", { name: heading, exact: true });
     await expect(loadedHeading).toBeVisible();
@@ -101,6 +125,8 @@ test("expense group loading shows the destination tab at a consistent width", as
       await page.setViewportSize({ width, height: 540 });
       tabFrame = undefined;
       scrollStates = new Set();
+      await expectTopLevelFrame("/", "Dashboard", "Loading dashboard");
+      await expectTopLevelFrame("/expense-groups", "Expense Groups", "Loading your expense groups");
       if (width === 1100) {
         await expectLoading(() => page.goto(`/expense-groups/${data.group.publicId}/categories`, { waitUntil: "commit" }), "Categories");
       }

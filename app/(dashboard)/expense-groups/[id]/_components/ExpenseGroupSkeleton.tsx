@@ -34,7 +34,7 @@ export default function ExpenseGroupSkeleton() {
     : undefined;
 
   return (
-    <div className="expense-group-frame">
+    <div className="dashboard-frame flex-1 text-white">
       <p role="status" className="sr-only">
         Loading expense group...
       </p>

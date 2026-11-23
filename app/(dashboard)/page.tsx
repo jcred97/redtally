@@ -20,7 +20,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
   const query = await searchParams;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 text-white sm:px-6 sm:py-9">
+    <main className="dashboard-frame py-6 text-white sm:py-9">
       <h1 className="mb-5 text-2xl font-bold tracking-tight sm:mb-7 sm:text-3xl">Dashboard</h1>
       <Suspense fallback={
         <div role="status" className="space-y-4">

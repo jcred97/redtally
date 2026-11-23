@@ -9,7 +9,7 @@ import ExpenseGroupsSkeleton from "./ExpenseGroupsSkeleton";
 
 export default function ExpenseGroups() {
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10">
+    <main className="dashboard-frame py-10">
       <div className="mb-8 flex flex-wrap items-center gap-2 sm:gap-4">
         <Suspense
           fallback={
