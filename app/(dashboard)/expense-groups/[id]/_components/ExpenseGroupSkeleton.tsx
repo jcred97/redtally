@@ -28,6 +28,10 @@ function TabSkeleton({ tab }: { tab: string }) {
 export default function ExpenseGroupSkeleton() {
   const { tab: segments = [] } = useParams<{ tab?: string[] }>();
   const [tab = "dashboard"] = segments;
+  const primaryAction = tab === "recurring" ? "+ New Recurring Expense"
+    : tab === "categories" ? "+ New Category"
+    : tab === "expenses" || tab === "dashboard" ? "+ New Expense"
+    : undefined;
 
   return (
     <div className="mx-auto w-full max-w-7xl flex-1 px-4 text-white sm:px-6">
@@ -36,7 +40,7 @@ export default function ExpenseGroupSkeleton() {
       </p>
 
       <header className="pt-6" aria-hidden="true">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex min-h-10 items-center justify-between gap-4">
           <Skeleton className="h-8 w-44 sm:h-9 sm:w-52" />
           <Skeleton className="h-6 w-20 shrink-0" />
         </div>
@@ -46,9 +50,14 @@ export default function ExpenseGroupSkeleton() {
               <span key={label} className="-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 border-transparent px-2.5 sm:px-4">{label}</span>
             ))}
           </div>
-          <div className="mt-3 flex justify-end lg:my-2 lg:self-center">
-            <Skeleton className="h-10 w-32 rounded-lg" />
-          </div>
+          {primaryAction && (
+            <div className="mt-3 flex justify-end lg:my-2 lg:self-center">
+              <div className="relative flex min-h-10 items-center px-4 py-2 text-sm font-medium">
+                <Skeleton className="absolute inset-0 rounded-lg" />
+                <span className="invisible">{primaryAction}</span>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
