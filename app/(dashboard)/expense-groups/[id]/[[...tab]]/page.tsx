@@ -97,7 +97,7 @@ export default async function ExpenseGroupPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl flex-1 px-4 text-white sm:px-6">
+    <div className="expense-group-frame">
       <header className="pt-6">
         <div className="flex items-center justify-between gap-4">
           <ExpenseGroupSwitcher

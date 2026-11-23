@@ -1,4 +1,3 @@
-import { settingsTileGridClass } from "@/app/components/tiles/SettingsTileLabel";
 import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
 import AddPayLaterProviderButton from "./AddPayLaterProviderButton";
 import PayLaterProviderCard from "./PayLaterProviderCard";
@@ -12,7 +11,7 @@ export default async function ExpenseGroupPayLater({ expenseGroupId }: { expense
         <h2 id="pay-later-title" tabIndex={-1} className="text-lg font-semibold">Pay Later</h2>
         <AddPayLaterProviderButton expenseGroupId={expenseGroupId} />
       </div>
-      <ul className={settingsTileGridClass}>
+      <ul className="expense-group-card-grid">
         {providers.map((provider) => (
           <li key={provider.providerKey} className="min-w-0">
             <PayLaterProviderCard expenseGroupId={expenseGroupId} provider={provider} />

@@ -10,7 +10,7 @@ export default function RecurringExpensesSkeleton() {
           <Skeleton className="absolute -inset-px rounded-lg" />
         </div>
       </div>
-      <ul className="grid gap-3 lg:grid-cols-2">
+      <ul className="grid gap-3 lg:grid-cols-2 [&>li:only-child]:col-span-full">
         {[0, 1].map((row) => (
           <li key={row} className="min-w-0 rounded-xl border border-gray-800 bg-gray-900 p-4">
             <div className="flex items-start justify-between gap-4">

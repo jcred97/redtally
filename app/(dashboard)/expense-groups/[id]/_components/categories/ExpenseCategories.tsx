@@ -22,7 +22,7 @@ export default function ExpenseCategories({
           No categories yet. Add one such as Food or Transport.
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="expense-group-card-grid">
           {categories.map((category) => (
             <li
               key={category.id}

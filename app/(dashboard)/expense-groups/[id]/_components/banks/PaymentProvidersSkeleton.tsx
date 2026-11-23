@@ -1,6 +1,5 @@
 import { useSearchParams } from "next/navigation";
 import Skeleton from "@/app/components/feedback/Skeleton";
-import { settingsTileGridClass } from "@/app/components/tiles/SettingsTileLabel";
 
 const tileNameWidths = ["w-28", "w-24", "w-32", "w-24", "w-28", "w-32"];
 
@@ -30,7 +29,7 @@ export default function PaymentProvidersSkeleton() {
             </div>
           </div>
         ) : <h2 className="mb-4 text-lg font-semibold">Banks</h2>}
-        <ul className={settingsTileGridClass}>
+        <ul className="expense-group-card-grid">
           {tileNameWidths.map((width, index) => (
             <li key={index} className="min-w-0">
               <div className="flex h-full w-full items-center gap-3 rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 text-sm">

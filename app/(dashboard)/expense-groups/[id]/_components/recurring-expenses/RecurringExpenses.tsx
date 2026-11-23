@@ -27,7 +27,7 @@ export default function RecurringExpenses({ rules, groupPath, ...options }: Recu
           )}
         </div>
       ) : (
-        <ul className="grid gap-3 lg:grid-cols-2">
+        <ul className="grid gap-3 lg:grid-cols-2 [&>li:only-child]:col-span-full">
           {rules.map((rule) => {
             const completed = rule.endDate !== null && rule.nextDueDate > rule.endDate;
             const payment = rule.paymentMethod ? paymentMethodLabels[rule.paymentMethod] : null;

@@ -4,7 +4,7 @@ export default function CategoriesSkeleton() {
   return (
     <section>
       <h2 className="mb-4 text-lg font-semibold">Categories</h2>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="expense-group-card-grid">
         {[
           { width: "w-28", canDelete: true },
           { width: "w-24", canDelete: true },

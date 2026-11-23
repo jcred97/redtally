@@ -1,5 +1,4 @@
 import type { BankCatalogEntry } from "@/app/(dashboard)/_lib/banks/access";
-import { settingsTileGridClass } from "@/app/components/tiles/SettingsTileLabel";
 import BankSettingsDialog from "./BankSettingsDialog";
 
 export default function ExpenseGroupBanks({
@@ -17,7 +16,7 @@ export default function ExpenseGroupBanks({
           No banks are available.
         </p>
       ) : (
-        <ul className={settingsTileGridClass}>
+        <ul className="expense-group-card-grid">
           {banks.map((bank) => (
             <li key={bank.id} className="min-w-0">
               <BankSettingsDialog expenseGroupId={expenseGroupId} bank={bank} />
