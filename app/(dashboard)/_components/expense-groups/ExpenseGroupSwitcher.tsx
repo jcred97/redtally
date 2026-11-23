@@ -119,7 +119,7 @@ export default function ExpenseGroupSwitcher({
               return (
                 <li key={group.id}>
                   <Link
-                    href={`/spending/${group.publicId}${tabSuffix}`}
+                    href={`/expense-groups/${group.publicId}${tabSuffix}`}
                     prefetch={false}
                     aria-current={selected ? "page" : undefined}
                     onNavigate={closeAndFocusTrigger}

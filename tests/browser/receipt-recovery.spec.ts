@@ -14,7 +14,7 @@ test("receipt AI scanning recovers when a changed provider cannot be loaded", as
   const db = new Pool({ connectionString: process.env.REDTALLY_BROWSER_DATABASE_URL, ssl: false, max: 1 });
   const failRefresh = Promise.withResolvers<void>();
   const uploadProviders: string[] = [];
-  const groupPath = `/spending/${data.group.publicId}`;
+  const groupPath = `/expense-groups/${data.group.publicId}/expenses`;
   try {
     await db.query('INSERT INTO "ReceiptScanner" ("userId", provider, "encryptedKey", "keySuffix") VALUES ($1, $2, $3, $4)',
       [data.userId, "openai", "fixture-only", "1234"]);

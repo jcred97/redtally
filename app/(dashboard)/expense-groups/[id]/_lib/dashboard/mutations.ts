@@ -23,7 +23,7 @@ async function changeBudget(change: () => Promise<void>): Promise<{ success: tru
     throw error;
   }
 
-  revalidatePath("/spending/[id]", "page");
+  revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
   revalidatePath("/");
   return { success: true };
 }

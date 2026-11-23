@@ -12,7 +12,7 @@ export type RunDueExpensesResult = Awaited<ReturnType<typeof access.runDue>> | {
 export async function runDueExpenses(expenseGroupId: number): Promise<RunDueExpensesResult> {
   try {
     const result = await access.runDue(expenseGroupId);
-    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
     revalidatePath("/");
     revalidatePath("/expense-groups");
     return result;
@@ -30,7 +30,7 @@ export async function changeRecurringExpense(
 ): Promise<{ success: true } | { error: string }> {
   try {
     await access.change(expenseGroupId, id, command, formData);
-    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
     revalidatePath("/");
     return { success: true };
   } catch (error) {

@@ -21,7 +21,7 @@ export default function RecurringExpenses({ rules, groupPath, ...options }: Recu
       {rules.length === 0 ? (
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
           {options.categories.length > 0 ? "No recurring expenses yet." : (
-            <Link href={`${groupPath}?tab=categories`} className="text-red-300 underline underline-offset-4">
+            <Link href={`${groupPath}/categories`} className="text-red-300 underline underline-offset-4">
               Add a category to create a recurring expense.
             </Link>
           )}

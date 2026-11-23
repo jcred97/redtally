@@ -9,7 +9,7 @@ export default function ExpenseGroupLink({
   children: ReactNode;
 }) {
   return (
-    <Link href={`/spending/${publicId}`} className="relative block">
+    <Link href={`/expense-groups/${publicId}`} className="relative block">
       {children}
     </Link>
   );

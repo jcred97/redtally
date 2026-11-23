@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import Papa from "papaparse";
 import type { ExpenseExportRow } from "../../app/(dashboard)/_lib/expense-groups/access";
-import { expenseCsvResponse, expenseCsvRow } from "../../app/(dashboard)/spending/[id]/_lib/expenses/export";
+import { expenseCsvResponse, expenseCsvRow } from "../../app/(dashboard)/expense-groups/[id]/_lib/expenses/export";
 
 const base: ExpenseExportRow = {
   id: 1, title: "Lunch", merchant: "Café 🍱", amountCentavos: 10,

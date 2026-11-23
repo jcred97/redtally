@@ -28,7 +28,7 @@ export async function deleteExpense(
     throw error;
   }
 
-  revalidatePath("/spending/[id]", "page");
+  revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
 
@@ -68,7 +68,7 @@ export async function createExpense(
     throw error;
   }
 
-  revalidatePath("/spending/[id]", "page");
+  revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
 
@@ -111,7 +111,7 @@ export async function updateExpense(
     throw error;
   }
 
-  revalidatePath("/spending/[id]", "page");
+  revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
 

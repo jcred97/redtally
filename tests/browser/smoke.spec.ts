@@ -35,7 +35,7 @@ async function expenseCount(title: string, groupId?: number) {
 }
 
 function groupPath(publicId = data.group.publicId) {
-  return `/spending/${publicId}?allMonths=1`;
+  return `/expense-groups/${publicId}/expenses?allMonths=1`;
 }
 
 async function newExpense(page: Page) {
@@ -75,7 +75,7 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
     const page = await context.newPage();
     await page.goto(groupPath());
     await expect(page).toHaveURL(/\/sign-in/);
-    const anonymousExport = await context.request.get(`/spending/${data.group.publicId}/export?allMonths=1`);
+    const anonymousExport = await context.request.get(`/expense-groups/${data.group.publicId}/export?allMonths=1`);
     expect(anonymousExport.status()).toBe(401);
     await page.goto("/sign-up");
     await page.getByLabel("Name", { exact: true }).fill("New Browser Account");
@@ -101,7 +101,7 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
     await page.goto(groupPath(data.foreign.publicId));
     await expect(page.getByRole("heading", { name: "404", exact: true })).toBeVisible();
     await expect(page.getByText("Foreign secret", { exact: true })).toHaveCount(0);
-    expect((await context.request.get(`/spending/${data.foreign.publicId}/export?allMonths=1`)).status()).toBe(404);
+    expect((await context.request.get(`/expense-groups/${data.foreign.publicId}/export?allMonths=1`)).status()).toBe(404);
     await page.goto(groupPath());
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("button", { name: "Sign out", exact: true }).click();
@@ -109,6 +109,53 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
     await page.goto(groupPath());
     await expect(page).toHaveURL(/\/sign-in/);
   } finally { await context.close(); }
+});
+
+test("expense groups open on Dashboard and legacy bookmarks preserve the selected view", async ({ page }) => {
+  const path = `/expense-groups/${data.group.publicId}`;
+  await page.goto("/expense-groups");
+  await page.getByRole("link", { name: /Browser daily expenses/ }).click();
+  await expect(page).toHaveURL(path);
+  const tabs = page.getByRole("navigation", { name: "Expense group views" });
+  const dashboard = tabs.getByRole("link", { name: "Dashboard", exact: true });
+  await expect(dashboard).toHaveAttribute("aria-current", "page");
+
+  for (const [label, slug] of [["Expenses", "expenses"], ["Recurring", "recurring"], ["Categories", "categories"], ["Payment Provider", "payment-providers"]]) {
+    const tab = tabs.getByRole("link", { name: label, exact: true });
+    await tab.click();
+    await expect(page).toHaveURL(`${path}/${slug}`);
+    await expect(tab).toHaveAttribute("aria-current", "page");
+  }
+  await page.reload();
+  await expect(tabs.getByRole("link", { name: "Payment Provider", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.goBack();
+  await expect(page).toHaveURL(`${path}/categories`);
+  await dashboard.click();
+  await expect(page).toHaveURL(path);
+
+  await page.goto(`${path}/dashboard`);
+  await expect(page).toHaveURL(path);
+  await page.goto(`${path}?month=2020-04&view=grouped#expense-history-title`);
+  await expect(page).toHaveURL(`${path}/expenses?month=2020-04&view=grouped#expense-history-title`);
+
+  const legacyPath = `/spending/${data.group.publicId}`;
+  await page.goto(`${legacyPath}?tab=dashboard&month=2020-04`);
+  await expect(page).toHaveURL(`${path}/dashboard?month=2020-04`);
+  await page.getByRole("link", { name: "This month" }).click();
+  await expect(page).toHaveURL(path);
+  await page.goto(`${path}/dashboard?month=2020-04`);
+  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
+  await expect(page).toHaveURL(`${path}/expenses?month=2020-04`);
+  await page.goto(`${legacyPath}?tab=credit-accounts&view=grouped`);
+  await expect(page).toHaveURL(`${path}/payment-providers?view=grouped&provider=pay-later`);
+  await expect(page.getByRole("link", { name: "Pay Later", exact: true })).toHaveAttribute("aria-current", "page");
+  await page.goto(`/spending/${data.group.id}?tab=recurring&view=grouped#recurring-expenses`);
+  await expect(page).toHaveURL(`${path}/recurring?view=grouped#recurring-expenses`);
+
+  const legacyExport = await page.request.get(`${legacyPath}/export?allMonths=1`);
+  expect(legacyExport.ok()).toBe(true);
+  expect(new URL(legacyExport.url()).pathname).toBe(`${path}/export`);
+  expect(new URL(legacyExport.url()).searchParams.get("allMonths")).toBe("1");
 });
 
 test("Dashboard selects an owned scope, reconciles reports, and opens group history", async ({ page }) => {
@@ -180,7 +227,7 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   const reportUrl = page.url();
   for (const title of ["Scheduled internet", "Review storage renewal"]) {
     await page.getByRole("link", { name: new RegExp(title) }).click();
-    await expect(page).toHaveURL(/\?tab=recurring#recurring-expense-\d+$/);
+    await expect(page).toHaveURL(/\/recurring#recurring-expense-\d+$/);
     const schedule = page.locator(new URL(page.url()).hash);
     await expect(schedule.getByRole("heading", { name: title, exact: true })).toBeInViewport();
     await page.goto(reportUrl);
@@ -188,7 +235,7 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
 
   const recent = page.getByRole("link", { name: /Work groceries/ });
   await recent.click();
-  await expect.poll(() => new URL(page.url()).pathname).toBe(`/spending/${data.dashboard.unbudgeted}`);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(`/expense-groups/${data.dashboard.unbudgeted}/expenses`);
   await expect(page).toHaveURL(/expense=\d+#expense-history-title$/);
   await expect(page.getByRole("heading", { name: "Work groceries", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Dashboard quick-entry ticket", exact: true })).toHaveCount(0);
@@ -220,7 +267,9 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
   await category.getByLabel("Name", { exact: true }).fill("Phone food");
   await category.getByRole("button", { name: "Create", exact: true }).click();
   await expect(category).not.toBeVisible();
-  await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  const expensesTab = page.getByRole("link", { name: "Expenses", exact: true });
+  await expensesTab.click();
+  await expect(expensesTab).toHaveAttribute("aria-current", "page");
   await page.goto(`${new URL(page.url()).pathname}?allMonths=1`);
   const dialog = await newExpense(page);
   const save = dialog.getByRole("button", { name: "Save expense", exact: true });
@@ -241,7 +290,7 @@ test("phone workflow creates a group/category, preserves a failed draft, retries
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill("0.10");
 
   let discarded = false;
-  await page.route("**/spending/**", async (route) => {
+  await page.route("**/expense-groups/**", async (route) => {
     if (!discarded && isAction(route, "Retry breakfast")) {
       discarded = true;
       await route.fetch(); // Commit the real mutation, then simulate a lost response.
@@ -284,6 +333,7 @@ test("empty expense group guides the first category and expense", async ({ page 
   await groupDialog.getByRole("button", { name: "Create", exact: true }).click();
   await expect(groupDialog).not.toBeVisible();
   await page.getByRole("link", { name: /First expense workflow/ }).click();
+  await page.getByRole("link", { name: "Expenses", exact: true }).click();
 
   const history = page.getByRole("region", { name: "Expenses", exact: true });
   await expect(history.getByText("No expenses yet", { exact: true })).toBeVisible();
@@ -311,7 +361,7 @@ test("empty expense group guides the first category and expense", async ({ page 
 });
 
 test("empty current month offers older history", async ({ page }) => {
-  await page.goto(`/spending/${data.olderHistory.publicId}`);
+  await page.goto(`/expense-groups/${data.olderHistory.publicId}/expenses`);
   const history = page.getByRole("region", { name: "Expenses", exact: true });
   const olderExpense = history.getByRole("cell", { name: "Older train ticket", exact: true });
   await expect(history.getByText("No expenses this month", { exact: true })).toBeVisible();
@@ -574,7 +624,7 @@ test("Pay Later purchases retain their provider after it is disabled", async ({ 
   await page.reload();
   await expect(provider).toHaveText("SPayLater");
   const url = new URL(page.url());
-  const csv = await page.request.get(`${url.pathname}/export${url.search}`);
+  const csv = await page.request.get(`${url.pathname.replace(/\/expenses$/, "/export")}${url.search}`);
   expect(csv.ok()).toBe(true);
   const csvText = await csv.text();
   expect(csvText).toContain('"Payment Method","Payment Provider"');
@@ -584,7 +634,7 @@ test("Pay Later purchases retain their provider after it is disabled", async ({ 
 
 test("a lost schedule response can be retried from the dialog and posts one expense", async ({ page }) => {
   const title = "Schedule retry regression";
-  await page.goto(`/spending/${data.group.publicId}?tab=recurring`);
+  await page.goto(`/expense-groups/${data.group.publicId}/recurring`);
   await page.getByRole("button", { name: "+ New Recurring Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New recurring expense", exact: true });
   await dialog.getByLabel("Title", { exact: true }).fill(title);
@@ -594,7 +644,7 @@ test("a lost schedule response can be retried from the dialog and posts one expe
   await dialog.getByLabel("End date (optional)", { exact: true }).fill(startDay);
 
   const createRequests: string[] = [];
-  await page.route("**/spending/**", async (route) => {
+  await page.route("**/expense-groups/**", async (route) => {
     if (isAction(route, title)) {
       createRequests.push(route.request().postData()!);
       if (createRequests.length === 1) {
@@ -771,7 +821,7 @@ test("CSV merchant mapping survives an uncertain save and an idempotent retry", 
   await expect(dialog.getByText("Other Cafe", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Similar row in this file", { exact: true })).toHaveCount(0);
   let discarded = false;
-  await page.route("**/spending/**", async (route) => {
+  await page.route("**/expense-groups/**", async (route) => {
     if (!discarded && isAction(route, "Imported lunch")) {
       discarded = true;
       await route.fetch();
@@ -805,7 +855,7 @@ test("CSV download includes all filtered rows beyond the visible history page", 
   expect(csv.charCodeAt(0)).toBe(0xfeff);
   expect(csv.match(/Export expense /g)).toHaveLength(35);
   expect(csv).not.toContain("Foreign secret");
-  await page.goto(`/spending/${data.exported.publicId}?day=2026-11-17`);
+  await page.goto(`/expense-groups/${data.exported.publicId}/expenses?day=2026-11-17`);
   const emptyDownload = await exportExpenses(page);
   const emptyCsv = await readFile((await emptyDownload.path())!, "utf8");
   expect(emptyCsv.trim().split(/\r?\n/)).toHaveLength(1);
@@ -870,13 +920,13 @@ test("export dialog offers PDF and Excel downloads and restores focus on dismiss
   expect(rows).toHaveLength(36);
   expect(JSON.stringify(rows)).toContain("Export expense 35");
   expect(JSON.stringify(rows)).not.toContain("Foreign secret");
-  await page.goto(`/spending/${data.exported.publicId}?day=2026-11-17`);
+  await page.goto(`/expense-groups/${data.exported.publicId}/expenses?day=2026-11-17`);
   const empty = await exportExpenses(page, "Excel (.xlsx)");
   expect(await readSheet((await empty.path())!)).toHaveLength(1);
 });
 
 test("downloads a complete 5,000-row PDF with readable page breaks", async ({ page }, testInfo) => {
-  await page.goto(`/spending/${data.largeExport.publicId}?day=2026-11-18`);
+  await page.goto(`/expense-groups/${data.largeExport.publicId}/expenses?day=2026-11-18`);
   await expect(page.getByRole("link", { name: "Next", exact: true })).toBeVisible();
   const download = await exportExpenses(page, "PDF (.pdf)");
   expect(download.suggestedFilename()).toBe(`expenses-${data.largeExport.publicId}.pdf`);
@@ -919,7 +969,7 @@ test("downloads a complete 5,000-row PDF with readable page breaks", async ({ pa
 
 test("failed exports keep the dialog open for retry and invalid formats are rejected", async ({ page }) => {
   await page.goto(groupPath(data.exported.publicId));
-  const exportPath = `/spending/${data.exported.publicId}/export`;
+  const exportPath = `/expense-groups/${data.exported.publicId}/export`;
   for (const format of ["invalid", "csv&format=pdf"]) {
     const response = await page.request.get(`${exportPath}?format=${format}`);
     expect(response.status()).toBe(400);

@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import Papa from "papaparse";
 import { createExpenseGroupAccess, type ExpenseHistoryFilters } from "../../app/(dashboard)/_lib/expense-groups/access";
-import { expenseCsvResponse } from "../../app/(dashboard)/spending/[id]/_lib/expenses/export";
-import { parseExpenseGroupQuery } from "../../app/(dashboard)/spending/[id]/_lib/navigation";
+import { expenseCsvResponse } from "../../app/(dashboard)/expense-groups/[id]/_lib/expenses/export";
+import { parseExpenseGroupQuery } from "../../app/(dashboard)/expense-groups/[id]/_lib/navigation";
 import { createTestDatabase } from "../helpers/database";
 
 test("history export uses bounded owner-only batches and the history filters", async (t) => {

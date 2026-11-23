@@ -45,7 +45,7 @@ async function saveGroupChange<T extends { success: true }>(change: () => Promis
     const result = await change();
     revalidatePath("/");
     revalidatePath("/expense-groups");
-    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
     return result;
   } catch (error) {
     if (error instanceof TypeError || error instanceof ExpenseGroupAccessError) {

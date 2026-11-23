@@ -10,8 +10,8 @@ import DashboardControls from "./_home/dashboard/DashboardControls";
 import DashboardReport from "./_home/dashboard/DashboardReport";
 import DashboardUnavailable from "./_home/dashboard/DashboardUnavailable";
 import { getHomeDashboard } from "./_home/dashboard/queries";
-import NewCategoryButton from "./spending/[id]/_components/categories/NewCategoryButton";
-import NewExpenseButton from "./spending/[id]/_components/expenses/NewExpenseButton";
+import NewCategoryButton from "./expense-groups/[id]/_components/categories/NewCategoryButton";
+import NewExpenseButton from "./expense-groups/[id]/_components/expenses/NewExpenseButton";
 
 type DashboardQuery = Record<string, string | string[] | undefined>;
 

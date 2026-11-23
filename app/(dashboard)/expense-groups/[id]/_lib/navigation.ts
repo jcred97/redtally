@@ -1,5 +1,5 @@
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
-import { nextExpenseHistoryScope } from "./expenses/scope";
+import { expenseHistoryQueryKeys, nextExpenseHistoryScope } from "./expenses/scope";
 import {
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryMerchantFilter,
@@ -12,42 +12,62 @@ export type ExpenseGroupQuery = Record<string, string | string[] | undefined>;
 
 const paymentProvidersTabValue = "payment-providers";
 const payLaterProviderTabValue = "pay-later";
+const expenseGroupTabs = ["dashboard", "expenses", "recurring", "categories", paymentProvidersTabValue] as const;
+type ExpenseGroupTab = (typeof expenseGroupTabs)[number];
 
-export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQuery) {
+export function isExpenseGroupTab(tab: string | string[] | undefined): tab is ExpenseGroupTab {
+  return expenseGroupTabs.some((value) => value === tab);
+}
+
+export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQuery, tab?: ExpenseGroupTab) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
+    if (key === "tab") continue;
     if (Array.isArray(value)) {
       for (const entry of value) params.append(key, entry);
     } else if (value !== undefined) {
       params.append(key, value);
     }
   }
-  return `/spending/${publicId}${params.size > 0 ? `?${params}` : ""}`;
+  const tabPath = tab && (tab !== "dashboard" || params.size > 0) ? `/${tab}` : "";
+  return `/expense-groups/${publicId}${tabPath}${params.size > 0 ? `?${params}` : ""}`;
 }
 
 export function recurringExpenseAnchor(id: number) {
   return `recurring-expense-${id}`;
 }
 
-export function expenseGroupRedirectHref(routeKey: string, publicId: string, query: ExpenseGroupQuery) {
-  if (query.tab === "banks" || query.tab === "credit-accounts") {
+export function legacyExpenseGroupHref(publicId: string, query: ExpenseGroupQuery) {
+  const { tab } = query;
+  if (tab === "banks" || tab === "credit-accounts") {
     return canonicalExpenseGroupHref(publicId, {
       ...query,
-      tab: paymentProvidersTabValue,
-      provider: query.tab === "credit-accounts" ? payLaterProviderTabValue : undefined,
-    });
+      provider: tab === "credit-accounts" ? payLaterProviderTabValue : undefined,
+    }, paymentProvidersTabValue);
   }
-  return routeKey === publicId ? null : canonicalExpenseGroupHref(publicId, query);
+  return canonicalExpenseGroupHref(publicId, query, isExpenseGroupTab(tab) ? tab : "expenses");
 }
 
-export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string) {
-  const { tab, page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view } = query;
+export function expenseGroupRedirectHref(routeKey: string, publicId: string, query: ExpenseGroupQuery, tab?: ExpenseGroupTab) {
+  if (!tab && query.tab !== undefined) return legacyExpenseGroupHref(publicId, query);
+  // Before Dashboard became the default, filters on the bare group URL opened Expenses.
+  if (!tab && expenseHistoryQueryKeys.some((key) => query[key] !== undefined)) {
+    return canonicalExpenseGroupHref(publicId, query, "expenses");
+  }
+  if (routeKey !== publicId || query.tab !== undefined || (tab === "dashboard" && Object.keys(query).length === 0)) {
+    return canonicalExpenseGroupHref(publicId, query, tab);
+  }
+  return null;
+}
+
+export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string, tab: ExpenseGroupTab = "dashboard") {
+  const { page: rawPage, month: rawMonth, day: rawDay, through: rawThrough, allMonths, category, paymentMethod: rawMethod, bank: rawBank, merchant: rawMerchant, view } = query;
   const showCategories = tab === "categories";
   const showPaymentProviders = tab === paymentProvidersTabValue;
   const showPayLater = showPaymentProviders && query.provider === payLaterProviderTabValue;
   const showRecurring = tab === "recurring";
   const showDashboard = tab === "dashboard";
-  const showExpenses = !showCategories && !showPaymentProviders && !showRecurring && !showDashboard;
+  const showExpenses = tab === "expenses";
   const grouped = view === "grouped";
   const requestedPage = typeof rawPage === "string" && /^[1-9]\d*$/.test(rawPage)
     ? Number(rawPage)
@@ -117,17 +137,18 @@ export type ExpenseGroupView = ReturnType<typeof parseExpenseGroupQuery>;
 
 export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const { grouped, chosenMonth, showDashboard, showRecurring, showPaymentProviders, showPayLater, showCategories } = view;
-  const groupPath = `/spending/${publicId}`;
-  const expenseTab = grouped ? "?view=grouped" : "";
+  const groupPath = canonicalExpenseGroupHref(publicId, {});
+  const expensesPath = canonicalExpenseGroupHref(publicId, {}, "expenses");
+  const viewQuery = grouped ? "?view=grouped" : "";
+  const expenseTab = `/expenses${viewQuery}`;
   const expensesHref = showDashboard && chosenMonth
-    ? `${groupPath}?month=${chosenMonth}`
+    ? `${expensesPath}?month=${chosenMonth}`
     : groupPath + expenseTab;
-  const viewSuffix = grouped ? "&view=grouped" : "";
-  const categoriesTab = `?tab=categories${viewSuffix}`;
-  const paymentProvidersTab = `?tab=${paymentProvidersTabValue}${viewSuffix}`;
-  const payLaterTab = `${paymentProvidersTab}&provider=${payLaterProviderTabValue}`;
-  const recurringTab = `?tab=recurring${viewSuffix}`;
-  const dashboardTab = `?tab=dashboard${chosenMonth ? `&month=${chosenMonth}` : ""}`;
+  const categoriesTab = `/categories${viewQuery}`;
+  const paymentProvidersTab = `/${paymentProvidersTabValue}${viewQuery}`;
+  const payLaterTab = `${paymentProvidersTab}${grouped ? "&" : "?"}provider=${payLaterProviderTabValue}`;
+  const recurringTab = `/recurring${viewQuery}`;
+  const dashboardTab = chosenMonth ? `/dashboard?month=${chosenMonth}` : "";
   const tabSuffix = showDashboard ? dashboardTab
     : showRecurring ? recurringTab
     : showPayLater ? payLaterTab
@@ -140,16 +161,16 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   allMonthsParams.delete("through");
   allMonthsParams.set("allMonths", "1");
   return {
-    groupPath, expenseTab, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab,
+    groupPath, expensesPath, expenseTab, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab,
     dashboardTab, tabSuffix,
-    monthScopeHref: `${groupPath}?${view.monthScopeQuery}`,
-    allMonthsHref: `${groupPath}?${allMonthsParams}`,
+    monthScopeHref: `${expensesPath}?${view.monthScopeQuery}`,
+    allMonthsHref: `${expensesPath}?${allMonthsParams}`,
     historyViewHref(nextGrouped: boolean, page: number) {
       const query = new URLSearchParams(view.filterQuery);
       if (nextGrouped) query.set("view", "grouped");
       else query.delete("view");
       if (page > 1) query.set("page", String(page));
-      return `${groupPath}?${query}`;
+      return `${expensesPath}?${query}`;
     },
   };
 }

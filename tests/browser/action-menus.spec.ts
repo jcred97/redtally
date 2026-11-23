@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
     data: { email: data.email, password: data.password },
   });
   expect(response.ok()).toBe(true);
-  await page.goto(`/spending/${data.group.publicId}?allMonths=1`);
+  await page.goto(`/expense-groups/${data.group.publicId}/expenses?allMonths=1`);
 });
 
 test("settings menu supports keyboard navigation and restores focus after a dialog", async ({ page }) => {
@@ -65,7 +65,7 @@ test("account menu supports arrows, Escape, and Tab without activating sign-out"
   await page.keyboard.press("Tab");
   await expect(account).toHaveAttribute("aria-expanded", "false");
   await expect(signOut).not.toBeVisible();
-  expect(new URL(page.url()).pathname).toBe(`/spending/${data.group.publicId}`);
+  expect(new URL(page.url()).pathname).toBe(`/expense-groups/${data.group.publicId}/expenses`);
 });
 
 test("expense group switcher preserves keyboard navigation and isolates its dialog", async ({ page }) => {
@@ -97,7 +97,7 @@ test("expense group switcher preserves keyboard navigation and isolates its dial
   await page.keyboard.press("ArrowDown");
   await expect(allGroups).toBeFocused();
   await merchantGroup.press("Enter");
-  await expect.poll(() => new URL(page.url()).pathname).toBe(`/spending/${data.merchants.publicId}`);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(`/expense-groups/${data.merchants.publicId}/expenses`);
 });
 
 test("expense dialogs restore focus to the matching action after resizing and to history after deletion", async ({ page }) => {

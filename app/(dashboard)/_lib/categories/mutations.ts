@@ -59,7 +59,7 @@ async function saveCategoryChange(
     throw error;
   }
 
-  revalidatePath("/spending/[id]", "page");
+  revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
 

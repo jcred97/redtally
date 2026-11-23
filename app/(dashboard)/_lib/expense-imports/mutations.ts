@@ -33,7 +33,7 @@ export async function saveExpenseImport(
     throw error;
   }
 
-  revalidatePath("/spending/[id]", "page");
+  revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
   revalidatePath("/");
   revalidatePath("/expense-groups");
   return { count };

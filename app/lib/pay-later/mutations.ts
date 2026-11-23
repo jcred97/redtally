@@ -10,7 +10,7 @@ const access = createPayLaterAccess(prisma);
 async function save(operation: (userId: string) => Promise<unknown>): Promise<{ success: true } | { error: string }> {
   try {
     await operation(await requireUserId());
-    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
     revalidatePath("/");
     return { success: true };
   } catch (error) {

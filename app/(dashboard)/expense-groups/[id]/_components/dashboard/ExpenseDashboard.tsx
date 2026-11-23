@@ -34,7 +34,7 @@ export default function ExpenseDashboard({
                 <li key={id}>
                   <Link
                     href={{
-                      pathname: groupPath,
+                      pathname: `${groupPath}/expenses`,
                       query: through ? { month, through, category: id } : { month, category: id },
                     }}
                     prefetch={false}

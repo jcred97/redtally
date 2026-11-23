@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { parseExpenseDate } from "@/app/lib/expenses/date";
 import { expenseHistoryMerchantKey, expenseHistoryMerchantName } from "../../_lib/expense-groups/access";
-import { getDashboardPeriod } from "../../spending/[id]/_lib/dashboard/period";
+import { getDashboardPeriod } from "../../expense-groups/[id]/_lib/dashboard/period";
 
 const PUBLIC_ID = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i;
 const SUMMARY_LIMIT = 10;

@@ -4,14 +4,16 @@ import {
   canonicalExpenseGroupHref,
   expenseGroupLinks,
   expenseGroupRedirectHref,
+  legacyExpenseGroupHref,
   parseExpenseGroupQuery,
-} from "../../app/(dashboard)/spending/[id]/_lib/navigation";
+} from "../../app/(dashboard)/expense-groups/[id]/_lib/navigation";
 
 const today = "2026-11-18";
 
 test("group query defaults and repeated or invalid filters are handled consistently", () => {
   const defaults = parseExpenseGroupQuery({}, today);
-  assert.equal(defaults.showExpenses, true);
+  assert.equal(defaults.showDashboard, true);
+  assert.equal(parseExpenseGroupQuery({}, today, "expenses").showExpenses, true);
   assert.equal(defaults.month, "2026-11");
   assert.equal(defaults.requestedPage, 1);
   assert.equal(defaults.filterQuery, "month=2026-11");
@@ -82,7 +84,7 @@ test("month scope toggles retain other filters and grouped view", () => {
   assert.equal(parseExpenseGroupQuery({ month: "2026-10" }, today).monthScopeQuery, "allMonths=1");
   assert.equal(parseExpenseGroupQuery({ allMonths: "1" }, today).hasFilters, false);
 
-  const expectedAllMonths = "/spending/id?category=12&paymentMethod=CASH&bank=assignment%3A7&merchant=none&view=grouped&allMonths=1";
+  const expectedAllMonths = "/expense-groups/id/expenses?category=12&paymentMethod=CASH&bank=assignment%3A7&merchant=none&view=grouped&allMonths=1";
   for (const dateFilter of [{ day: "2026-10-03" }, { month: "2026-10", through: "2026-10-15" }]) {
     const scopedView = parseExpenseGroupQuery({ ...query, ...dateFilter, page: "2" }, today);
     assert.equal(expenseGroupLinks("id", scopedView).allMonthsHref, expectedAllMonths);
@@ -90,48 +92,62 @@ test("month scope toggles retain other filters and grouped view", () => {
 });
 
 test("tab and view links preserve the existing month and pagination behavior", () => {
-  const view = parseExpenseGroupQuery({ tab: "dashboard", month: "2026-10", view: "grouped", category: "2" }, today);
+  const view = parseExpenseGroupQuery({ month: "2026-10", view: "grouped", category: "2" }, today, "dashboard");
   const links = expenseGroupLinks("public-id", view);
-  assert.equal(links.expensesHref, "/spending/public-id?month=2026-10");
-  assert.equal(links.tabSuffix, "?tab=dashboard&month=2026-10");
-  assert.equal(links.categoriesTab, "?tab=categories&view=grouped");
-  assert.equal(links.historyViewHref(false, 3), "/spending/public-id?category=2&month=2026-10&page=3");
-  assert.equal(links.historyViewHref(true, 1), "/spending/public-id?category=2&month=2026-10&view=grouped");
-  assert.equal(expenseGroupLinks("id", parseExpenseGroupQuery({ tab: "recurring", view: "grouped" }, today)).tabSuffix, "?tab=recurring&view=grouped");
+  assert.equal(links.expensesHref, "/expense-groups/public-id/expenses?month=2026-10");
+  assert.equal(links.tabSuffix, "/dashboard?month=2026-10");
+  assert.equal(links.categoriesTab, "/categories?view=grouped");
+  assert.equal(links.historyViewHref(false, 3), "/expense-groups/public-id/expenses?category=2&month=2026-10&page=3");
+  assert.equal(links.historyViewHref(true, 1), "/expense-groups/public-id/expenses?category=2&month=2026-10&view=grouped");
+  assert.equal(expenseGroupLinks("id", parseExpenseGroupQuery({ view: "grouped" }, today, "recurring")).tabSuffix, "/recurring?view=grouped");
 });
 
 test("canonical group URLs preserve repeated and unknown query parameters", () => {
-  assert.equal(canonicalExpenseGroupHref("id", {}), "/spending/id");
-  assert.equal(canonicalExpenseGroupHref("id", { tab: "dashboard", extra: ["one two", "three&four"], absent: undefined }),
-    "/spending/id?tab=dashboard&extra=one+two&extra=three%26four");
+  assert.equal(canonicalExpenseGroupHref("id", {}), "/expense-groups/id");
+  assert.equal(canonicalExpenseGroupHref("id", { extra: ["one two", "three&four"], absent: undefined }, "dashboard"),
+    "/expense-groups/id/dashboard?extra=one+two&extra=three%26four");
 });
 
 test("the Payment Provider tab preserves the group and the grouped-history preference", () => {
-  const view = parseExpenseGroupQuery({ tab: "payment-providers", view: "grouped" }, today);
+  const view = parseExpenseGroupQuery({ view: "grouped" }, today, "payment-providers");
   const links = expenseGroupLinks("public-id", view);
 
   assert.equal(view.showPaymentProviders, true);
   assert.equal(view.showPayLater, false);
   assert.equal(view.showExpenses, false);
-  assert.equal(links.groupPath + links.paymentProvidersTab, "/spending/public-id?tab=payment-providers&view=grouped");
+  assert.equal(links.groupPath + links.paymentProvidersTab, "/expense-groups/public-id/payment-providers?view=grouped");
   assert.equal(links.tabSuffix, links.paymentProvidersTab);
-  assert.equal(links.expensesHref, "/spending/public-id?view=grouped");
+  assert.equal(links.expensesHref, "/expense-groups/public-id/expenses?view=grouped");
 
-  const payLater = parseExpenseGroupQuery({ tab: "payment-providers", provider: "pay-later", view: "grouped" }, today);
+  const payLater = parseExpenseGroupQuery({ provider: "pay-later", view: "grouped" }, today, "payment-providers");
   assert.equal(payLater.showPayLater, true);
-  assert.equal(links.groupPath + links.payLaterTab, "/spending/public-id?tab=payment-providers&view=grouped&provider=pay-later");
+  assert.equal(links.groupPath + links.payLaterTab, "/expense-groups/public-id/payment-providers?view=grouped&provider=pay-later");
+  assert.equal(expenseGroupLinks("public-id", parseExpenseGroupQuery({}, today)).payLaterTab, "/payment-providers?provider=pay-later");
   assert.equal(expenseGroupLinks("public-id", payLater).tabSuffix, links.payLaterTab);
 
   for (const provider of ["invalid", ["pay-later", "banks"]]) {
-    assert.equal(parseExpenseGroupQuery({ tab: "payment-providers", provider }, today).showPayLater, false);
+    assert.equal(parseExpenseGroupQuery({ provider }, today, "payment-providers").showPayLater, false);
   }
   assert.equal(parseExpenseGroupQuery({ provider: "pay-later" }, today).showPayLater, false);
 });
 
-test("old provider tabs redirect to their provider view without dropping other query parameters", () => {
-  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "payment-providers" }), null);
+test("old group URLs redirect to their canonical view without dropping filters", () => {
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", {}, "payment-providers"), null);
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", {}), null);
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", {}, "dashboard"), "/expense-groups/public-id");
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { month: "2026-10" }),
+    "/expense-groups/public-id/expenses?month=2026-10");
+  assert.equal(legacyExpenseGroupHref("public-id", {}), "/expense-groups/public-id/expenses");
+  assert.equal(legacyExpenseGroupHref("public-id", { tab: "recurring", view: "grouped" }),
+    "/expense-groups/public-id/recurring?view=grouped");
+  assert.equal(legacyExpenseGroupHref("public-id", { tab: ["dashboard", "categories"], allMonths: "1" }),
+    "/expense-groups/public-id/expenses?allMonths=1");
+  assert.equal(expenseGroupRedirectHref("42", "public-id", { month: "2026-10" }, "dashboard"),
+    "/expense-groups/public-id/dashboard?month=2026-10");
+  assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "recurring" }, "dashboard"),
+    "/expense-groups/public-id");
   assert.equal(expenseGroupRedirectHref("public-id", "public-id", { tab: "banks", view: "grouped", provider: "pay-later" }),
-    "/spending/public-id?tab=payment-providers&view=grouped");
+    "/expense-groups/public-id/payment-providers?view=grouped");
   assert.equal(expenseGroupRedirectHref("42", "public-id", { tab: "credit-accounts", view: "grouped" }),
-    "/spending/public-id?tab=payment-providers&view=grouped&provider=pay-later");
+    "/expense-groups/public-id/payment-providers?view=grouped&provider=pay-later");
 });

@@ -24,7 +24,7 @@ The data hierarchy is `User -> ExpenseGroup -> Category -> Expense`. Expense gro
 Implemented source includes:
 
 - **Pay Later purchases** use providers enabled in the expense group's **Payment Provider → Pay Later** settings. In **New Expense**, set **Payment Method** to **Pay Later**, choose a **Payment Provider**, and save the full purchase amount. The expense history's **Payment Provider** column shows the saved provider. [Pay Later setup and purchases](docs/workflows.md#pay-later-setup-and-purchases)
-- Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/spending/1b6bc67a-6891-44df-a306-76b69e150c33`. Old numeric links redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
+- Expense-group creation, list cards, and detail/history pages use random UUID public IDs, such as `/expense-groups/1b6bc67a-6891-44df-a306-76b69e150c33`. Legacy /spending links and numeric IDs redirect to the owner's canonical UUID URL and retain filters. Apply migration `20261118010000_expense_group_public_id` before deploying this version.
 - Each group's **Dashboard** tab shows monthly spending, an optional budget target, and ranked categories that open the matching expense history. Owners can set, edit, or remove the target for each month. The cumulative trend compares the current Manila month through today with the previous month through the same calendar day, or through its last day if shorter. Past months compare full months.
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
@@ -175,10 +175,12 @@ Authenticated pages render per request because their session check uses request 
 | `app/(dashboard)/expense-groups/` | Expense Groups list and redirects from retired credit-account pages |
 | `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
-| `app/(dashboard)/spending/[id]/` | Expense-group dashboard, history, categories, payment provider settings, and recurring expenses |
-| `app/(dashboard)/spending/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
-| `app/(dashboard)/spending/[id]/_lib/expenses/` | CSV, PDF, and Excel export helpers |
-| `app/(dashboard)/spending/[id]/export/` | Owner-only expense downloads using history filters |
+| `app/(dashboard)/expense-groups/[id]/` | Expense-group pages and shared feature code |
+| `app/(dashboard)/expense-groups/[id]/[[...tab]]/` | Dashboard at the group URL, with path segments for Expenses, Recurring, Categories, and Payment Providers |
+| `app/(dashboard)/spending/[id]/` | Legacy expense-group link redirects |
+| `app/(dashboard)/expense-groups/[id]/_lib/navigation.ts` | Filter parsing, canonical redirects, and group navigation links |
+| `app/(dashboard)/expense-groups/[id]/_lib/expenses/` | CSV, PDF, and Excel export helpers |
+| `app/(dashboard)/expense-groups/[id]/export/` | Owner-only expense downloads using history filters |
 | `app/(dashboard)/categories/` | Categories route placeholder |
 | `app/(auth)/` | Sign-up and sign-in routes and shared form |
 | `app/api/auth/[...all]/` | Better Auth HTTP handler |

@@ -4,8 +4,8 @@ import { create as readFont, type Font } from "fontkit";
 import Papa from "papaparse";
 import { readSheet } from "read-excel-file/node";
 import type { ExpenseExportRow } from "../../app/(dashboard)/_lib/expense-groups/access";
-import { expenseCsvResponse } from "../../app/(dashboard)/spending/[id]/_lib/expenses/export";
-import { expensePdfResponse, expenseXlsxResponse } from "../../app/(dashboard)/spending/[id]/_lib/expenses/export-files";
+import { expenseCsvResponse } from "../../app/(dashboard)/expense-groups/[id]/_lib/expenses/export";
+import { expensePdfResponse, expenseXlsxResponse } from "../../app/(dashboard)/expense-groups/[id]/_lib/expenses/export-files";
 
 const base: ExpenseExportRow = {
   id: 1, title: "Lunch", merchant: "Café", amountCentavos: 10,

@@ -1,3 +1,8 @@
+export const expenseHistoryQueryKeys = [
+  "expense", "month", "day", "through", "allMonths", "category", "paymentMethod",
+  "paymentProvider", "bank", "merchant", "search", "merchantSearch", "page", "view",
+];
+
 export function nextExpenseHistoryScope(params: URLSearchParams, currentMonth: string) {
   const day = params.get("day");
   const month = params.get("month");

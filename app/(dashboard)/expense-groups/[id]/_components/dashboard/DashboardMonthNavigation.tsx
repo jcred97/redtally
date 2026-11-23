@@ -22,7 +22,7 @@ export default function DashboardMonthNavigation({
   const monthLabel = monthFormatter.format(parseExpenseDate(`${month}-01`));
 
   function monthHref(value: string) {
-    return `${groupPath}?tab=dashboard&month=${value}`;
+    return `${groupPath}/dashboard?month=${value}`;
   }
 
   function monthArrow(offset: -1 | 1) {
@@ -52,7 +52,7 @@ export default function DashboardMonthNavigation({
       </div>
       {month !== currentMonth && (
         <Link
-          href={`${groupPath}?tab=dashboard`}
+          href={groupPath}
           className="inline-flex min-h-11 items-center rounded-sm text-sm text-gray-300 underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-red-400"
         >
           This month

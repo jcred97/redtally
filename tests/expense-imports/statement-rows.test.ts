@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { PdfTextPage } from "../../app/(dashboard)/spending/[id]/_lib/pdf-text";
-import { parseStatementRows } from "../../app/(dashboard)/spending/[id]/_lib/statement-rows";
+import type { PdfTextPage } from "../../app/(dashboard)/expense-groups/[id]/_lib/pdf-text";
+import { parseStatementRows } from "../../app/(dashboard)/expense-groups/[id]/_lib/statement-rows";
 
 type Cell = [text: string, x: number, width?: number];
 

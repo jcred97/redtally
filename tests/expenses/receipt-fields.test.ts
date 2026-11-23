@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { suggestReceiptFields } from "../../app/(dashboard)/spending/[id]/_lib/receipt-fields";
+import { suggestReceiptFields } from "../../app/(dashboard)/expense-groups/[id]/_lib/receipt-fields";
 
 test("suggests the merchant, paid total, and calendar day of a printed receipt", () => {
   assert.deepEqual(suggestReceiptFields([

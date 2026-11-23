@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
     data: { email: data.email, password: data.password },
   });
   expect(response.ok()).toBe(true);
-  await page.goto(`/spending/${group.publicId}?allMonths=1`);
+  await page.goto(`/expense-groups/${group.publicId}/expenses?allMonths=1`);
 });
 
 test.afterAll(async () => { await db.end(); });

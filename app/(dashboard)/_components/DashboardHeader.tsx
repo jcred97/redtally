@@ -10,15 +10,14 @@ import MobileNavigation from "./MobileNavigation";
 
 export default function DashboardHeader(account: ComponentProps<typeof AccountMenu>) {
   const pathname = usePathname();
-  const viewingExpenseGroup = pathname.startsWith("/spending/");
+  const viewingExpenseGroup = pathname.startsWith("/expense-groups/")
+    && !pathname.startsWith("/expense-groups/credit-accounts");
   const tabs = [
     { label: "Dashboard", href: "/", current: pathname === "/" },
     {
       label: "Expense Groups",
       href: "/expense-groups",
-      current: pathname === "/expense-groups"
-        || pathname.startsWith("/expense-groups/")
-        || viewingExpenseGroup,
+      current: pathname === "/expense-groups" || pathname.startsWith("/expense-groups/"),
     },
   ];
   const links: ComponentProps<typeof MobileNavigation>["links"] = tabs.map(({ label, href, current }) => ({

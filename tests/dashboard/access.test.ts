@@ -1,8 +1,8 @@
 import { createTestDatabase } from "../helpers/database";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createDashboardAccess } from "../../app/(dashboard)/spending/[id]/_lib/dashboard/access";
-import { getDashboardPeriod, shiftDashboardMonth } from "../../app/(dashboard)/spending/[id]/_lib/dashboard/period";
+import { createDashboardAccess } from "../../app/(dashboard)/expense-groups/[id]/_lib/dashboard/access";
+import { getDashboardPeriod, shiftDashboardMonth } from "../../app/(dashboard)/expense-groups/[id]/_lib/dashboard/period";
 
 test("dashboard periods cap ongoing comparisons, cover closed months, and respect calendar bounds", () => {
   assert.deepEqual(getDashboardPeriod("2028-03", "2028-03-31"), {

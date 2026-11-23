@@ -10,7 +10,7 @@ const access = createBankAccess(prisma, requireUserId);
 export async function saveBankAssignment(formData: FormData): Promise<{ success: true } | { error: string }> {
   try {
     await access.save(formData);
-    revalidatePath("/spending/[id]", "page");
+    revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
     revalidatePath("/");
     return { success: true };
   } catch (error) {
