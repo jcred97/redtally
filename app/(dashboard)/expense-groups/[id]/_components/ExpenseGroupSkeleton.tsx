@@ -24,71 +24,84 @@ export default function ExpenseGroupSkeleton() {
         </div>
       </header>
 
-      <main className="py-6 sm:py-8">
-        <div
-          aria-hidden="true"
-          className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.25fr)_minmax(0,1fr)]"
-        >
-          {["w-12", "w-14", "w-16", "w-24", "w-10"].map((width) => (
-            <div key={width}>
-              <Skeleton className={`h-5 ${width}`} />
-              <Skeleton className="mt-1 h-10 w-full rounded-lg" />
+      <main aria-hidden="true" className="py-6 sm:py-8">
+        <div className="mb-5">
+          <div className="flex h-[46px] w-fit items-center gap-4 rounded-full border border-gray-700 bg-gray-900 px-4">
+            <Skeleton className="size-3" />
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="size-3" />
+          </div>
+        </div>
+
+        <div className="space-y-4 sm:space-y-5">
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-11 w-24 shrink-0 rounded-lg" />
             </div>
-          ))}
-          <div className="col-span-full flex items-center justify-between gap-5 border-t border-gray-800 pt-3">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-10 w-28 rounded-lg" />
-          </div>
-        </div>
-        <div aria-hidden="true" className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <span className="text-lg font-semibold sm:mr-auto">Expenses</span>
-          <Skeleton className="h-10 w-44 rounded-lg sm:order-last" />
-          <div className="flex flex-wrap gap-2 max-sm:basis-full">
-            <Skeleton className="h-10 w-32 rounded-lg" />
-            <Skeleton className="h-10 w-32 rounded-lg" />
-          </div>
-        </div>
-        <Skeleton className="mb-2 h-5 w-44" />
-
-        <div aria-hidden="true">
-          <div aria-hidden="true" className="space-y-3 sm:hidden">
-            {[0, 1, 2].map((index) => (
-              <div
-                key={index}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4"
-              >
-                <div className="flex justify-between gap-3">
-                  <Skeleton className="h-6 w-1/2" />
-                  <Skeleton className="h-6 w-20" />
-                </div>
-                <Skeleton className="mt-2 h-5 w-2/3" />
-                <div className="mt-3 flex justify-end">
-                  <Skeleton className="h-9 w-16 rounded-lg" />
-                </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+              <div className="col-span-2 sm:col-span-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="mt-1 h-8 w-32 sm:h-9" />
+                <Skeleton className="mt-1 h-4 w-16" />
               </div>
-            ))}
-          </div>
-
-          <div
-            aria-hidden="true"
-            className="hidden space-y-1.5 sm:block"
-          >
-            <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_2.25rem] gap-4 border-b border-gray-800 px-4 py-4">
-              {Array.from({ length: 6 }, (_, index) => (
-                <Skeleton key={index} className="h-4 w-full" />
+              {["w-20", "w-16"].map((width) => (
+                <div key={width}>
+                  <Skeleton className={`h-4 ${width}`} />
+                  <Skeleton className="mt-1 h-7 w-24 max-w-full sm:h-8" />
+                </div>
               ))}
             </div>
-            {[0, 1, 2, 3, 4].map((row) => (
-              <div
-                key={row}
-                className="grid grid-cols-[repeat(6,minmax(0,1fr))_2.25rem] items-center gap-4 rounded-xl bg-gray-900 px-4 py-4"
-              >
-                {Array.from({ length: 6 }, (_, column) => (
-                  <Skeleton key={column} className="h-5 w-full" />
+            <Skeleton className="mt-5 h-2 rounded-full" />
+          </div>
+
+          <div className="grid items-start gap-4 sm:gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]">
+            <div className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:col-start-2 lg:row-start-1">
+              <h2 className="text-lg font-semibold">Spending by category</h2>
+              <div className="mt-3 divide-y divide-gray-800">
+                {["w-4/5", "w-3/5", "w-2/5"].map((width) => (
+                  <div key={width} className="px-2 py-3">
+                    <div className="flex justify-between gap-2">
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                    <Skeleton className={`mt-2 h-1.5 rounded-full ${width}`} />
+                  </div>
                 ))}
-                <Skeleton className="justify-self-center h-2 w-4" />
               </div>
-            ))}
+            </div>
+            <div className="min-w-0 rounded-2xl border border-gray-800 bg-gray-900 p-4 sm:p-6 lg:col-start-1 lg:row-start-1">
+              <h2 className="text-lg font-semibold">Spending trend</h2>
+              <Skeleton className="mt-1 h-5 w-40" />
+              <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+                {["w-16", "w-20"].map((width) => (
+                  <div key={width}>
+                    <Skeleton className={`h-5 ${width}`} />
+                    <Skeleton className="mt-1 h-6 w-24" />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-2 sm:gap-x-3">
+                <div className="flex flex-col justify-between">
+                  {["w-8", "w-6", "w-4"].map((width) => (
+                    <Skeleton key={width} className={`h-3 ${width}`} />
+                  ))}
+                </div>
+                <div className="flex h-36 flex-col justify-between sm:h-52 lg:h-60">
+                  <div className="border-t border-gray-800" />
+                  <div className="border-t border-gray-800" />
+                  <div className="border-t border-gray-800" />
+                </div>
+                <div className="col-start-2 flex justify-between">
+                  <Skeleton className="h-3 w-8" />
+                  <Skeleton className="h-3 w-10" />
+                  <Skeleton className="h-3 w-8" />
+                </div>
+              </div>
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <Skeleton className="my-1.5 h-5 w-36" />
+              </div>
+            </div>
           </div>
         </div>
       </main>
