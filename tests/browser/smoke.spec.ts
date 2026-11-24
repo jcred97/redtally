@@ -457,6 +457,7 @@ test("New Expense lists enabled Pay Later products", async ({ page }) => {
     .getByRole("link", { name: "Pay Later", exact: true }).click();
 
   const tiles = page.getByRole("region", { name: "Pay Later", exact: true }).getByRole("list").getByRole("button");
+  await expect(page.getByRole("button", { name: "Add Pay Later provider", exact: true })).toHaveCount(0);
   await expect(tiles).toHaveText([
     /^Atome\s*Not enabled$/, /^BillEase\s*Not enabled$/, /^GCash\s*Not enabled$/,
     /^Home Credit\s*Not enabled$/, /^Lazada\s*Not enabled$/, /^Shopee\s*Not enabled$/,
@@ -472,11 +473,11 @@ test("New Expense lists enabled Pay Later products", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Lazada Enabled", exact: true })).toBeVisible();
 
   const customProvider = "Neighborhood Shop Pay Later";
-  await page.getByRole("button", { name: "Add Pay Later provider", exact: true }).click();
-  const createProvider = page.getByRole("dialog", { name: "Add Pay Later provider", exact: true });
-  await createProvider.getByLabel("Name", { exact: true }).fill(customProvider);
-  await createProvider.getByRole("button", { name: "Create", exact: true }).click();
-  await expect(createProvider).toBeHidden();
+  await db.query(
+    'INSERT INTO "PayLaterProviderAssignment" ("expenseGroupId", "userId", "providerKey", "providerName") VALUES ($1, $2, $3, $4)',
+    [data.group.id, data.userId, `custom:${customProvider.toLowerCase()}`, customProvider],
+  );
+  await page.reload();
   await expect(tiles.nth(5)).toHaveAccessibleName(customProvider + " Enabled");
   await expect(tiles.nth(6)).toHaveAccessibleName("Shopee Not enabled");
 

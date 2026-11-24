@@ -7,9 +7,9 @@ import { createPayLaterAccess } from "./access";
 
 const access = createPayLaterAccess(prisma);
 
-async function save(operation: (userId: string) => Promise<unknown>): Promise<{ success: true } | { error: string }> {
+export async function setGroupPayLaterProvider(formData: FormData): Promise<{ success: true } | { error: string }> {
   try {
-    await operation(await requireUserId());
+    await access.setGroupPayLaterProvider(await requireUserId(), formData);
     revalidatePath("/expense-groups/[id]/[[...tab]]", "page");
     revalidatePath("/");
     return { success: true };
@@ -17,12 +17,4 @@ async function save(operation: (userId: string) => Promise<unknown>): Promise<{ 
     if (error instanceof TypeError) return { error: error.message };
     throw error;
   }
-}
-
-export async function setGroupPayLaterProvider(formData: FormData) {
-  return save((userId) => access.setGroupPayLaterProvider(userId, formData));
-}
-
-export async function createGroupPayLaterProvider(formData: FormData) {
-  return save((userId) => access.createGroupPayLaterProvider(userId, formData));
 }

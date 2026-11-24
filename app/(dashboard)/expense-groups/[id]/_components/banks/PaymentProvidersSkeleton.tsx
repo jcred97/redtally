@@ -20,15 +20,7 @@ export default function PaymentProvidersSkeleton() {
         ))}
       </div>
       <section>
-        {payLater ? (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Pay Later</h2>
-            <div className="relative flex min-h-10 items-center px-4 py-2 text-sm font-medium">
-              <span className="invisible">Add Pay Later provider</span>
-              <Skeleton className="absolute inset-0 rounded-lg" />
-            </div>
-          </div>
-        ) : <h2 className="mb-4 text-lg font-semibold">Banks</h2>}
+        <h2 className="mb-4 text-lg font-semibold">{payLater ? "Pay Later" : "Banks"}</h2>
         <ul className="expense-group-card-grid">
           {tileNameWidths.map((width, index) => (
             <li key={index} className="min-w-0">
