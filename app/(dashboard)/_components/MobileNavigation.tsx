@@ -80,6 +80,8 @@ export default function MobileNavigation({ links, pathname }: { links: Navigatio
               <Link
                 key={href}
                 href={href}
+                prefetch={ariaCurrent !== "page"}
+                transitionTypes={["main-navigation"]}
                 aria-current={ariaCurrent}
                 onNavigate={closeNavigation}
                 className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${ariaCurrent ? "bg-red-500/15 text-red-300" : "text-gray-200 hover:bg-gray-800"}`}

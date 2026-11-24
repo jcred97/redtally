@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { Suspense } from "react";
 import { getBankAssignmentOptions } from "@/app/(dashboard)/_lib/banks/queries";
 import { getExpenseGroupById, getExpenseGroupOptions } from "@/app/(dashboard)/_lib/expense-groups/queries";
-import Skeleton from "@/app/components/feedback/Skeleton";
 import { requireUser } from "@/app/lib/auth/session";
 import { getManilaToday, parseExpenseMonth } from "@/app/lib/expenses/date";
 import DashboardControls from "./_home/dashboard/DashboardControls";
@@ -22,19 +20,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
   return (
     <main className="dashboard-frame py-6 text-white sm:py-9">
       <h1 className="mb-5 text-2xl font-bold tracking-tight sm:mb-7 sm:text-3xl">Dashboard</h1>
-      <Suspense fallback={
-        <div role="status" className="space-y-4">
-          <span className="sr-only">Loading dashboard</span>
-          <Skeleton className="h-36" />
-          <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
-            <Skeleton className="h-40" />
-            <Skeleton className="h-40" />
-            <Skeleton className="h-40" />
-          </div>
-        </div>
-      }>
-        <DashboardContent query={query} />
-      </Suspense>
+      <DashboardContent query={query} />
     </main>
   );
 }

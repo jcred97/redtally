@@ -1,33 +1,21 @@
-import { Suspense } from "react";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { getExpenseGroupOptions, getExpenseGroups } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
 import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
 import NewExpenseGroupButton from "@/app/(dashboard)/_components/expense-groups/NewExpenseGroupButton";
 import ExpenseGroupLink from "./ExpenseGroupLink";
-import ExpenseGroupsSkeleton from "./ExpenseGroupsSkeleton";
 
 export default function ExpenseGroups() {
   return (
     <main className="dashboard-frame py-10">
       <div className="mb-8 flex flex-wrap items-center gap-2 sm:gap-4">
-        <Suspense
-          fallback={
-            <h1 className="min-w-0 wrap-anywhere text-lg font-bold tracking-tight sm:text-3xl">
-              All Expense Groups
-            </h1>
-          }
-        >
-          <AllExpenseGroupsSwitcher />
-        </Suspense>
+        <AllExpenseGroupsSwitcher />
         <div className="ml-auto whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
           <NewExpenseGroupButton />
         </div>
       </div>
 
-      <Suspense fallback={<ExpenseGroupsSkeleton />}>
-        <ExpenseGroupCards />
-      </Suspense>
+      <ExpenseGroupCards />
     </main>
   );
 }

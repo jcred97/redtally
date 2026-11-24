@@ -25,7 +25,7 @@ export default function RootLayout({
       className={`${geistSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ViewTransition update="page-fade">
+        <ViewTransition update={{ default: "page-fade", "main-navigation": "none" }}>
           <div className="flex flex-1 flex-col">{children}</div>
         </ViewTransition>
       </body>

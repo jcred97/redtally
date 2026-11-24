@@ -46,6 +46,8 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
             <Link
               key={href}
               href={href}
+              prefetch={ariaCurrent !== "page"}
+              transitionTypes={["main-navigation"]}
               aria-current={ariaCurrent}
               className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap rounded-t-sm border-b-2 px-1 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 ${ariaCurrent ? "border-red-500 text-white" : "border-transparent text-gray-300 hover:text-white"}`}
             >
