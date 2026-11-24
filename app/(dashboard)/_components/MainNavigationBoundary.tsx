@@ -9,10 +9,12 @@ import NewExpenseGroupButton from "./expense-groups/NewExpenseGroupButton";
 function MainNavigationSkeleton({ pathname }: { pathname: string }) {
   if (pathname === "/expense-groups") {
     return (
-      <main className="dashboard-frame py-10">
+      <main className="dashboard-frame pt-6 pb-10">
         <div className="mb-8 flex flex-wrap items-center gap-2 sm:gap-4">
-          <h1 className="min-w-0 wrap-anywhere text-lg font-bold tracking-tight sm:text-3xl">All Expense Groups</h1>
-          <div className="ml-auto whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
+          <h1 className="flex min-h-10 min-w-0 items-center pr-6 text-2xl font-bold tracking-tight wrap-anywhere sm:text-3xl">
+            All Expense Groups
+          </h1>
+          <div className="ml-auto shrink-0 whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
             <NewExpenseGroupButton />
           </div>
         </div>

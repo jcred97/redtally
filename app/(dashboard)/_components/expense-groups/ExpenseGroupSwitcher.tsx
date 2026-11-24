@@ -64,7 +64,7 @@ export default function ExpenseGroupSwitcher({
       <h1
         id={onGroupList ? "expense-groups-title" : "expense-group-title"}
         tabIndex={-1}
-        className={`font-bold tracking-tight sm:text-3xl ${onGroupList ? "text-lg" : "text-2xl"}`}
+        className="text-2xl font-bold tracking-tight sm:text-3xl"
       >
         <button
           ref={triggerRef}
@@ -73,7 +73,7 @@ export default function ExpenseGroupSwitcher({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen(!open)}
-          className={`${styles.trigger} inline-flex max-w-full cursor-pointer items-center gap-2 rounded-sm text-left hover:text-gray-200`}
+          className={`${styles.trigger} flex min-h-10 max-w-full cursor-pointer items-center gap-2 rounded-sm text-left hover:text-gray-200`}
         >
           <span className="min-w-0 wrap-anywhere">{title}</span>
           <svg

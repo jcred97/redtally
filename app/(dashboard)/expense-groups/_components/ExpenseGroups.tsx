@@ -7,10 +7,10 @@ import ExpenseGroupLink from "./ExpenseGroupLink";
 
 export default function ExpenseGroups() {
   return (
-    <main className="dashboard-frame py-10">
+    <main className="dashboard-frame pt-6 pb-10">
       <div className="mb-8 flex flex-wrap items-center gap-2 sm:gap-4">
         <AllExpenseGroupsSwitcher />
-        <div className="ml-auto whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
+        <div className="ml-auto shrink-0 whitespace-nowrap max-sm:[&>button]:px-2.5 max-sm:[&>button]:text-xs">
           <NewExpenseGroupButton />
         </div>
       </div>

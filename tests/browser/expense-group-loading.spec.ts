@@ -64,14 +64,24 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
     }
   }
 
+  async function getAnchor(locator: typeof skeleton) {
+    await expect(locator).toBeVisible();
+    const { x, y } = (await locator.boundingBox())!;
+    return { x, y };
+  }
+
   async function expectTopLevelFrame(path: string, heading: string, loadingMessage: string) {
     const loading = page.getByRole("status").filter({ hasText: loadingMessage });
     const main = page.getByRole("main");
-    const summaryPlaceholder = await whileGroupReadsAreBlocked(async () => {
+    const listTitle = main.getByRole("heading", { name: "All Expense Groups", exact: true });
+    const placeholder = await whileGroupReadsAreBlocked(async () => {
       await page.goto(path, { waitUntil: "commit" });
       await expect(loading).toBeAttached();
       await expectFrame(main, `${heading} skeleton`);
-      return path === "/" ? await loading.locator(":scope > div:last-child > div").first().boundingBox() : null;
+      return {
+        summary: path === "/" ? await loading.locator(":scope > div:last-child > div").first().boundingBox() : null,
+        title: path === "/expense-groups" ? await getAnchor(listTitle) : null,
+      };
     });
     await expect(loading).toHaveCount(0);
     await expectFrame(main, heading);
@@ -79,8 +89,13 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       const card = main.getByRole("region", { name: "Spent this month", exact: true });
       await expect(card).toBeVisible();
       const summary = (await card.boundingBox())!;
-      expect(summary.width, "the Dashboard summary placeholder matches the loaded card").toBe(summaryPlaceholder?.width);
+      expect(summary.width, "the Dashboard summary placeholder matches the loaded card").toBe(placeholder.summary?.width);
     }
+    if (path !== "/expense-groups") return null;
+
+    const switcher = await getAnchor(main.getByRole("button", { name: "All Expense Groups, switch expense group" }));
+    expect(switcher, "the expense group list title stays in place while loading").toEqual(placeholder.title);
+    return switcher;
   }
 
   async function expectSettingsFrame() {
@@ -150,7 +165,7 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       tabFrame = undefined;
       scrollStates = new Set();
       await expectTopLevelFrame("/", "Overview", "Loading overview");
-      await expectTopLevelFrame("/expense-groups", "Expense Groups", "Loading your expense groups");
+      const listSwitcher = await expectTopLevelFrame("/expense-groups", "Expense Groups", "Loading your expense groups");
       await expectSettingsFrame();
       await page.goto("/categories");
       const categories = page.getByRole("main");
@@ -170,6 +185,8 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       ]) {
         await expectLoading(() => page.goto(`${groupPath}${suffix}`, { waitUntil: "commit" }), heading);
       }
+      const groupSwitcher = await getAnchor(page.getByRole("button", { name: /switch expense group/i }));
+      expect(groupSwitcher, `the list and individual group switchers align at ${width}px`).toEqual(listSwitcher);
       if (width >= 1100) {
         expect(scrollStates, `checked short and long tabs at ${width}px`).toEqual(new Set([true, false]));
       }
