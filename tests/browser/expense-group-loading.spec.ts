@@ -108,10 +108,18 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
     const main = page.getByRole("main");
     const settingsNav = page.getByRole("navigation", { name: "Account settings sections" });
     for (const heading of ["Profile", "Receipt scanning"]) {
-      await settingsNav.getByRole("link", { name: heading, exact: true }).click();
-      const panel = page.getByRole("region", { name: heading, exact: true });
+      const link = settingsNav.getByRole("link", { name: heading, exact: true });
+      await link.click();
+      const title = main.getByRole("heading", { level: 1, name: heading, exact: true });
+      const panel = main.getByRole("region", { name: heading, exact: true });
+      await expect(title).toBeVisible();
       await expect(panel).toBeVisible();
+      await expect(main.getByRole("heading", { name: "Account settings", exact: true })).toHaveCount(0);
+      await expect(main.getByRole("heading", { level: 1 })).toHaveCount(1);
+      await expect(link).toHaveAttribute("aria-current", "page");
+      await expect(settingsNav.locator('[aria-current="page"]')).toHaveCount(1);
       const mainBox = await expectFrame(main, `Account Settings ${heading}`);
+      const titleBox = (await title.boundingBox())!;
       const panelBox = (await panel.boundingBox())!;
       const navBox = (await settingsNav.boundingBox())!;
       const sideBySide = page.viewportSize()!.width >= 640;
@@ -120,7 +128,9 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       const availableWidth = mainBox.x + mainBox.width - padding - panelStart;
       expect(panelBox.x).toBe(panelStart);
       expect(panelBox.width).toBe(Math.min(768, availableWidth));
-      if (!sideBySide) expect(panelBox.y).toBeGreaterThanOrEqual(navBox.y + navBox.height);
+      expect(titleBox.x).toBe(panelBox.x);
+      expect(titleBox.y + titleBox.height).toBeLessThan(panelBox.y);
+      if (!sideBySide) expect(titleBox.y).toBeGreaterThanOrEqual(navBox.y + navBox.height);
     }
   }
 
