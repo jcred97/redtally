@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { ViewTransition, type ReactNode } from "react";
 import SessionRefresh from "@/app/components/auth/SessionRefresh";
 import { requireUser } from "@/app/lib/auth/session";
 import DashboardHeader from "./_components/DashboardHeader";
@@ -14,7 +14,11 @@ export default async function DashboardLayout({
   return (
     <SessionRefresh userId={user.id}>
       <DashboardHeader name={user.name} email={user.email} image={user.image} />
-      <MainNavigationBoundary>{children}</MainNavigationBoundary>
+      <ViewTransition update={{ default: "page-fade", "main-navigation": "none" }}>
+        <div className="flex flex-1 flex-col">
+          <MainNavigationBoundary>{children}</MainNavigationBoundary>
+        </div>
+      </ViewTransition>
     </SessionRefresh>
   );
 }

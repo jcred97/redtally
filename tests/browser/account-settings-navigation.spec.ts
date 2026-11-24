@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   expect(signIn.ok()).toBe(true);
 });
 
-test("account settings switches sections without requesting the page again", async ({ page }) => {
+test("account settings switches sections without requesting the page again or fading the main header", async ({ page }) => {
   const profileUrl = "/account-settings";
   const scanningUrl = "/account-settings?section=receipt-scanning";
   const settingsPage = (url: URL) => url.pathname === profileUrl;
@@ -35,6 +35,24 @@ test("account settings switches sections without requesting the page again", asy
   const heading = page.getByRole("heading", { level: 1 });
   await expect(heading).toHaveText("Profile");
 
+  const header = page.getByRole("banner");
+  const originalHeaderPosition = await header.boundingBox();
+  await header.evaluate((banner) => {
+    const startViewTransition = document.startViewTransition.bind(document);
+    function recordHeaderFade() {
+      for (let element: Element | null = banner; element; element = element.parentElement) {
+        const classes = getComputedStyle(element).getPropertyValue("view-transition-class");
+        if (classes.split(/\s+/).includes("page-fade")) banner.setAttribute("data-page-fade-observed", "true");
+      }
+    }
+    document.startViewTransition = (update) => {
+      recordHeaderFade();
+      const transition = startViewTransition(update);
+      void transition.ready.then(recordHeaderFade, () => undefined);
+      return transition;
+    };
+  });
+
   await scanning.click();
   await expect(page).toHaveURL(scanningUrl);
   await expect(heading).toHaveText("Receipt scanning");
@@ -52,6 +70,8 @@ test("account settings switches sections without requesting the page again", asy
   await expect(page).toHaveURL(profileUrl);
   await expect(heading).toHaveText("Profile");
   expect(extraRequests).toEqual([]);
+  await expect(header).not.toHaveAttribute("data-page-fade-observed", "true");
+  expect(await header.boundingBox()).toEqual(originalHeaderPosition);
 
   await page.unroute(settingsPage);
   await page.goto(scanningUrl);
