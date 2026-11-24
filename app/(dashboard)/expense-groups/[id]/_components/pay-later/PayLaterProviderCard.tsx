@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
 import FormDialog from "@/app/components/dialogs/FormDialog";
 import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
@@ -17,25 +16,18 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
 }) {
   const isShopee = provider.providerKey === "shopee";
   const title = isShopee ? "Shopee" : provider.providerName;
-  const [enabled, setEnabled] = useState(provider.active);
-  const [productEnabled, setProductEnabled] = useState(provider.productEnabled);
-
-  function resetSettings() {
-    setEnabled(provider.active);
-    setProductEnabled(provider.productEnabled);
-  }
+  const enabled = provider.active && provider.productEnabled;
 
   async function save(formData: FormData) {
     formData.set("expenseGroupId", String(expenseGroupId));
     formData.set("providerKey", provider.providerKey);
-    formData.set("productEnabled", productEnabled ? "on" : "off");
     return setGroupPayLaterProvider(formData);
   }
 
   return (
     <FormDialog
       triggerLabel={(
-        <SettingsTileLabel name={title} status={provider.active ? "Enabled" : "Not enabled"} enabled={provider.active} icon={isShopee ? (
+        <SettingsTileLabel name={title} status={enabled ? "Enabled" : "Not enabled"} enabled={enabled} icon={isShopee ? (
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white">
             <Image src="/branding/shopee.svg" alt="" width={32} height={32} unoptimized />
           </span>
@@ -47,28 +39,15 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
       )}
       triggerClassName={settingsTileClass}
       title={title}
-      onOpenAction={resetSettings}
       submitLabel="Save changes"
       pendingLabel="Saving..."
       failureMessage={saveError}
       submitAction={save}
     >
-      <label className={`flex min-h-10 items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 ${fieldLabelClass}`}>
-        <Checkbox
-          name="active"
-          checked={enabled}
-          onChange={(event) => setEnabled(event.target.checked)}
-        />
-        Enable for this expense group
-      </label>
-
-      <fieldset disabled={!enabled} className="disabled:opacity-60">
+      <fieldset>
         <legend className={`mb-1 ${fieldLabelClass}`}>Pay Later products</legend>
         <label className={`flex min-h-10 items-center gap-3 ${fieldLabelClass}`}>
-          <Checkbox
-            checked={productEnabled}
-            onChange={(event) => setProductEnabled(event.target.checked)}
-          />
+          <Checkbox name="productEnabled" defaultChecked={enabled} />
           {provider.providerName}
         </label>
       </fieldset>

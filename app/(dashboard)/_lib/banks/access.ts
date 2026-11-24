@@ -109,18 +109,24 @@ export function createBankAccess(db: PrismaClient, requireUserId: () => Promise<
       const userId = await requireUserId();
       const expenseGroupId = readId(formData, "expenseGroupId");
       const bankId = readId(formData, "bankId");
-      const active = readCheckbox(formData, "active");
       const supportedDebitCard = readCheckbox(formData, "supportedDebitCard");
       const supportedCreditCard = readCheckbox(formData, "supportedCreditCard");
       const supportedBankTransfer = readCheckbox(formData, "supportedBankTransfer");
       const supportedBankPayment = readCheckbox(formData, "supportedBankPayment");
+      const active = supportedDebitCard || supportedCreditCard || supportedBankTransfer || supportedBankPayment;
 
       if (!active) {
-        // Keep the assignment and its settings for past expenses and later reactivation.
+        // Keep the assignment ID so past expenses can still reference it.
         const group = { id: expenseGroupId, userId };
         const updated = await db.bankAssignment.updateMany({
           where: { expenseGroup: group, bankId },
-          data: { active: false },
+          data: {
+            active: false,
+            supportedDebitCard,
+            supportedCreditCard,
+            supportedBankTransfer,
+            supportedBankPayment,
+          },
         });
 
         if (updated.count === 0) {
@@ -134,10 +140,6 @@ export function createBankAccess(db: PrismaClient, requireUserId: () => Promise<
         }
 
         return expenseGroupId;
-      }
-
-      if (!(supportedDebitCard || supportedCreditCard || supportedBankTransfer || supportedBankPayment)) {
-        throw new TypeError("Choose at least one payment method to enable this bank.");
       }
 
       // Lock eligibility while the database upserts the unique group/bank pair.

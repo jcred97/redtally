@@ -37,7 +37,7 @@ type FormDialogProps = {
   dialogSize?: keyof typeof dialogWidths;
   compact?: boolean;
   children: ReactNode;
-  onOpenAction: () => void;
+  onOpenAction?: () => void;
   disabled?: boolean;
   submitDisabled?: boolean;
   submitLabel?: string;
@@ -108,7 +108,7 @@ export default function FormDialog({
       return;
     }
 
-    onOpenAction();
+    onOpenAction?.();
     focusOnCloseId.current = undefined;
     setError("");
     setOpen(true);

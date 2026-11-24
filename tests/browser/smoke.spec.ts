@@ -394,13 +394,11 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await expect(disabledShopee).toBeInViewport();
   await disabledShopee.click();
   const shopee = page.getByRole("dialog", { name: "Shopee", exact: true });
-  const groupPayLater = shopee.getByRole("checkbox", { name: "Enable for this expense group", exact: true });
   const spayLater = shopee.getByRole("checkbox", { name: "SPayLater", exact: true });
   const savePayLater = shopee.getByRole("button", { name: "Save changes" });
-  await expect(groupPayLater).not.toBeChecked();
-  await expect(spayLater).toBeDisabled();
+  await expect(shopee.getByRole("checkbox")).toHaveCount(1);
+  await expect(spayLater).toBeEnabled();
   await expect(spayLater).not.toBeChecked();
-  await groupPayLater.check();
   await spayLater.check();
   await savePayLater.click();
   const enabledShopee = page.getByRole("button", { name: "Shopee Enabled", exact: true });
@@ -408,27 +406,38 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await page.reload();
   await expect(payLater).toHaveAttribute("aria-current", "page");
   await enabledShopee.click();
-  await expect(groupPayLater).toBeChecked();
   await expect(spayLater).toBeChecked();
-  await groupPayLater.uncheck();
+  await spayLater.uncheck();
   await savePayLater.click();
   await expect(disabledShopee).toBeVisible();
   await disabledShopee.click();
-  await expect(spayLater).toBeDisabled();
-  await expect(spayLater).toBeChecked();
+  await expect(spayLater).not.toBeChecked();
   await shopee.getByRole("button", { name: "Cancel", exact: true }).click();
 
   await banks.click();
   await expect(banks).toHaveAttribute("aria-current", "page");
   await disabledBank.click();
   const bank = page.getByRole("dialog", { name: "BPI", exact: true });
-  const enabled = bank.getByLabel("Enable for this expense group");
-  await enabled.check();
-  await bank.getByLabel("Debit card").check();
-  await bank.getByRole("button", { name: "Save changes" }).click();
-  await page.getByRole("button", { name: "BPI Enabled", exact: true }).click();
-  await enabled.uncheck();
-  await bank.getByRole("button", { name: "Save changes" }).click();
+  const debit = bank.getByRole("checkbox", { name: "Debit card", exact: true });
+  const credit = bank.getByRole("checkbox", { name: "Credit card", exact: true });
+  const saveBank = bank.getByRole("button", { name: "Save changes" });
+  const enabledBank = page.getByRole("button", { name: "BPI Enabled", exact: true });
+  await expect(bank.getByRole("checkbox")).toHaveCount(4);
+  await expect(debit).not.toBeChecked();
+  await debit.check();
+  await credit.check();
+  await saveBank.click();
+  await enabledBank.click();
+  await expect(debit).toBeChecked();
+  await expect(credit).toBeChecked();
+  await debit.uncheck();
+  await saveBank.click();
+  await expect(bank).toBeHidden();
+  await enabledBank.click();
+  await expect(debit).not.toBeChecked();
+  await expect(credit).toBeChecked();
+  await credit.uncheck();
+  await saveBank.click();
   await expect(disabledBank).toBeVisible();
 
   await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -440,7 +449,7 @@ test("an owner can manage Banks and Pay Later settings for an expense group", as
   await expect(groupLink).toHaveCount(0);
 });
 
-test("New Expense lists Pay Later products only when the provider and product are enabled", async ({ page }) => {
+test("New Expense lists enabled Pay Later products", async ({ page }) => {
   await page.goto(groupPath());
   const groupViews = page.getByRole("navigation", { name: "Expense group views" });
   await groupViews.getByRole("link", { name: "Payment Provider", exact: true }).click();
@@ -452,27 +461,10 @@ test("New Expense lists Pay Later products only when the provider and product ar
   }
   await page.getByRole("button", { name: "Lazada Not enabled", exact: true }).click();
   const lazada = page.getByRole("dialog", { name: "Lazada", exact: true });
-  await lazada.getByLabel("Enable for this expense group").check();
   await lazada.getByRole("checkbox", { name: "Lazada", exact: true }).check();
   await lazada.getByRole("button", { name: "Save changes" }).click();
   await expect(lazada).toBeHidden();
   await expect(page.getByRole("button", { name: "Lazada Enabled", exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "GCash Not enabled", exact: true }).click();
-  const gcash = page.getByRole("dialog", { name: "GCash", exact: true });
-  await gcash.getByLabel("Enable for this expense group").check();
-  await expect(gcash.getByRole("checkbox", { name: "GCash", exact: true })).not.toBeChecked();
-  await gcash.getByRole("button", { name: "Save changes" }).click();
-  await expect(gcash).toBeHidden();
-
-  await page.getByRole("button", { name: "Atome Not enabled", exact: true }).click();
-  const atome = page.getByRole("dialog", { name: "Atome", exact: true });
-  const enableAtome = atome.getByLabel("Enable for this expense group");
-  await enableAtome.check();
-  await atome.getByRole("checkbox", { name: "Atome", exact: true }).check();
-  await enableAtome.uncheck();
-  await atome.getByRole("button", { name: "Save changes" }).click();
-  await expect(atome).toBeHidden();
 
   const customProvider = "Neighborhood Shop Pay Later";
   await page.getByRole("button", { name: "Add Pay Later provider", exact: true }).click();
@@ -544,7 +536,6 @@ test("Pay Later purchases retain their provider after it is disabled", async ({ 
   await page.getByRole("button", { name: "Shopee Not enabled", exact: true }).click();
   const shopee = page.getByRole("dialog", { name: "Shopee", exact: true });
   const spayLater = shopee.getByRole("checkbox", { name: "SPayLater", exact: true });
-  await shopee.getByLabel("Enable for this expense group").check();
   await spayLater.check();
   await shopee.getByRole("button", { name: "Save changes" }).click();
   await expect(shopee).not.toBeVisible();
@@ -588,7 +579,7 @@ test("Pay Later purchases retain their provider after it is disabled", async ({ 
   await paymentProviders.click();
   await payLater.click();
   await page.getByRole("button", { name: "Shopee Enabled", exact: true }).click();
-  await shopee.getByLabel("Enable for this expense group").uncheck();
+  await spayLater.uncheck();
   await shopee.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(shopee).toBeHidden();
   await expect(page.getByRole("button", { name: "Shopee Not enabled", exact: true })).toBeVisible();

@@ -23,7 +23,7 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   const household = await client.expenseGroup.create({ data: { name: "Household", userId: "alice" } });
   const travel = await client.expenseGroup.create({ data: { name: "Travel", userId: "alice" } });
   const { getExpenseGroupPayLater, setGroupPayLaterProvider, createGroupPayLaterProvider } = createPayLaterAccess(client);
-  const enableShopee = providerForm(household.id, { providerKey: "shopee", active: "on" });
+  const enableShopee = providerForm(household.id, { providerKey: "shopee", productEnabled: "on" });
   const resolveProvider = (userId: string, groupId: number, key: unknown) => client.$transaction(
     (tx) => requireEnabledPayLaterProvider(tx, userId, groupId, key),
   );
@@ -47,7 +47,9 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   await assert.rejects(createGroupPayLaterProvider("bob", createCustom), /expense groups/i);
   await assert.rejects(createGroupPayLaterProvider("alice", providerForm(household.id, { name: " Shopee " })), /settings list/i);
   await assert.rejects(createGroupPayLaterProvider("alice", providerForm(household.id, { name: " SPayLater " })), /settings list/i);
-  await assert.rejects(setGroupPayLaterProvider("alice", providerForm(household.id, { providerKey: "custom:missing", active: "on" })), /unavailable/i);
+  await assert.rejects(setGroupPayLaterProvider("alice", providerForm(household.id, {
+    providerKey: "custom:missing", productEnabled: "on",
+  })), /unavailable/i);
   await createGroupPayLaterProvider("alice", createCustom);
   await createGroupPayLaterProvider("alice", providerForm(household.id, { name: "local store" }));
   assert.deepEqual(await resolveProvider("alice", household.id, "custom:local store"), {
@@ -60,27 +62,31 @@ test("Pay Later provider settings and purchase eligibility are scoped to the gro
   ]);
 
   const shopeeSetting = async () => (await getExpenseGroupPayLater("alice", household.id)).providers.find(({ providerKey }) => providerKey === "shopee");
-  await setGroupPayLaterProvider("alice", providerForm(household.id, {
-    providerKey: "shopee", active: "on", productEnabled: "off",
-  }));
-  await setGroupPayLaterProvider("alice", enableShopee);
-  assert.deepEqual(await shopeeSetting(), {
-    providerKey: "shopee", providerName: "SPayLater", active: true, productEnabled: false,
-  });
-  await assert.rejects(resolveProvider("alice", household.id, "shopee"), /unavailable/i);
+  const disableShopee = providerForm(household.id, { providerKey: "shopee" });
+  const invalidShopee = providerForm(household.id, { providerKey: "shopee", productEnabled: "on" });
+  invalidShopee.append("productEnabled", "off");
+  await assert.rejects(setGroupPayLaterProvider("alice", invalidShopee), /valid Pay Later provider and setting/i);
+  assert.deepEqual(await resolveProvider("alice", household.id, "shopee"), { providerKey: "shopee", providerName: null });
 
-  await setGroupPayLaterProvider("alice", providerForm(household.id, {
-    providerKey: "shopee", productEnabled: "on",
-  }));
+  await setGroupPayLaterProvider("alice", disableShopee);
   assert.deepEqual(await shopeeSetting(), {
-    providerKey: "shopee", providerName: "SPayLater", active: false, productEnabled: true,
+    providerKey: "shopee", providerName: "SPayLater", active: false, productEnabled: false,
   });
   await assert.rejects(resolveProvider("alice", household.id, "shopee"), /unavailable/i);
   await setGroupPayLaterProvider("alice", enableShopee);
   assert.deepEqual(await resolveProvider("alice", household.id, "shopee"), { providerKey: "shopee", providerName: null });
 
-  await setGroupPayLaterProvider("alice", providerForm(household.id, { providerKey: "shopee" }));
-  await setGroupPayLaterProvider("alice", providerForm(household.id, { providerKey: "custom:local store" }));
+  const disableCustom = providerForm(household.id, { providerKey: "custom:local store" });
+  await setGroupPayLaterProvider("alice", disableCustom);
+  await assert.rejects(resolveProvider("alice", household.id, "custom:local store"), /unavailable/i);
+  await createGroupPayLaterProvider("alice", createCustom);
+  assert.deepEqual(await resolveProvider("alice", household.id, "custom:local store"), {
+    providerKey: "custom:local store",
+    providerName: "Local Store",
+  });
+
+  await setGroupPayLaterProvider("alice", disableShopee);
+  await setGroupPayLaterProvider("alice", disableCustom);
   await assert.rejects(resolveProvider("alice", household.id, "shopee"), /unavailable/i);
   await assert.rejects(resolveProvider("alice", household.id, "custom:local store"), /unavailable/i);
   assert.equal((await getExpenseGroupPayLater("alice", household.id)).providers.some(({ active }) => active), false);

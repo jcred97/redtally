@@ -279,12 +279,11 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       settings.set("expenseGroupId", String(group.id));
       settings.set("supportedDebitCard", "on");
       settings.set("bankId", String(disabledBank.id));
-      settings.set("active", "on");
       await banks.save(settings);
-      settings.delete("active");
+      settings.delete("supportedDebitCard");
       await banks.save(settings);
       settings.set("bankId", String(enabledBank.id));
-      settings.set("active", "on");
+      settings.set("supportedDebitCard", "on");
       await banks.save(settings);
 
       const assignments = () => client.bankAssignment.findMany({
@@ -856,7 +855,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         for (const field of checked) data.set(field, "on");
         return data;
       };
-      const enableBank = settings(a.id, bank.id, "active", "supportedDebitCard", "supportedBankTransfer");
+      const enableBank = settings(a.id, bank.id, "supportedDebitCard", "supportedBankTransfer");
       const unavailable = /This bank is unavailable for this expense group/;
 
       assert.equal((await findBank())?.assignment, null);
@@ -867,13 +866,14 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       await assert.rejects(anonymousBanks.save(enableBank), /Sign in required/);
       await assert.rejects(bobBanks.save(enableBank), unavailable);
       await assert.rejects(bobBanks.save(settings(a.id, bank.id)), unavailable);
-      await assert.rejects(aliceBanks.save(settings(legacy.id, bank.id, "active", "supportedDebitCard")), unavailable);
-      await assert.rejects(aliceBanks.save(settings(a.id, retired.id, "active", "supportedDebitCard")), unavailable);
-      await assert.rejects(aliceBanks.save(settings(a.id, bank.id, "active")), /Choose at least one payment method/);
-      const invalid = settings(a.id, bank.id, "active");
+      await assert.rejects(aliceBanks.save(settings(legacy.id, bank.id, "supportedDebitCard")), unavailable);
+      await assert.rejects(aliceBanks.save(settings(a.id, retired.id, "supportedDebitCard")), unavailable);
+      const invalid = settings(a.id, bank.id, "supportedDebitCard");
       invalid.set("supportedCreditCard", "false");
       await assert.rejects(aliceBanks.save(invalid), /settings are invalid/);
       await aliceBanks.save(settings(a.id, bank.id));
+      assert.equal((await findBank())?.assignment, null);
+      await aliceBanks.save(settings(a.id, bank.id, "active"));
       assert.equal((await findBank())?.assignment, null);
 
       await aliceBanks.save(enableBank);
@@ -900,9 +900,9 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.deepEqual(await aliceBanks.listForExpenses(a.id), []);
       assert.deepEqual((await findBank())?.assignment, {
         active: false,
-        supportedDebitCard: true,
+        supportedDebitCard: false,
         supportedCreditCard: false,
-        supportedBankTransfer: true,
+        supportedBankTransfer: false,
         supportedBankPayment: false,
       });
       assert.equal(
@@ -910,7 +910,7 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
         bank.name,
       );
 
-      await aliceBanks.save(settings(a.id, bank.id, "active", "supportedCreditCard"));
+      await aliceBanks.save(settings(a.id, bank.id, "supportedCreditCard"));
       assert.equal((await client.bankAssignment.findUniqueOrThrow({ where })).id, assignment.id);
       assert.equal((await findBank())?.assignment?.supportedDebitCard, false);
       await client.bank.update({ where: { id: bank.id }, data: { active: false } });
@@ -918,9 +918,10 @@ test("expense-group access isolates users and unclaimed data using real Prisma q
       assert.equal((await findBank())?.active, false);
       assert.equal(await findBank(bobBanks, b.id), undefined);
       await assert.rejects(aliceBanks.save(enableBank), unavailable);
+      assert.equal((await findBank())?.assignment?.supportedCreditCard, true);
       await aliceBanks.save(settings(a.id, bank.id));
       assert.equal((await findBank())?.assignment?.active, false);
-      assert.equal((await findBank())?.assignment?.supportedCreditCard, true);
+      assert.equal((await findBank())?.assignment?.supportedCreditCard, false);
     });
 
     await t.test("overview counts empty categories and sums large amounts without duplicating rows", async () => {

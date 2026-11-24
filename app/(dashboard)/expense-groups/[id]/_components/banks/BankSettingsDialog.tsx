@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { BankCatalogEntry } from "@/app/(dashboard)/_lib/banks/access";
 import { saveBankAssignment } from "@/app/(dashboard)/_lib/banks/mutations";
 import FormDialog from "@/app/components/dialogs/FormDialog";
@@ -24,7 +23,6 @@ export default function BankSettingsDialog({
   bank: BankCatalogEntry;
 }) {
   const savedEnabled = bank.assignment?.active ?? false;
-  const [enabled, setEnabled] = useState(savedEnabled);
   const status = bank.active ? (savedEnabled ? "Enabled" : "Not enabled") : "Unavailable";
 
   async function save(formData: FormData) {
@@ -43,36 +41,28 @@ export default function BankSettingsDialog({
       description={
         bank.active
           ? "Choose how you use this bank in this expense group."
-          : "This bank is unavailable for new use."
+          : savedEnabled
+            ? "This bank is unavailable for new use. Clear all payment methods to disable it for this expense group."
+            : "This bank is unavailable for new use."
       }
-      onOpenAction={() => setEnabled(savedEnabled)}
+      submitDisabled={!bank.active && !savedEnabled}
       submitLabel="Save changes"
       pendingLabel="Saving..."
       pendingMessage="Saving bank settings..."
       failureMessage="Unable to save bank settings. Please try again."
       submitAction={save}
     >
-      <label className={`flex min-h-10 items-center gap-3 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 has-disabled:opacity-60 ${fieldLabelClass}`}>
-        <Checkbox
-          name="active"
-          checked={enabled}
-          disabled={!bank.active && !savedEnabled}
-          onChange={(event) => setEnabled(event.target.checked)}
-        />
-        Enable for this expense group
-      </label>
-
-      <fieldset disabled={!enabled || !bank.active} className="disabled:opacity-60">
+      <fieldset>
         <legend className={`mb-1 ${fieldLabelClass}`}>Payment Methods</legend>
-        {paymentMethods.map(({ name, label }) => (
-          <label key={name} className={`flex min-h-10 items-center gap-3 ${fieldLabelClass}`}>
-            <Checkbox
-              name={name}
-              defaultChecked={bank.assignment?.[name] ?? false}
-            />
-            {label}
-          </label>
-        ))}
+        {paymentMethods.map(({ name, label }) => {
+          const selected = savedEnabled && bank.assignment?.[name] === true;
+          return (
+            <label key={name} className={`flex min-h-10 items-center gap-3 has-disabled:opacity-60 ${fieldLabelClass}`}>
+              <Checkbox name={name} defaultChecked={selected} disabled={!bank.active && !selected} />
+              {label}
+            </label>
+          );
+        })}
       </fieldset>
     </FormDialog>
   );

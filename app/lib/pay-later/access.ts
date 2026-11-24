@@ -67,16 +67,13 @@ export function createPayLaterAccess(db: PrismaClient) {
     async setGroupPayLaterProvider(userId: string, formData: FormData) {
       const expenseGroupId = readExpenseGroupId(formData);
       const [providerKey, extraKey] = formData.getAll("providerKey");
-      const [activeValue, extraActive] = formData.getAll("active");
       const [productValue, extraProduct] = formData.getAll("productEnabled");
-      const active = activeValue === "on";
-      if (!validProviderKey(providerKey) || extraKey !== undefined || extraActive !== undefined ||
-        (activeValue !== undefined && !active) || extraProduct !== undefined ||
+      if (!validProviderKey(providerKey) || extraKey !== undefined || extraProduct !== undefined ||
         (productValue !== undefined && productValue !== "on" && productValue !== "off")) {
         throw new TypeError("Choose a valid Pay Later provider and setting.");
       }
-      // An older form can still toggle the provider without changing a saved product choice.
-      const settings = productValue === undefined ? { active } : { active, productEnabled: productValue === "on" };
+      const productEnabled = productValue === "on";
+      const settings = { active: productEnabled, productEnabled };
 
       return db.$transaction(async (tx) => {
         await lockOwnedExpenseGroup(tx, expenseGroupId, userId);
@@ -108,10 +105,11 @@ export function createPayLaterAccess(db: PrismaClient) {
       return db.$transaction(async (tx) => {
         await lockOwnedExpenseGroup(tx, expenseGroupId, userId);
         const key = { expenseGroupId, providerKey };
+        const settings = { active: true, productEnabled: true };
         return tx.payLaterProviderAssignment.upsert({
           where: { expenseGroupId_providerKey: key },
-          create: { ...key, userId, providerName, active: true },
-          update: { active: true },
+          create: { ...key, userId, providerName, ...settings },
+          update: settings,
         });
       });
     },
