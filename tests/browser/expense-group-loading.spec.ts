@@ -4,7 +4,7 @@ import { browserData } from "./data";
 
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"], args: ["--disable-features=OverlayScrollbar"] } });
 
-test("Dashboard, Expense Groups, and group tabs share a consistent width while loading and loaded", async ({ page }) => {
+test("Dashboard, Expense Groups, and Account Settings share a consistent width", async ({ page }) => {
   const data = browserData();
   const signIn = await page.request.post("/api/auth/sign-in/email", {
     headers: { origin: process.env.REDTALLY_BROWSER_ORIGIN!, "x-real-ip": "192.0.2.70" },
@@ -76,6 +76,21 @@ test("Dashboard, Expense Groups, and group tabs share a consistent width while l
     await expectFrame(main, heading);
   }
 
+  async function expectSettingsFrame() {
+    await page.goto("/account-settings");
+    const main = page.getByRole("main");
+    const settingsNav = page.getByRole("navigation", { name: "Account settings sections" });
+    for (const heading of ["Profile", "Receipt scanning"]) {
+      await settingsNav.getByRole("link", { name: heading, exact: true }).click();
+      const panel = page.getByRole("region", { name: heading, exact: true });
+      await expect(panel).toBeVisible();
+      const mainBox = await expectFrame(main, `Account Settings ${heading}`);
+      const panelBox = (await panel.boundingBox())!;
+      const padding = await main.evaluate((element) => parseFloat(getComputedStyle(element).paddingRight));
+      expect(panelBox.x + panelBox.width).toBe(mainBox.x + mainBox.width - padding);
+    }
+  }
+
   async function expectFirstRowWidth(heading: string, locator: typeof skeleton, mainWidth: number) {
     if (!["Recurring expenses", "Categories", "Banks", "Pay Later"].includes(heading)) return;
     const width = await locator.evaluate((element) => {
@@ -127,6 +142,7 @@ test("Dashboard, Expense Groups, and group tabs share a consistent width while l
       scrollStates = new Set();
       await expectTopLevelFrame("/", "Dashboard", "Loading dashboard");
       await expectTopLevelFrame("/expense-groups", "Expense Groups", "Loading your expense groups");
+      await expectSettingsFrame();
       if (width === 1100) {
         await expectLoading(() => page.goto(`/expense-groups/${data.group.publicId}/categories`, { waitUntil: "commit" }), "Categories");
       }

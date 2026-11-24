@@ -11,7 +11,6 @@ import MobileNavigation from "./MobileNavigation";
 export default function DashboardHeader(account: ComponentProps<typeof AccountMenu>) {
   const pathname = usePathname();
   const viewingExpenseGroups = pathname === "/expense-groups" || pathname.startsWith("/expense-groups/");
-  const frame = pathname === "/" || viewingExpenseGroups ? "dashboard-frame" : "mx-auto max-w-6xl px-4 sm:px-6";
   const tabs = [
     { label: "Dashboard", href: "/", current: pathname === "/" },
     {
@@ -28,7 +27,7 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
 
   return (
     <header className="border-b border-gray-800 bg-background text-white">
-      <div className={`${frame} grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 py-2 sm:grid-cols-[auto_1fr_auto] sm:gap-x-4 md:gap-x-8`}>
+      <div className="dashboard-frame grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 py-2 sm:grid-cols-[auto_1fr_auto] sm:gap-x-4 md:gap-x-8">
         <MobileNavigation links={links} pathname={pathname} />
         <Link
           href="/"
