@@ -26,7 +26,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
         <div role="status" className="space-y-4">
           <span className="sr-only">Loading dashboard</span>
           <Skeleton className="h-36" />
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
             <Skeleton className="h-40" />
             <Skeleton className="h-40" />
             <Skeleton className="h-40" />

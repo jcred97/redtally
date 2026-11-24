@@ -4,7 +4,7 @@ import { browserData } from "./data";
 
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"], args: ["--disable-features=OverlayScrollbar"] } });
 
-test("Dashboard, Expense Groups, and Account Settings share a consistent width", async ({ page }) => {
+test("signed-in pages and their skeletons share a consistent width", async ({ page }) => {
   const data = browserData();
   const signIn = await page.request.post("/api/auth/sign-in/email", {
     headers: { origin: process.env.REDTALLY_BROWSER_ORIGIN!, "x-real-ip": "192.0.2.70" },
@@ -67,13 +67,20 @@ test("Dashboard, Expense Groups, and Account Settings share a consistent width",
   async function expectTopLevelFrame(path: string, heading: string, loadingMessage: string) {
     const loading = page.getByRole("status").filter({ hasText: loadingMessage });
     const main = page.getByRole("main");
-    await whileGroupReadsAreBlocked(async () => {
+    const summaryPlaceholder = await whileGroupReadsAreBlocked(async () => {
       await page.goto(path, { waitUntil: "commit" });
       await expect(loading).toBeAttached();
       await expectFrame(main, `${heading} skeleton`);
+      return path === "/" ? await loading.locator(":scope > div:last-child > div").first().boundingBox() : null;
     });
     await expect(loading).toHaveCount(0);
     await expectFrame(main, heading);
+    if (path === "/") {
+      const card = main.getByRole("region", { name: "Spent this month", exact: true });
+      await expect(card).toBeVisible();
+      const summary = (await card.boundingBox())!;
+      expect(summary.width, "the Dashboard summary placeholder matches the loaded card").toBe(summaryPlaceholder?.width);
+    }
   }
 
   async function expectSettingsFrame() {
@@ -143,6 +150,10 @@ test("Dashboard, Expense Groups, and Account Settings share a consistent width",
       await expectTopLevelFrame("/", "Dashboard", "Loading dashboard");
       await expectTopLevelFrame("/expense-groups", "Expense Groups", "Loading your expense groups");
       await expectSettingsFrame();
+      await page.goto("/categories");
+      const categories = page.getByRole("main");
+      await expect(categories.getByText("Categories — coming soon.", { exact: true })).toBeVisible();
+      await expectFrame(categories, "Categories placeholder");
       if (width === 1100) {
         await expectLoading(() => page.goto(`/expense-groups/${data.group.publicId}/categories`, { waitUntil: "commit" }), "Categories");
       }
