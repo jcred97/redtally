@@ -15,7 +15,7 @@ Product decisions recorded on October 22, 2026:
 
 See [the roadmap](docs/roadmap.md) for implementation priorities and acceptance criteria, and [the data model](docs/data-model.md) for the Salesforce-inspired core adaptation.
 
-The signed-in home opens on **Dashboard**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** controls which banks and Pay Later providers are available for that group. [Expense workflows](docs/workflows.md) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
+The signed-in home opens on **Overview**. Select the expense groups and Manila reporting month to see spending, budget coverage, upcoming recurring expenses, breakdowns, and recent activity. **Expense Groups** opens the group list. Within a group, **Payment Provider** controls which banks and Pay Later providers are available for that group. [Expense workflows](docs/workflows.md) · [Connected-finances roadmap](docs/roadmap.md#dashboard-and-connected-finances)
 
 ## Current implementation
 
@@ -29,7 +29,7 @@ Implemented source includes:
 - Owners can create and rename categories inside an expense group. Empty categories can be deleted after confirmation. Categories with expenses require moving or deleting those expenses first.
 - Owner-only expense entry and editing with a title, peso amount, calendar date, optional Manila time, and a category from the current group. History defaults to a table on desktop and compact cards on phones. Choose **Grouped by day** for daily counts and subtotals across all matching expenses, including days that span multiple pages. Both views keep the current filters and page when switching.
 - **Merchant** is optional and separate from the expense title. When present, it appears below the title in both history views. Apply migration `20261117010000_expense_merchant` before deploying this version.
-- Expenses update as you type part of a merchant name or title, and the other filters apply as soon as you change them. Search is case-insensitive, and the filtered URL includes the search text. Dashboard merchant links retain their exact matches.
+- Expenses update as you type part of a merchant name or title, and the other filters apply as soon as you change them. Search is case-insensitive, and the filtered URL includes the search text. Overview merchant links retain their exact matches.
 - **Export Expenses** opens a file-type chooser for CSV, PDF, or Excel (`.xlsx`). Each download includes every expense matching the current history filters, including rows beyond the current page, with PHP amounts, calendar dates, recorded Manila times, title, merchant, category, **Payment Method**, **Payment Provider**, and notes. The provider field includes banks and saved Pay Later providers. Choose **All months** first to export the full group. CSV works well for imports, PDF for sharing and printing, and Excel for spreadsheet analysis. Exports require the group's owner; CSV formula-like text is escaped and Excel text is stored as literal strings. CSV streams in batches; PDF and Excel are prepared before downloading.
 - **New Expense** reads pasted or selected receipt images on-device by default. You can review and apply suggestions, or choose an optional OpenAI or Anthropic scan when useful. [Receipt scanning workflow](docs/workflows.md#receipt-scanning)
 - Owner-only expense deletion with a confirmation showing the title and exact amount. Cancel receives initial focus; pending requests block duplicate submissions and dismissal. Deleting refreshes history and totals without removing the category or expense group.
@@ -171,7 +171,7 @@ Authenticated pages render per request because their session check uses request 
 | `app/` | Route entry points, root layout, and global styles |
 | `app/(dashboard)/layout.tsx` | Shared navigation for signed-in pages |
 | `app/(dashboard)/_components/expense-groups/` | Shared expense-group switcher, creation, and settings controls |
-| `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Dashboard route and cross-group reporting feature |
+| `app/(dashboard)/page.tsx`, `app/(dashboard)/_home/dashboard/` | Signed-in Overview route and cross-group reporting feature |
 | `app/(dashboard)/expense-groups/` | Expense Groups list and redirects from retired credit-account pages |
 | `app/(dashboard)/account-settings/` | Profile settings and receipt-scanning provider setup |
 | `app/(dashboard)/_lib/` | Database access, queries, and server actions grouped by feature, plus the recurring expense worker |
@@ -217,7 +217,7 @@ Authenticated pages render per request because their session check uses request 
 | `docs/workflows.md` | Profile settings, receipt scanning, and Pay Later purchases |
 | `docs/performance.md` | Synthetic history/duplication measurements and profiling decisions |
 
-Application code uses grouped feature routes, the private Dashboard home feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.
+Application code uses grouped feature routes, the private Overview feature, and `_components` and `_lib` folders. Group related files by feature and use short role names such as `access.ts` and `mutations.ts` for implementation modules. Use descriptive component names that match their filenames. Keep feature UI beside its route and group reusable UI by purpose under `app/components/`.
 
 The Prisma schema, migration history, and runtime client live in `server/db/`. Prisma generates its client into the ignored root `generated/` folder. The `@/*` alias resolves from the repository root. Route groups and private folders keep URLs stable as internal files move.
 

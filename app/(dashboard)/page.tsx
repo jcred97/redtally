@@ -1,15 +1,12 @@
 import Link from "next/link";
 import { unstable_rethrow } from "next/navigation";
-import { getBankAssignmentOptions } from "@/app/(dashboard)/_lib/banks/queries";
-import { getExpenseGroupById, getExpenseGroupOptions } from "@/app/(dashboard)/_lib/expense-groups/queries";
+import { getExpenseGroupOptions } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import { requireUser } from "@/app/lib/auth/session";
 import { getManilaToday, parseExpenseMonth } from "@/app/lib/expenses/date";
 import DashboardControls from "./_home/dashboard/DashboardControls";
 import DashboardReport from "./_home/dashboard/DashboardReport";
 import DashboardUnavailable from "./_home/dashboard/DashboardUnavailable";
 import { getHomeDashboard } from "./_home/dashboard/queries";
-import NewCategoryButton from "./expense-groups/[id]/_components/categories/NewCategoryButton";
-import NewExpenseButton from "./expense-groups/[id]/_components/expenses/NewExpenseButton";
 
 type DashboardQuery = Record<string, string | string[] | undefined>;
 
@@ -19,7 +16,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
 
   return (
     <main className="dashboard-frame py-6 text-white sm:py-9">
-      <h1 className="mb-5 text-2xl font-bold tracking-tight sm:mb-7 sm:text-3xl">Dashboard</h1>
+      <h1 className="mb-5 text-2xl font-bold tracking-tight sm:mb-7 sm:text-3xl">Overview</h1>
       <DashboardContent query={query} />
     </main>
   );
@@ -39,25 +36,17 @@ async function loadDashboard(query: DashboardQuery) {
       ? ownedGroups.filter(({ publicId }) => requestedIds.has(publicId))
       : ownedGroups.slice(0, 1);
     const selectedIds = selectedGroups.map(({ publicId }) => publicId);
-    const requestedEntry = ownedGroups.find(({ publicId }) => publicId === query.entry);
-    const entry = requestedEntry ?? selectedGroups[0] ?? ownedGroups[0];
 
     const scope = new URLSearchParams({ month, scope: "1" });
     for (const publicId of selectedIds) scope.append("group", publicId);
-    if (requestedEntry) scope.set("entry", requestedEntry.publicId);
-
-    const [dashboard, entryGroup, bankOptions] = await Promise.all([
-      selectedIds.length > 0 ? getHomeDashboard(selectedIds, month, today) : null,
-      getExpenseGroupById(entry.id),
-      getBankAssignmentOptions(entry.id),
-    ]);
+    const dashboard = selectedIds.length > 0 ? await getHomeDashboard(selectedIds, month, today) : null;
     return {
-      status: "loaded", ownedGroups, entry, today,
-      scopeQuery: scope.toString(), dashboard, entryGroup, bankOptions,
+      status: "loaded", ownedGroups, today,
+      scopeQuery: scope.toString(), dashboard,
     } as const;
   } catch (error) {
     unstable_rethrow(error);
-    console.error("Dashboard data could not be loaded", error instanceof Error ? error.name : "UnknownError");
+    console.error("Overview data could not be loaded", error instanceof Error ? error.name : "UnknownError");
     return { status: "unavailable" } as const;
   }
 }
@@ -77,25 +66,17 @@ async function DashboardContent({ query }: { query: DashboardQuery }) {
     );
   }
 
-  const { ownedGroups, entry, today, scopeQuery, dashboard, entryGroup, bankOptions } = result;
-  const categories = entryGroup?.categories.map(({ id, name }) => ({ id, name })) ?? [];
+  const { ownedGroups, today, scopeQuery, dashboard } = result;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <DashboardControls groups={ownedGroups} entryId={entry.publicId} scopeQuery={scopeQuery}>
-        {entryGroup && (categories.length > 0 ? (
-          <NewExpenseButton key={entry.id} expenseGroupId={entry.id} categories={categories} bankOptions={bankOptions} />
-        ) : (
-          <NewCategoryButton key={entry.id} expenseGroupId={entry.id} />
-        ))}
-        {!entryGroup && <p role="status" className="text-sm text-gray-300">This expense group is no longer available.</p>}
-      </DashboardControls>
+      <DashboardControls groups={ownedGroups} scopeQuery={scopeQuery} />
       {dashboard && dashboard.groups.length > 0 ? (
         <DashboardReport data={dashboard} today={today} />
       ) : (
         <section className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
           <h2 className="font-semibold">No expense groups selected</h2>
-          <p className="mt-1 text-sm text-gray-300">Select at least one group to see dashboard totals and activity.</p>
+          <p className="mt-1 text-sm text-gray-300">Select at least one group to see spending totals and activity.</p>
         </section>
       )}
     </div>

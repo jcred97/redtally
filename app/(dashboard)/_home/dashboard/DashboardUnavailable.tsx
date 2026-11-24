@@ -9,8 +9,8 @@ export default function DashboardUnavailable() {
 
   return (
     <div role="alert" className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-      <p className="font-semibold">Dashboard unavailable</p>
-      <p className="mt-1 text-sm text-gray-300">We couldn’t load your dashboard. Try again.</p>
+      <p className="font-semibold">Overview unavailable</p>
+      <p className="mt-1 text-sm text-gray-300">We couldn’t load your overview. Try again.</p>
       <button
         type="button"
         disabled={pending}

@@ -95,7 +95,7 @@ test("sign-up, sign-in, private routes, and revoked browser sessions", async ({ 
     await page.getByLabel("Password", { exact: true }).fill(data.password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
     await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Expense Groups", exact: true }).click();
     await expect(page.getByRole("link", { name: /Browser daily expenses/ })).toBeVisible();
     await page.goto(groupPath(data.foreign.publicId));
@@ -158,7 +158,7 @@ test("expense groups open on Dashboard and legacy bookmarks preserve the selecte
   expect(new URL(legacyExport.url()).searchParams.get("allMonths")).toBe("1");
 });
 
-test("Dashboard selects an owned scope, reconciles reports, and opens group history", async ({ page }) => {
+test("Overview selects an owned scope, reconciles reports, and opens group history", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 750 });
   await page.goto("/");
   const openNavigation = page.getByRole("button", { name: "Open navigation" });
@@ -166,13 +166,15 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   const navigation = drawer.getByRole("navigation", { name: "Main navigation" });
   await expect(drawer).toBeHidden();
   await openNavigation.click();
-  await expect(navigation.getByRole("link")).toHaveText(["Dashboard", "Expense Groups"]);
-  await expect(navigation.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+  await expect(navigation.getByRole("link")).toHaveText(["Overview", "Expense Groups"]);
+  const overviewLink = navigation.getByRole("link", { name: "Overview", exact: true });
+  await expect(overviewLink).toHaveAttribute("href", "/");
+  await expect(overviewLink).toHaveAttribute("aria-current", "page");
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();
   await expect(openNavigation).toBeFocused();
-  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-  const filters = page.getByRole("form", { name: "Dashboard filters" });
+  await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+  const filters = page.getByRole("form", { name: "Overview filters" });
   const groupPicker = filters.locator("summary");
   await expect(filters.getByRole("button", { name: "Apply filters", exact: true })).toHaveCount(0);
   await groupPicker.press("Enter");
@@ -211,20 +213,13 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   await expect(merchants.getByRole("link", { name: /Local Market Dashboard work/ })).toHaveAttribute("href", /month=2020-04&merchant=[a-f0-9]{64}/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-  const entry = page.getByRole("region", { name: "Quick expense entry" });
-  await entry.getByRole("combobox", { name: "Expense group", exact: true }).click();
-  await entry.getByRole("option", { name: "Dashboard work", exact: true }).click();
-  await expect.poll(() => new URL(page.url()).searchParams.get("entry")).toBe(data.dashboard.unbudgeted);
-  const expense = await newExpense(page);
-  await expense.getByLabel("Title", { exact: true }).fill("Dashboard quick-entry ticket");
-  await expense.getByLabel("Amount (PHP)", { exact: true }).fill("2.50");
-  await expense.getByLabel("Date", { exact: true }).fill(`${data.dashboard.month}-08`);
-  await expense.getByRole("button", { name: "Save expense", exact: true }).click();
-  await expect(expense).not.toBeVisible();
-  await expect(spent.getByText("₱35.25", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: /Dashboard quick-entry ticket/ })).toBeVisible();
-
+  await expect(page.getByRole("region", { name: "Quick expense entry" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "New Expense" })).toHaveCount(0);
   const reportUrl = page.url();
+  await page.goto(`${reportUrl}&entry=${data.dashboard.unbudgeted}`);
+  await expect(spent.getByText("₱32.75", { exact: true })).toBeVisible();
+  await expect(groupPicker).toContainText("2 included");
+
   for (const title of ["Scheduled internet", "Review storage renewal"]) {
     await page.getByRole("link", { name: new RegExp(title) }).click();
     await expect(page).toHaveURL(/\/recurring#recurring-expense-\d+$/);
@@ -238,7 +233,6 @@ test("Dashboard selects an owned scope, reconciles reports, and opens group hist
   await expect.poll(() => new URL(page.url()).pathname).toBe(`/expense-groups/${data.dashboard.unbudgeted}/expenses`);
   await expect(page).toHaveURL(/expense=\d+#expense-history-title$/);
   await expect(page.getByRole("heading", { name: "Work groceries", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Dashboard quick-entry ticket", exact: true })).toHaveCount(0);
   await openNavigation.click();
   await expect(navigation.getByRole("link", { name: "Expense Groups" })).toHaveAttribute("aria-current", "location");
   await drawer.getByRole("button", { name: "Close navigation" }).click();
@@ -521,7 +515,7 @@ test("the retired Accounts and Loans pages are unavailable", async ({ page }) =>
   await page.setViewportSize({ width: 1024, height: 844 });
   await page.goto("/expense-groups");
   await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link"))
-    .toHaveText(["Dashboard", "Expense Groups"]);
+    .toHaveText(["Overview", "Expense Groups"]);
   for (const retiredPath of ["/accounts", "/loans"]) {
     expect((await page.goto(retiredPath))?.status()).toBe(404);
   }

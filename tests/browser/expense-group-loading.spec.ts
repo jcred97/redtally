@@ -147,7 +147,7 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       await page.setViewportSize({ width, height: 540 });
       tabFrame = undefined;
       scrollStates = new Set();
-      await expectTopLevelFrame("/", "Dashboard", "Loading dashboard");
+      await expectTopLevelFrame("/", "Overview", "Loading overview");
       await expectTopLevelFrame("/expense-groups", "Expense Groups", "Loading your expense groups");
       await expectSettingsFrame();
       await page.goto("/categories");

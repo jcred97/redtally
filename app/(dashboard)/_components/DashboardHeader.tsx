@@ -12,7 +12,7 @@ export default function DashboardHeader(account: ComponentProps<typeof AccountMe
   const pathname = usePathname();
   const viewingExpenseGroups = pathname === "/expense-groups" || pathname.startsWith("/expense-groups/");
   const tabs = [
-    { label: "Dashboard", href: "/", current: pathname === "/" },
+    { label: "Overview", href: "/", current: pathname === "/" },
     {
       label: "Expense Groups",
       href: "/expense-groups",

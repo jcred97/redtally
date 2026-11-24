@@ -68,20 +68,20 @@ Phase 1 uses existing expenses, monthly budgets, and recurring schedules. Phases
 
 ### Purpose and navigation
 
-**Dashboard** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Payment Provider tabs. Payment Provider contains the group's **Banks** and **Pay Later** settings. Dashboard drill-downs open the relevant group view with its reporting month or history filters when applicable.
+**Overview** is the first tab and the signed-in home page at `/`. **Expense Groups** is the second tab at `/expense-groups`, with the group list, creation, and settings. Individual groups have Dashboard, Expenses, Recurring, Categories, and Payment Provider tabs. Payment Provider contains the group's **Banks** and **Pay Later** settings. Overview drill-downs open the relevant group view with its reporting month or history filters when applicable.
 
 Use an expense group's **Payment Provider → Pay Later** settings to enable providers for new expenses. Each purchase stores its selected provider and full amount. [Pay Later workflow](workflows.md#pay-later-setup-and-purchases)
 
 Use the reference images for clear goal progress, account context during entry, rounded summary cards, and a distinction between planned and recorded transactions. Keep decorative wallet artwork compact so useful amounts and actions appear sooner.
 
-### Phase 1: Dashboard using existing data
+### Phase 1: Overview using existing data
 
 - [x] Show spending for the selected Manila reporting month, with a matched previous-period comparison using the existing dashboard date policy.
 - [x] Show budget progress for included groups that have a target for that month, with explicit coverage such as "2 of 3 groups budgeted." Compare those targets only with spending in those same groups and show unbudgeted spending separately.
 - [x] Show upcoming recurring expenses with their scheduled dates, plus schedules needing attention. Scheduled expenses describe expected postings.
 - [x] Show category and merchant breakdowns and recent expenses, with links into matching group history. Preserve group context for categories with identical names.
-- [x] Let the owner choose which expense groups contribute to Dashboard and clearly display the active scope. Dashboard starts with the oldest owned group because duplication can copy an entire history. The reporting month and group selection are kept in the Dashboard URL.
-- [x] Provide month and group filters, quick expense entry, and a route to every included group's existing views.
+- [x] Let the owner choose which expense groups contribute to Overview and clearly display the active scope. Overview starts with the oldest owned group because duplication can copy an entire history. The reporting month and group selection are kept in the Overview URL.
+- [x] Provide month and group filters and a route to every included group's existing views.
 
 Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and relevant **Needs attention** items. Place trends, breakdowns, and recent activity underneath. Only show attention items backed by actual state and an action the user can take.
 
@@ -90,7 +90,7 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 - [ ] Design financial-account registration for the connected-finance workflow.
 - [ ] Track balances, income, linked transfers, opening balances, and statement reconciliation for financial accounts.
 - [ ] Extend recurring scheduling into a bills and payday timeline with planned, due, overdue, and paid states, reminders, and matching between expected items and actual transactions. Include subscriptions and annual renewals.
-- [ ] Add account balances, income, expenses, and net cash flow to Dashboard. Internal transfers and credit-card repayments must not count purchases as expenses twice.
+- [ ] Add account balances, income, expenses, and net cash flow to Overview. Internal transfers and credit-card repayments must not count purchases as expenses twice.
 - [ ] Add credit-card statement/current balances, minimum payments, due dates, installments, and debt payoff progress.
 - [x] Add Pay Later to **New Expense**. Let users choose an enabled Pay Later provider in **Payment Provider** and show the saved provider in expense history.
 - [ ] Link disbursements and repayments to the financial-account ledger. Track principal, interest, and fees separately when the underlying transactions support that breakdown.
@@ -106,18 +106,18 @@ Start with **Spent this month**, **Budget progress**, **Upcoming expenses**, and
 
 - [ ] Add portfolio value, contributions, withdrawals, returns, and asset allocation once investment transactions, holdings, and dated valuations exist. Balance growth alone is not investment return.
 - [ ] Extend budgets with category limits, optional rollover, payday-based periods, and spending-pace alerts. Category limits and pace alerts can be considered earlier using existing history.
-- [ ] Allow balance privacy controls and reordering/hiding optional dashboard sections. Customization can follow the first working Dashboard.
+- [ ] Allow balance privacy controls and reordering/hiding optional Overview sections. Customization can follow the first working Overview.
 - [ ] Evaluate multi-currency accounts, what-if purchase scenarios, and Philippine-oriented presets such as twice-monthly paydays, e-wallets, installments, and remittances through actual use. These do not imply bank-sync availability.
 
 ### Layout and acceptance criteria
 
-The complete Dashboard will connect money balances, a payday plan, attention items, monthly performance, upcoming events, goals, investments, and recent activity. Introduce each section when its data dependency is available.
+The complete Overview will connect money balances, a payday plan, attention items, monthly performance, upcoming events, goals, investments, and recent activity. Introduce each section when its data dependency is available.
 
-- Use a single column on phones with actionable information and quick entry near the top. On desktop, place trends and activity beside upcoming obligations and goals. Preserve readable labels, keyboard access, reduced-motion behavior, and usability at 360-430 px without horizontal page scrolling.
+- Use a single column on phones with actionable information near the top. On desktop, place trends and activity beside upcoming obligations and goals. Preserve readable labels, keyboard access, reduced-motion behavior, and usability at 360-430 px without horizontal page scrolling.
 - Clearly label "Balance today," "Spending this month," and "Forecast through next payday" rather than applying one reporting period to every module.
 - Keep budget remaining, available cash, and net worth distinct. Unused credit limits are not assets; goal allocations are not additional assets.
 - Missing or unsupported financial data offers an appropriate next action or an unavailable state, never a fabricated zero. Loading and failed queries must not masquerade as empty financial records.
-- Owner-only totals and drill-downs must agree for the chosen scope and dates. Verify partial budget coverage, duplicated/excluded groups, same-name categories, empty accounts, month boundaries, and failed reads through the signed-in Dashboard.
+- Owner-only totals and drill-downs must agree for the chosen scope and dates. Verify partial budget coverage, duplicated/excluded groups, same-name categories, empty accounts, month boundaries, and failed reads through the signed-in Overview.
 - Future mixed-currency totals require explicit conversion rates and valuation dates while retaining original-currency amounts. Show data freshness where balances or prices can become stale.
 
 See [financial-model dependencies](data-model.md#planned-financial-model-dependencies) for preservation and calculation rules. Phase 1 uses the current schema.

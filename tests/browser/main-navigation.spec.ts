@@ -14,8 +14,8 @@ test("main navigation prefetches the destination and keeps the current page duri
   await database.connect();
   try {
     for (const { width, from, to, link, current, destinationTitle } of [
-      { width: 1280, from: "/", to: "/expense-groups", link: "Expense Groups", current: "Dashboard", destinationTitle: "All Expense Groups" },
-      { width: 360, from: "/expense-groups", to: "/", link: "Dashboard", current: "All Expense Groups", destinationTitle: "Dashboard" },
+      { width: 1280, from: "/", to: "/expense-groups", link: "Expense Groups", current: "Overview", destinationTitle: "All Expense Groups" },
+      { width: 360, from: "/expense-groups", to: "/", link: "Overview", current: "All Expense Groups", destinationTitle: "Overview" },
     ]) {
       await page.setViewportSize({ width, height: 850 });
       const matchesDestination = (url: URL) => url.pathname === to && url.searchParams.has("_rsc");
@@ -48,7 +48,7 @@ test("main navigation prefetches the destination and keeps the current page duri
             return result.rows[0].waiting;
           }).toBe(true);
           await expect(currentTitle).toBeVisible();
-          await expect(page.getByRole("status").filter({ hasText: /Loading dashboard|Loading your expense groups/ })).toHaveCount(0);
+          await expect(page.getByRole("status").filter({ hasText: /Loading overview|Loading your expense groups/ })).toHaveCount(0);
         } finally {
           await database.query("ROLLBACK");
         }

@@ -20,7 +20,7 @@ export default function DashboardFilters({ month, groups, selectedIds, onMonthCh
 
   return (
     <form
-      aria-label="Dashboard filters"
+      aria-label="Overview filters"
       onSubmit={(event) => event.preventDefault()}
       className="grid min-w-0 grid-cols-1 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:grid-cols-2"
     >

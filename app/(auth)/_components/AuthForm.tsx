@@ -100,7 +100,7 @@ export default function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   let loadingMessage: string;
 
   if (redirecting) {
-    loadingMessage = "Opening your expense groups...";
+    loadingMessage = "Opening your overview...";
   } else if (signingUp) {
     loadingMessage = "Creating your account...";
   } else {

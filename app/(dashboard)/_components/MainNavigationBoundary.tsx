@@ -23,9 +23,9 @@ function MainNavigationSkeleton({ pathname }: { pathname: string }) {
 
   return (
     <main className="dashboard-frame py-6 text-white sm:py-9">
-      <h1 className="mb-5 text-2xl font-bold tracking-tight sm:mb-7 sm:text-3xl">Dashboard</h1>
+      <h1 className="mb-5 text-2xl font-bold tracking-tight sm:mb-7 sm:text-3xl">Overview</h1>
       <div role="status" className="space-y-4">
-        <span className="sr-only">Loading dashboard</span>
+        <span className="sr-only">Loading overview</span>
         <Skeleton className="h-36" />
         <div className="grid gap-4 sm:gap-5 lg:grid-cols-3">
           <Skeleton className="h-40" />
