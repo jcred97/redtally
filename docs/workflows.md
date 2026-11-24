@@ -6,7 +6,11 @@
 
 ## Account settings
 
-Open the avatar menu and select **Account settings**. In **Profile**, you can see your name and email, upload a profile photo, or switch back to your initials.
+Open the avatar menu and select **Account settings** to open **Profile**. On desktop, the sidebar sits beside the settings panel and a short red marker identifies the active section. On mobile, the section links sit above the panel. The active section's name appears as the page heading.
+
+RedTally loads both sections' data when you open Account Settings. Select a section to switch in place. You can bookmark **Profile** at `/account-settings` or **Receipt scanning** at `/account-settings?section=receipt-scanning`. The browser's Back and Forward buttons follow your section history.
+
+In **Profile**, you can see your name and email, upload a profile photo, or switch back to your initials.
 
 In **Receipt scanning**, choose **OpenAI** or **Anthropic**, enter your API key, and select **Test & Save**. The test uses a small amount of provider quota. After it succeeds, the settings show the provider and the last four characters of the key. You can replace the key or disconnect. The connection is available across your expense groups.
 

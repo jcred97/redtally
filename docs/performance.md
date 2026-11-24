@@ -1,4 +1,6 @@
-# Expense history and duplication profiling
+# Performance and layout checks
+
+## Expense history and duplication profiling
 
 Run the existing access entry points against deterministic synthetic groups:
 
@@ -27,7 +29,7 @@ Each size uses a fresh database with twelve categories, one bank assignment, one
 
 Assertions check cross-user reads and duplication rejection, page sizes and requested page numbers, copied counts and exact totals, category/budget counts, and copied bank-assignment ownership. A failed duplicate must leave the source counts/totals intact and create no group. The regular access suite covers page clamping, broader duplication field preservation, and filter behavior.
 
-## Before the duplication fix: PGlite
+### Before the duplication fix: PGlite
 
 Measured November 18, 2026 on Windows x64, Node 24.14.1, PGlite 0.4.1. These local synthetic timings identify areas to investigate; they are not PostgreSQL production latency estimates.
 
@@ -41,7 +43,7 @@ For the 1,000- and 10,000-row runs, sampled process RSS increases during duplica
 
 The 50,000-row run failed twice with Prisma `P2003` on `Category_spendingId_fkey` during the nested copy update. The measured rerun sampled increases of 1,122.8 MiB RSS and 473.3 MiB JavaScript heap, and verified rollback: no copied group remained and source counts and totals were unchanged.
 
-## Native PostgreSQL reproduction and fix
+### Native PostgreSQL reproduction and fix
 
 The same workload was then run against a disposable native PostgreSQL 18.7 cluster (Windows x64, MSVC 19.44.35229), using the same Node version and current transaction defaults. Binaries came from [EDB's portable PostgreSQL distribution](https://www.enterprisedb.com/download-postgresql-binaries), linked from the [PostgreSQL Windows downloads page](https://www.postgresql.org/download/windows/).
 
@@ -63,16 +65,37 @@ Memory samples in native mode include Node and Prisma, but not the separate Post
 
 The fixed 50,000-row PGlite workload also passed: duplication took 1,355.7 ms, with sampled RSS increase 11.5 MiB and heap increase 2.8 MiB. PGlite runs inside Node, so its memory samples include the database engine and cannot be compared directly with native PostgreSQL Node-only memory samples.
 
-## CSV export verification
+### CSV export verification
 
 The streaming CSV export was checked separately against an isolated native PostgreSQL 18.7 cluster on the same machine. A 50,000-expense history produced 100 batches of at most 500 rows; streamed CSV amounts totaled exactly 1,250,075,000 centavos, matching an independent SQL aggregate and the history summary. The check took about 855 ms, including CSV parsing and reconciliation. Month, day, merchant, and combined category/payment filters also reconciled. CSV values had exact two-decimal PHP amounts, all nine columns, no repeated rows, and a private/no-store response.
 
 This is a local synthetic correctness and batching check, not a production download-time guarantee. Export uses ascending expense IDs and caps the maximum ID when preparation starts. It does not hold a long-lived snapshot transaction: later inserts are excluded, while concurrent edits/deletions can change unread batches. The portable export tests permanently cover multiple batches, all filters, unauthorized access, empty results, CSV escaping, and cancellation.
 
-## Next profiling decisions
+### Next profiling decisions
 
 Keep existing numbered-page navigation and indexes until representative workloads are measured against an isolated native PostgreSQL instance matching deployment. Capture query plans with `EXPLAIN (ANALYZE, BUFFERS)`, application memory peaks, transaction duration, and concurrent workloads. Include low- and high-selectivity filters, grouped day totals, skewed dates, and the largest realistic merchant/category distributions.
 
 The first page also calculates counts and totals over matching history, and grouped results calculate day windows; cursor pagination alone would not remove those costs. Compare query plans before adding an index, since the current ordering includes `date::date`, optional times, and tie-breaking IDs. The default month filter is substantially cheaper in this synthetic workload.
 
 Duplication remains atomic in one transaction. Profile larger expense counts, many categories, and concurrent writes before changing transaction limits. Any future multi-transaction batching needs explicit incomplete-copy visibility, retry, cleanup, and ownership rules. Preserve category and bank remapping and atomic failure behavior.
+
+## Account Settings layout and section switching
+
+- `b1e5c7c` moved Account Settings onto the shared 1,280 px dashboard frame. Removing the inner width cap at the same time let the desktop panel stretch to about 1,032 px.
+- `f24ec77` capped the content panel at 768 px and kept it fluid within the available width on mobile.
+- `5901e75` made **Profile** or **Receipt scanning** the sole page heading above the panel. Desktop navigation now uses compact links with a short red active marker. Mobile navigation sits above the heading.
+
+The main-navigation fix in `881048f` covered Overview and Expense Groups. The Account Settings links still changed the query through Next.js navigation, so uncached switches waited for a server render. Opening Receipt scanning also loaded the provider connection.
+
+Account Settings now loads both sections' data when the authenticated page opens. This adds one receipt connection lookup to the initial Profile render. The lookup returns the provider and the final four characters displayed after the key mask. After hydration, section links update the query through browser history and switch panels using the data already loaded for the visit. Direct visits and reloads fetch current data from the server, and settings actions revalidate the page after a save.
+
+Run the Chromium checks against a disposable PostgreSQL cluster. [Browser test setup](../README.md#local-development)
+
+```sh
+npm run build
+npm run test:browser -- account-settings-navigation.spec.ts expense-group-loading.spec.ts
+```
+
+The navigation checks block extra Account Settings GET requests and verify both switches, Back and Forward, direct links, and reloads. They also verify that a disconnected provider stays disconnected after switching. [Section navigation tests](../tests/browser/account-settings-navigation.spec.ts)
+
+The layout check verifies both panels at 360, 1100, and 1440 px, including their headings, active links, and widths. [Layout test](../tests/browser/expense-group-loading.spec.ts)
