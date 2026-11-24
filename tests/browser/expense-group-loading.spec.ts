@@ -113,8 +113,14 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       await expect(panel).toBeVisible();
       const mainBox = await expectFrame(main, `Account Settings ${heading}`);
       const panelBox = (await panel.boundingBox())!;
-      const padding = await main.evaluate((element) => parseFloat(getComputedStyle(element).paddingRight));
-      expect(panelBox.x + panelBox.width).toBe(mainBox.x + mainBox.width - padding);
+      const navBox = (await settingsNav.boundingBox())!;
+      const sideBySide = page.viewportSize()!.width >= 640;
+      const padding = sideBySide ? 24 : 16;
+      const panelStart = sideBySide ? navBox.x + navBox.width + 24 : mainBox.x + padding;
+      const availableWidth = mainBox.x + mainBox.width - padding - panelStart;
+      expect(panelBox.x).toBe(panelStart);
+      expect(panelBox.width).toBe(Math.min(768, availableWidth));
+      if (!sideBySide) expect(panelBox.y).toBeGreaterThanOrEqual(navBox.y + navBox.height);
     }
   }
 

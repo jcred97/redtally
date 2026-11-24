@@ -27,7 +27,7 @@ export default async function AccountSettingsPage({ searchParams }: PageProps<"/
             </Link>
           ))}
         </nav>
-        <section aria-labelledby="account-settings-section" className="grid min-w-0 gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
+        <section aria-labelledby="account-settings-section" className="grid w-full min-w-0 max-w-3xl gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-6">
           <h2 id="account-settings-section" className="text-lg font-semibold">{selected.label}</h2>
           {scanning
             ? <ReceiptScannerSettings initialConnection={await getReceiptConnection(user.id)} />
