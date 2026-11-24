@@ -14,9 +14,11 @@ export default function NewExpenseGroupButton({ inSwitcher = false }: { inSwitch
         </>
       ) : (
         <>
-          <span aria-hidden="true">+ </span>New
-          <span className="hidden sm:inline"> Expense</span>
-          <span className="max-[360px]:sr-only"> Group</span>
+          <span aria-hidden="true">+</span>
+          <span>
+            New<span className="hidden sm:inline"> Expense</span>
+            <span className="max-[360px]:sr-only"> Group</span>
+          </span>
         </>
       )}
       title="New Expense Group"

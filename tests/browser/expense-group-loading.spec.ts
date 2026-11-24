@@ -93,6 +93,11 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
     }
     if (path !== "/expense-groups") return null;
 
+    if (page.viewportSize()!.width >= 640) {
+      const createGroup = main.getByRole("button", { name: "New Expense Group", exact: true });
+      await expect(createGroup.locator(":scope > span:not([aria-hidden])")).toHaveText("New Expense Group");
+    }
+
     const switcher = await getAnchor(main.getByRole("button", { name: "All Expense Groups, switch expense group" }));
     expect(switcher, "the expense group list title stays in place while loading").toEqual(placeholder.title);
     return switcher;
