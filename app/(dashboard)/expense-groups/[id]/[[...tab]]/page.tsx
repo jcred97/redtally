@@ -3,10 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import {
   expenseGroupLinks,
   expenseGroupRedirectHref,
-  isExpenseGroupTab,
   parseExpenseGroupQuery,
   type ExpenseGroupQuery,
 } from "../_lib/navigation";
+import { isExpenseGroupTab } from "../_lib/tabs";
 import DashboardTab from "../_components/dashboard/DashboardTab";
 import ExpensesTab from "../_components/expenses/ExpensesTab";
 import ExpenseGroupPayLater from "../_components/pay-later/ExpenseGroupPayLater";
@@ -16,8 +16,6 @@ import { getBankAssignmentOptions, getBankCatalogForExpenseGroup } from "@/app/(
 import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/queries";
 import ExpenseGroupBanks from "../_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "../_components/categories/ExpenseCategories";
-import ExpenseGroupSettings from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSettings";
-import ExpenseGroupSwitcher from "@/app/(dashboard)/_components/expense-groups/ExpenseGroupSwitcher";
 import { getDashboard } from "../_lib/dashboard/queries";
 import NewCategoryButton from "../_components/categories/NewCategoryButton";
 import NewExpenseButton from "../_components/expenses/NewExpenseButton";
@@ -25,7 +23,6 @@ import RecurringExpenseDialog from "../_components/recurring-expenses/RecurringE
 import RecurringExpenses from "../_components/recurring-expenses/RecurringExpenses";
 import {
   getExpenseGroupById,
-  getExpenseGroupOptions,
   getExpenseHistoryAvailability,
   getExpenseHistoryProviderOptions,
   getExpenseHistoryMerchantLabel,
@@ -59,9 +56,8 @@ export default async function ExpenseGroupPage({
   } = view;
   const showBanks = showPaymentProviders && !showPayLater;
 
-  const [expenseGroup, groups, expensePage, bankCatalog, bankOptions, historyProviderOptions, merchantLabel, recurringExpenses, dashboard, payLater] = await Promise.all([
+  const [expenseGroup, expensePage, bankCatalog, bankOptions, historyProviderOptions, merchantLabel, recurringExpenses, dashboard, payLater] = await Promise.all([
     getExpenseGroupById(id),
-    getExpenseGroupOptions(),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
     showExpenses || showRecurring || showDashboard ? getBankAssignmentOptions(id) : [],
@@ -81,8 +77,7 @@ export default async function ExpenseGroupPage({
   if (historyAvailability === null) notFound();
 
   const links = expenseGroupLinks(expenseGroup.publicId, view);
-  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab, tabSuffix } = links;
-  const currentGroup = { id: expenseGroup.id, publicId: expenseGroup.publicId, name: expenseGroup.name };
+  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab } = links;
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
   const payLaterProviders = payLater?.providers.filter(({ active, productEnabled }) => active && productEnabled) ?? [];
   const activeTabId = "expense-group-active-tab";
@@ -97,17 +92,8 @@ export default async function ExpenseGroupPage({
   }
 
   return (
-    <div className="dashboard-frame flex-1 text-white">
-      <header className="pt-6">
-        <div className="flex items-center justify-between gap-4">
-          <ExpenseGroupSwitcher
-            key={`switcher-${expenseGroup.id}`}
-            currentGroup={currentGroup}
-            groups={groups}
-            tabSuffix={tabSuffix}
-          />
-          <ExpenseGroupSettings key={`settings-${expenseGroup.id}`} group={currentGroup} tabSuffix={tabSuffix} />
-        </div>
+    <>
+      <div>
         <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[1fr_auto] lg:gap-6 lg:border-b lg:border-gray-800">
           <nav aria-label="Expense group views" className="flex flex-wrap border-b border-gray-800 lg:min-h-14 lg:border-b-0">
             {[
@@ -134,7 +120,7 @@ export default async function ExpenseGroupPage({
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       <main className="py-6 sm:py-8">
         {dashboard ? (
@@ -193,6 +179,6 @@ export default async function ExpenseGroupPage({
           <ExpenseCategories expenseGroupId={expenseGroup.id} categories={expenseGroup.categories} />
         )}
       </main>
-    </div>
+    </>
   );
 }

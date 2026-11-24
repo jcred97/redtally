@@ -1,5 +1,6 @@
 import { parseExpenseDay, parseExpenseMonth } from "@/app/lib/expenses/date";
 import { expenseHistoryQueryKeys, nextExpenseHistoryScope } from "./expenses/scope";
+import { expenseGroupTabSuffix, isExpenseGroupTab, type ExpenseGroupTab } from "./tabs";
 import {
   parseExpenseHistoryBankFilter,
   parseExpenseHistoryMerchantFilter,
@@ -12,12 +13,6 @@ export type ExpenseGroupQuery = Record<string, string | string[] | undefined>;
 
 const paymentProvidersTabValue = "payment-providers";
 const payLaterProviderTabValue = "pay-later";
-const expenseGroupTabs = ["dashboard", "expenses", "recurring", "categories", paymentProvidersTabValue] as const;
-type ExpenseGroupTab = (typeof expenseGroupTabs)[number];
-
-export function isExpenseGroupTab(tab: string | string[] | undefined): tab is ExpenseGroupTab {
-  return expenseGroupTabs.some((value) => value === tab);
-}
 
 export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQuery, tab?: ExpenseGroupTab) {
   const params = new URLSearchParams();
@@ -139,16 +134,15 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const { grouped, chosenMonth, showDashboard, showRecurring, showPaymentProviders, showPayLater, showCategories } = view;
   const groupPath = canonicalExpenseGroupHref(publicId, {});
   const expensesPath = canonicalExpenseGroupHref(publicId, {}, "expenses");
-  const viewQuery = grouped ? "?view=grouped" : "";
-  const expenseTab = `/expenses${viewQuery}`;
+  const expenseTab = expenseGroupTabSuffix("expenses", { grouped });
   const expensesHref = showDashboard && chosenMonth
     ? `${expensesPath}?month=${chosenMonth}`
     : groupPath + expenseTab;
-  const categoriesTab = `/categories${viewQuery}`;
-  const paymentProvidersTab = `/${paymentProvidersTabValue}${viewQuery}`;
-  const payLaterTab = `${paymentProvidersTab}${grouped ? "&" : "?"}provider=${payLaterProviderTabValue}`;
-  const recurringTab = `/recurring${viewQuery}`;
-  const dashboardTab = chosenMonth ? `/dashboard?month=${chosenMonth}` : "";
+  const categoriesTab = expenseGroupTabSuffix("categories", { grouped });
+  const paymentProvidersTab = expenseGroupTabSuffix(paymentProvidersTabValue, { grouped });
+  const payLaterTab = expenseGroupTabSuffix(paymentProvidersTabValue, { grouped, payLater: true });
+  const recurringTab = expenseGroupTabSuffix("recurring", { grouped });
+  const dashboardTab = expenseGroupTabSuffix("dashboard", { month: chosenMonth });
   const tabSuffix = showDashboard ? dashboardTab
     : showRecurring ? recurringTab
     : showPayLater ? payLaterTab

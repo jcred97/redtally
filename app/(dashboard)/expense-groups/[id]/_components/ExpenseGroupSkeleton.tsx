@@ -34,16 +34,12 @@ export default function ExpenseGroupSkeleton() {
     : undefined;
 
   return (
-    <div className="dashboard-frame flex-1 text-white">
+    <>
       <p role="status" className="sr-only">
         Loading expense group...
       </p>
 
-      <header className="pt-6" aria-hidden="true">
-        <div className="flex min-h-10 items-center justify-between gap-4">
-          <Skeleton className="h-8 w-44 sm:h-9 sm:w-52" />
-          <Skeleton className="h-6 w-20 shrink-0" />
-        </div>
+      <div aria-hidden="true">
         <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[1fr_auto] lg:gap-6 lg:border-b lg:border-gray-800">
           <div className="flex flex-wrap border-b border-gray-800 text-sm font-medium text-gray-400 lg:min-h-14 lg:border-b-0">
             {["Dashboard", "Expenses", "Recurring", "Categories", "Payment Provider"].map((label) => (
@@ -59,11 +55,11 @@ export default function ExpenseGroupSkeleton() {
             </div>
           )}
         </div>
-      </header>
+      </div>
 
       <main aria-hidden="true" className="py-6 sm:py-8">
         {segments.length <= 1 && <TabSkeleton tab={tab} />}
       </main>
-    </div>
+    </>
   );
 }

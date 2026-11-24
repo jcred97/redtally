@@ -112,6 +112,7 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
 
   async function expectLoading(navigate: () => Promise<unknown>, heading: string) {
     const loadingHeading = skeleton.getByRole("heading", { name: heading, exact: true, includeHidden: true });
+    const groupTitle = page.locator("#expense-group-title");
     const before = await whileGroupReadsAreBlocked(async () => {
       await navigate();
       await expect(status).toBeAttached();
@@ -123,15 +124,16 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       const mainBox = await expectFrame(skeleton, `${heading} skeleton`);
       const headingBox = (await loadingHeading.boundingBox())!;
       await expectFirstRowWidth(heading, loadingHeading, mainBox.width);
-      return { top: mainBox.y, headingX: headingBox.x, headingY: headingBox.y };
+      const title = await groupTitle.count() > 0 ? await groupTitle.boundingBox() : null;
+      return { top: mainBox.y, headingX: headingBox.x, headingY: headingBox.y, titleHeight: Math.max(40, title?.height ?? 0) };
     });
     await expect(status).toHaveCount(0);
     const loadedHeading = page.getByRole("heading", { name: heading, exact: true });
     await expect(loadedHeading).toBeVisible();
     const mainBox = await expectFrame(page.getByRole("main"), heading);
     await expectFirstRowWidth(heading, loadedHeading, mainBox.width);
-    const title = (await page.getByRole("heading", { level: 1 }).boundingBox())!;
-    const extraTitleHeight = Math.max(0, title.height - 40);
+    const title = (await groupTitle.boundingBox())!;
+    const extraTitleHeight = Math.max(40, title.height) - before.titleHeight;
     expect(Math.abs(mainBox.y - before.top - extraTitleHeight), `${heading} content accounts for a wrapped group name`)
       .toBeLessThanOrEqual(1);
     if (heading !== "Spending trend") {
@@ -174,7 +176,22 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
     }
 
     const tabs = page.getByRole("navigation", { name: "Expense group views" });
-    await expectLoading(() => tabs.getByRole("link", { name: "Expenses", exact: true }).click(), "Expenses");
+    const switcher = page.getByRole("button", { name: /switch expense group/i });
+    const originalSwitcher = await switcher.elementHandle();
+    async function expectSameSwitcher() {
+      await expect(switcher).toBeVisible();
+      expect(await switcher.evaluate((button, original) => button === original, originalSwitcher)).toBe(true);
+    }
+    await expectLoading(async () => {
+      await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
+      await expect(status).toBeAttached();
+      await expectSameSwitcher();
+    }, "Expenses");
+    await expectSameSwitcher();
+    await switcher.click();
+    await expect(page.getByRole("navigation", { name: "Switch expense group" })
+      .getByRole("link", { name: "Browser daily expenses" }))
+      .toHaveAttribute("href", `/expense-groups/${data.group.publicId}/expenses`);
   } finally {
     await database.end();
   }
