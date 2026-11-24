@@ -6,16 +6,24 @@ import Checkbox from "@/app/components/forms/Checkbox";
 import { fieldLabelClass } from "@/app/components/forms/field-styles";
 import SettingsTileLabel, { settingsTileClass } from "@/app/components/tiles/SettingsTileLabel";
 import { setGroupPayLaterProvider } from "@/app/lib/pay-later/mutations";
-import type { PayLaterProviderSetting } from "@/app/lib/pay-later/providers";
+import { getPayLaterProviderDisplayName, type PayLaterProviderSetting } from "@/app/lib/pay-later/providers";
 
 const saveError = "Unable to save Pay Later provider settings. Please try again.";
+const providerLogos = new Map([
+  ["atome", "/pay-later/atome.png"],
+  ["billease", "/pay-later/billease.png"],
+  ["gcash", "/banks/gcash.png"],
+  ["home-credit", "/pay-later/home-credit.png"],
+  ["lazada", "/pay-later/lazada.png"],
+  ["shopee", "/branding/shopee.svg"],
+]);
 
 export default function PayLaterProviderCard({ expenseGroupId, provider }: {
   expenseGroupId: number;
   provider: PayLaterProviderSetting;
 }) {
-  const isShopee = provider.providerKey === "shopee";
-  const title = isShopee ? "Shopee" : provider.providerName;
+  const title = getPayLaterProviderDisplayName(provider);
+  const logo = providerLogos.get(provider.providerKey);
   const enabled = provider.active && provider.productEnabled;
 
   async function save(formData: FormData) {
@@ -27,15 +35,20 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
   return (
     <FormDialog
       triggerLabel={(
-        <SettingsTileLabel name={title} status={enabled ? "Enabled" : "Not enabled"} enabled={enabled} icon={isShopee ? (
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white">
-            <Image src="/branding/shopee.svg" alt="" width={32} height={32} unoptimized />
-          </span>
-        ) : (
-          <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-gray-700 text-xs font-semibold uppercase text-gray-100">
-            {Array.from(provider.providerName)[0]}
-          </span>
-        )} />
+        <SettingsTileLabel
+          name={title}
+          status={enabled ? "Enabled" : "Not enabled"}
+          enabled={enabled}
+          icon={(
+            <span aria-hidden="true" className={`grid size-11 shrink-0 place-items-center rounded-full ${
+              logo ? "bg-white" : "bg-gray-700 text-xs font-semibold uppercase text-gray-100"
+            }`}>
+              {logo
+                ? <Image src={logo} alt="" width={32} height={32} unoptimized className="size-8 object-contain" />
+                : Array.from(title)[0]}
+            </span>
+          )}
+        />
       )}
       triggerClassName={settingsTileClass}
       title={title}

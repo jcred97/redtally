@@ -20,3 +20,7 @@ export function getPayLaterProviderName(providerKey: string, savedName?: string 
   return presetPayLaterProviders.find((provider) => provider.providerKey === providerKey)?.providerName
     ?? savedName ?? providerKey.replace(/^custom:/, "");
 }
+
+export function getPayLaterProviderDisplayName({ providerKey, providerName }: PayLaterProviderOption) {
+  return providerKey === "shopee" ? "Shopee" : providerName;
+}

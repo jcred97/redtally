@@ -456,9 +456,14 @@ test("New Expense lists enabled Pay Later products", async ({ page }) => {
   await page.getByRole("navigation", { name: "Payment Provider views" })
     .getByRole("link", { name: "Pay Later", exact: true }).click();
 
-  for (const provider of ["Lazada", "GCash", "Atome", "BillEase", "Home Credit"]) {
-    await expect(page.getByRole("button", { name: provider + " Not enabled", exact: true })).toBeVisible();
-  }
+  const tiles = page.getByRole("region", { name: "Pay Later", exact: true }).getByRole("list").getByRole("button");
+  await expect(tiles).toHaveText([
+    /^Atome\s*Not enabled$/, /^BillEase\s*Not enabled$/, /^GCash\s*Not enabled$/,
+    /^Home Credit\s*Not enabled$/, /^Lazada\s*Not enabled$/, /^Shopee\s*Not enabled$/,
+  ]);
+  await expect.poll(() => tiles.locator("img").evaluateAll((images) =>
+    images.filter((image) => (image as HTMLImageElement).naturalWidth > 0).length,
+  )).toBe(6);
   await page.getByRole("button", { name: "Lazada Not enabled", exact: true }).click();
   const lazada = page.getByRole("dialog", { name: "Lazada", exact: true });
   await lazada.getByRole("checkbox", { name: "Lazada", exact: true }).check();
@@ -472,7 +477,8 @@ test("New Expense lists enabled Pay Later products", async ({ page }) => {
   await createProvider.getByLabel("Name", { exact: true }).fill(customProvider);
   await createProvider.getByRole("button", { name: "Create", exact: true }).click();
   await expect(createProvider).toBeHidden();
-  await expect(page.getByRole("button", { name: customProvider + " Enabled", exact: true })).toBeVisible();
+  await expect(tiles.nth(5)).toHaveAccessibleName(customProvider + " Enabled");
+  await expect(tiles.nth(6)).toHaveAccessibleName("Shopee Not enabled");
 
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   const expense = await newExpense(page);

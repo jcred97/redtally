@@ -1,9 +1,13 @@
 import { getExpenseGroupPayLater } from "@/app/lib/pay-later/queries";
+import { getPayLaterProviderDisplayName } from "@/app/lib/pay-later/providers";
 import AddPayLaterProviderButton from "./AddPayLaterProviderButton";
 import PayLaterProviderCard from "./PayLaterProviderCard";
 
 export default async function ExpenseGroupPayLater({ expenseGroupId }: { expenseGroupId: number }) {
   const { providers } = await getExpenseGroupPayLater(expenseGroupId);
+  const sortedProviders = providers.toSorted((left, right) =>
+    getPayLaterProviderDisplayName(left).localeCompare(getPayLaterProviderDisplayName(right), "en", { sensitivity: "base" }),
+  );
 
   return (
     <section aria-labelledby="pay-later-title">
@@ -12,7 +16,7 @@ export default async function ExpenseGroupPayLater({ expenseGroupId }: { expense
         <AddPayLaterProviderButton expenseGroupId={expenseGroupId} />
       </div>
       <ul className="expense-group-card-grid">
-        {providers.map((provider) => (
+        {sortedProviders.map((provider) => (
           <li key={provider.providerKey} className="min-w-0">
             <PayLaterProviderCard expenseGroupId={expenseGroupId} provider={provider} />
           </li>
