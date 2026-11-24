@@ -24,6 +24,8 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
 }) {
   const title = getPayLaterProviderDisplayName(provider);
   const logo = providerLogos.get(provider.providerKey);
+  const logoFillsBadge = provider.providerKey === "atome";
+  const logoSize = logoFillsBadge ? 44 : 32;
   const enabled = provider.active && provider.productEnabled;
 
   async function save(formData: FormData) {
@@ -43,9 +45,16 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
             <span aria-hidden="true" className={`grid size-11 shrink-0 place-items-center rounded-full ${
               logo ? "bg-white" : "bg-gray-700 text-xs font-semibold uppercase text-gray-100"
             }`}>
-              {logo
-                ? <Image src={logo} alt="" width={32} height={32} unoptimized className="size-8 object-contain" />
-                : Array.from(title)[0]}
+              {logo ? (
+                <Image
+                  src={logo}
+                  alt=""
+                  width={logoSize}
+                  height={logoSize}
+                  unoptimized
+                  className={`object-contain ${logoFillsBadge ? "size-11 rounded-full" : "size-8"}`}
+                />
+              ) : Array.from(title)[0]}
             </span>
           )}
         />
