@@ -1,4 +1,4 @@
-const expenseGroupTabs = ["dashboard", "expenses", "recurring", "categories", "payment-providers"] as const;
+const expenseGroupTabs = ["dashboard", "expenses", "recurring", "billing", "categories", "payment-providers"] as const;
 export type ExpenseGroupTab = (typeof expenseGroupTabs)[number];
 
 export function isExpenseGroupTab(tab: string | string[] | undefined): tab is ExpenseGroupTab {

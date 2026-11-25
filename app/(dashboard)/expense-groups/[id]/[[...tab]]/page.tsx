@@ -51,7 +51,7 @@ export default async function ExpenseGroupPage({
   const today = getManilaToday();
   const view = parseExpenseGroupQuery(query, today, tab);
   const {
-    showCategories, showPaymentProviders, showPayLater, showRecurring, showDashboard, showExpenses,
+    showCategories, showPaymentProviders, showPayLater, showRecurring, showBilling, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, dashboardMonth, filters, merchant,
   } = view;
   const showBanks = showPaymentProviders && !showPayLater;
@@ -77,7 +77,7 @@ export default async function ExpenseGroupPage({
   if (historyAvailability === null) notFound();
 
   const links = expenseGroupLinks(expenseGroup.publicId, view);
-  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, dashboardTab } = links;
+  const { groupPath, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, billingTab, dashboardTab } = links;
   const categoryOptions = expenseGroup.categories.map(({ id, name }) => ({ id, name }));
   const payLaterProviders = payLater?.providers.filter(({ active, productEnabled }) => active && productEnabled) ?? [];
   const activeTabId = "expense-group-active-tab";
@@ -100,6 +100,7 @@ export default async function ExpenseGroupPage({
               { label: "Dashboard", href: groupPath + dashboardTab, current: showDashboard },
               { label: "Expenses", href: expensesHref, current: showExpenses },
               { label: "Recurring", href: groupPath + recurringTab, current: showRecurring },
+              { label: "Billing", href: groupPath + billingTab, current: showBilling },
               { label: "Categories", href: groupPath + categoriesTab, current: showCategories },
               { label: "Payment Provider", href: groupPath + paymentProvidersTab, current: showPaymentProviders },
             ].map(({ label, href, current }) => (
@@ -155,6 +156,8 @@ export default async function ExpenseGroupPage({
             banks={bankOptions}
             rules={recurringExpenses}
           />
+        ) : showBilling ? (
+          <h2 className="text-xl font-semibold">Billing</h2>
         ) : showPaymentProviders ? (
           <div key={expenseGroup.id} className="space-y-6">
             <nav aria-label="Payment Provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">

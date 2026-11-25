@@ -120,11 +120,14 @@ test("expense groups open on Dashboard and legacy bookmarks preserve the selecte
   const dashboard = tabs.getByRole("link", { name: "Dashboard", exact: true });
   await expect(dashboard).toHaveAttribute("aria-current", "page");
 
-  for (const [label, slug] of [["Expenses", "expenses"], ["Recurring", "recurring"], ["Categories", "categories"], ["Payment Provider", "payment-providers"]]) {
+  for (const [label, slug] of [["Expenses", "expenses"], ["Recurring", "recurring"], ["Billing", "billing"], ["Categories", "categories"], ["Payment Provider", "payment-providers"]]) {
     const tab = tabs.getByRole("link", { name: label, exact: true });
     await tab.click();
     await expect(page).toHaveURL(`${path}/${slug}`);
     await expect(tab).toHaveAttribute("aria-current", "page");
+    if (slug === "billing") {
+      await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
+    }
   }
   await page.reload();
   await expect(tabs.getByRole("link", { name: "Payment Provider", exact: true })).toHaveAttribute("aria-current", "page");

@@ -100,6 +100,12 @@ test("tab and view links preserve the existing month and pagination behavior", (
   assert.equal(links.historyViewHref(false, 3), "/expense-groups/public-id/expenses?category=2&month=2026-10&page=3");
   assert.equal(links.historyViewHref(true, 1), "/expense-groups/public-id/expenses?category=2&month=2026-10&view=grouped");
   assert.equal(expenseGroupLinks("id", parseExpenseGroupQuery({ view: "grouped" }, today, "recurring")).tabSuffix, "/recurring?view=grouped");
+
+  const billingView = parseExpenseGroupQuery({ view: "grouped" }, today, "billing");
+  const billingLinks = expenseGroupLinks("public-id", billingView);
+  assert.equal(billingView.showBilling, true);
+  assert.equal(billingLinks.billingTab, "/billing?view=grouped");
+  assert.equal(billingLinks.tabSuffix, billingLinks.billingTab);
 });
 
 test("canonical group URLs preserve repeated and unknown query parameters", () => {
@@ -133,6 +139,7 @@ test("the Payment Provider tab preserves the group and the grouped-history prefe
 
 test("old group URLs redirect to their canonical view without dropping filters", () => {
   assert.equal(expenseGroupRedirectHref("public-id", "public-id", {}, "payment-providers"), null);
+  assert.equal(expenseGroupRedirectHref("42", "public-id", {}, "billing"), "/expense-groups/public-id/billing");
   assert.equal(expenseGroupRedirectHref("public-id", "public-id", {}), null);
   assert.equal(expenseGroupRedirectHref("public-id", "public-id", {}, "dashboard"), "/expense-groups/public-id");
   assert.equal(expenseGroupRedirectHref("public-id", "public-id", { month: "2026-10" }),

@@ -61,6 +61,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string, 
   const showPaymentProviders = tab === paymentProvidersTabValue;
   const showPayLater = showPaymentProviders && query.provider === payLaterProviderTabValue;
   const showRecurring = tab === "recurring";
+  const showBilling = tab === "billing";
   const showDashboard = tab === "dashboard";
   const showExpenses = tab === "expenses";
   const grouped = view === "grouped";
@@ -120,7 +121,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string, 
   const filterQuery = filterParams.toString();
 
   return {
-    showCategories, showPaymentProviders, showPayLater, showRecurring, showDashboard, showExpenses,
+    showCategories, showPaymentProviders, showPayLater, showRecurring, showBilling, showDashboard, showExpenses,
     grouped, requestedPage, currentMonth, chosenMonth, dashboardMonth,
     day, month, through, categoryId, paymentMethod, bankFilterValue, merchant, search,
     filters, hasOtherFilters, hasFilters, filterQuery,
@@ -131,7 +132,7 @@ export function parseExpenseGroupQuery(query: ExpenseGroupQuery, today: string, 
 export type ExpenseGroupView = ReturnType<typeof parseExpenseGroupQuery>;
 
 export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
-  const { grouped, chosenMonth, showDashboard, showRecurring, showPaymentProviders, showPayLater, showCategories } = view;
+  const { grouped, chosenMonth, showDashboard, showRecurring, showBilling, showPaymentProviders, showPayLater, showCategories } = view;
   const groupPath = canonicalExpenseGroupHref(publicId, {});
   const expensesPath = canonicalExpenseGroupHref(publicId, {}, "expenses");
   const expenseTab = expenseGroupTabSuffix("expenses", { grouped });
@@ -142,9 +143,11 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   const paymentProvidersTab = expenseGroupTabSuffix(paymentProvidersTabValue, { grouped });
   const payLaterTab = expenseGroupTabSuffix(paymentProvidersTabValue, { grouped, payLater: true });
   const recurringTab = expenseGroupTabSuffix("recurring", { grouped });
+  const billingTab = expenseGroupTabSuffix("billing", { grouped });
   const dashboardTab = expenseGroupTabSuffix("dashboard", { month: chosenMonth });
   const tabSuffix = showDashboard ? dashboardTab
     : showRecurring ? recurringTab
+    : showBilling ? billingTab
     : showPayLater ? payLaterTab
     : showPaymentProviders ? paymentProvidersTab
     : showCategories ? categoriesTab
@@ -155,7 +158,7 @@ export function expenseGroupLinks(publicId: string, view: ExpenseGroupView) {
   allMonthsParams.delete("through");
   allMonthsParams.set("allMonths", "1");
   return {
-    groupPath, expensesPath, expenseTab, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab,
+    groupPath, expensesPath, expenseTab, expensesHref, categoriesTab, paymentProvidersTab, payLaterTab, recurringTab, billingTab,
     dashboardTab, tabSuffix,
     monthScopeHref: `${expensesPath}?${view.monthScopeQuery}`,
     allMonthsHref: `${expensesPath}?${allMonthsParams}`,

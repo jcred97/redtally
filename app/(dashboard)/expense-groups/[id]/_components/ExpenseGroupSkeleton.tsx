@@ -42,7 +42,7 @@ export default function ExpenseGroupSkeleton() {
       <div aria-hidden="true">
         <div className="mt-4 sm:mt-6 lg:grid lg:grid-cols-[1fr_auto] lg:gap-6 lg:border-b lg:border-gray-800">
           <div className="flex flex-wrap border-b border-gray-800 text-sm font-medium text-gray-400 lg:min-h-14 lg:border-b-0">
-            {["Dashboard", "Expenses", "Recurring", "Categories", "Payment Provider"].map((label) => (
+            {["Dashboard", "Expenses", "Recurring", "Billing", "Categories", "Payment Provider"].map((label) => (
               <span key={label} className="-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 border-transparent px-2.5 sm:px-4">{label}</span>
             ))}
           </div>
