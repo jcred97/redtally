@@ -57,6 +57,9 @@ export async function createExpense(
         paymentMethod: formData.get("paymentMethod"),
         bankAssignmentId: formData.get("bankAssignmentId"),
         payLaterProviderKey: formData.get("payLaterProviderKey") ?? formData.get("creditProviderKey") ?? undefined,
+        spayLaterDueDay: formData.get("spayLaterDueDay") ?? undefined,
+        spayLaterMonths: formData.get("spayLaterMonths") ?? undefined,
+        spayLaterCompletedOn: formData.get("spayLaterCompletedOn") ?? undefined,
       },
       formData.get("submissionId"),
     );
@@ -100,6 +103,9 @@ export async function updateExpense(
         paymentMethod: formData.get("paymentMethod"),
         bankAssignmentId: formData.get("bankAssignmentId"),
         payLaterProviderKey: formData.get("payLaterProviderKey") ?? formData.get("creditProviderKey") ?? undefined,
+        spayLaterDueDay: formData.get("spayLaterDueDay") ?? undefined,
+        spayLaterMonths: formData.get("spayLaterMonths") ?? undefined,
+        spayLaterCompletedOn: formData.get("spayLaterCompletedOn") ?? undefined,
       },
       formData.get("expectedUpdatedAt"),
     );

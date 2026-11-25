@@ -5,12 +5,14 @@ import { parseExpenseDate, parseExpenseTime } from "@/app/lib/expenses/date";
 import { bankPaymentMethodFields, isBankPaymentMethod, type BankPaymentMethod } from "@/app/lib/expenses/payment";
 import { parseMerchant } from "@/app/lib/expenses/merchant";
 import { requireEnabledPayLaterProvider } from "@/app/lib/pay-later/access";
+import { deleteEmptyBills, getExpenseBillingIds, saveExpenseInstallments } from "./billing";
+import { calculateExpenseInstallments, expenseScheduleChanged, readSPayLaterTerms, type SPayLaterInputs } from "./billing-plan";
 
 const MAX_RECORD_ID = 2_147_483_647;
 const SUBMISSION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type ExpenseInput = {
+type ExpenseInput = SPayLaterInputs & {
   title: unknown;
   merchant?: unknown;
   amount: unknown;
@@ -121,6 +123,20 @@ export async function validateBankSelection(
   }
 }
 
+async function lockOwnedExpenseGroup(
+  tx: Prisma.TransactionClient,
+  expenseGroupId: number,
+  userId: string,
+  lock: "shared" | "billing",
+) {
+  // Billing writers take the same group lock before attaching lines or pruning empty periods.
+  const rowLock = lock === "billing" ? Prisma.sql`FOR NO KEY UPDATE` : Prisma.sql`FOR SHARE`;
+  const [group] = await tx.$queryRaw<{ id: number }[]>`
+    SELECT id FROM "Spending" WHERE id = ${expenseGroupId} AND "userId" = ${userId} ${rowLock}
+  `;
+  return group !== undefined;
+}
+
 export function createExpenseAccess(
   db: PrismaClient,
   requireUserId: () => Promise<string>
@@ -133,18 +149,18 @@ export function createExpenseAccess(
         throw new TypeError("Expense not found in this expense group");
       }
 
-      // Ownership and deletion happen in one query, never a separate pre-check.
-      const result = await db.expense.deleteMany({
-        where: {
-          id: expenseId,
-          expenseGroupId,
-          category: { expenseGroup: { userId } },
-        },
-      });
+      await db.$transaction(async (tx) => {
+        if (!await lockOwnedExpenseGroup(tx, expenseGroupId, userId, "billing")) {
+          throw new TypeError("Expense not found in this expense group");
+        }
 
-      if (result.count === 0) {
-        throw new TypeError("Expense not found in this expense group");
-      }
+        const billingIds = await getExpenseBillingIds(tx, expenseGroupId, expenseId);
+        const result = await tx.expense.deleteMany({
+          where: { id: expenseId, expenseGroupId, category: { expenseGroup: { userId } } },
+        });
+        if (result.count === 0) throw new TypeError("Expense not found in this expense group");
+        await deleteEmptyBills(tx, expenseGroupId, billingIds);
+      });
     },
 
     async create(
@@ -177,6 +193,8 @@ export function createExpenseAccess(
       if (payment?.paymentMethod === PaymentMethod.PAY_LATER && !payLaterProviderKey) {
         throw new TypeError("Choose a Pay Later provider.");
       }
+      const billingTerms = readSPayLaterTerms(input, payLaterProviderKey);
+      const installments = calculateExpenseInstallments(values, billingTerms);
       const submissionKey = { expenseGroupId, id: submissionId.toLowerCase() };
       const payload = [categoryId, values.title, values.amountCentavos, values.date];
       // Keep hashes for saved drafts that predate payment selection valid.
@@ -192,15 +210,15 @@ export function createExpenseAccess(
           ...(merchant ? [{ merchant }] : []),
           // The original field name is part of the persisted hash format.
           ...(payLaterProviderKey ? [{ creditProviderKey: payLaterProviderKey }] : []),
+          ...(installments ? [billingTerms] : []),
         ]))
         .digest("hex");
 
       try {
         return await db.$transaction(async (tx) => {
-          const [group] = await tx.$queryRaw<{ id: number }[]>`
-            SELECT id FROM "Spending" WHERE id = ${expenseGroupId} AND "userId" = ${userId} FOR SHARE
-          `;
-          if (!group) throw new TypeError("Category not found in this expense group");
+          if (!await lockOwnedExpenseGroup(tx, expenseGroupId, userId, installments ? "billing" : "shared")) {
+            throw new TypeError("Category not found in this expense group");
+          }
 
           // A competing retry waits for the first transaction. A failed write releases the claim.
           const claim = await tx.expenseSubmission.createMany({
@@ -228,7 +246,7 @@ export function createExpenseAccess(
             ? await requireEnabledPayLaterProvider(tx, userId, expenseGroupId, payLaterProviderKey)
             : null;
 
-          return tx.expense.create({
+          const expense = await tx.expense.create({
             data: {
               ...values,
               merchant,
@@ -236,6 +254,7 @@ export function createExpenseAccess(
               paymentMethod: payment?.paymentMethod,
               payLaterProviderKey: provider?.providerKey,
               payLaterProviderName: provider?.providerName,
+              ...billingTerms,
               ...(payment?.bankAssignmentId == null ? {} : {
                 bankAssignment: {
                   connect: { id_expenseGroupId: { id: payment.bankAssignmentId, expenseGroupId } },
@@ -250,6 +269,10 @@ export function createExpenseAccess(
               submission: { connect: { expenseGroupId_id: submissionKey } },
             },
           });
+          if (installments) {
+            await saveExpenseInstallments(tx, expenseGroupId, expense.id, installments.dueDay, installments.schedule);
+          }
+          return expense;
         }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
       } catch (error) {
         if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
@@ -296,6 +319,7 @@ export function createExpenseAccess(
 
       try {
         const expense = await db.$transaction(async (tx) => {
+          if (!await lockOwnedExpenseGroup(tx, expenseGroupId, userId, "billing")) return undefined;
           const where = { ...ownedExpense, updatedAt };
           const existing = await tx.expense.findUnique({
             where,
@@ -303,6 +327,11 @@ export function createExpenseAccess(
               paymentMethod: true,
               bankAssignmentId: true,
               payLaterProviderKey: true,
+              amountCentavos: true,
+              date: true,
+              spayLaterDueDay: true,
+              spayLaterMonths: true,
+              spayLaterCompletedOn: true,
             },
           });
           if (!existing) return undefined;
@@ -318,9 +347,10 @@ export function createExpenseAccess(
           }
 
           const method = payment ? payment.paymentMethod : existing.paymentMethod;
+          let providerKey: string | null = null;
           let providerChanges: { payLaterProviderKey: string | null; payLaterProviderName: string | null } | undefined;
           if (method === PaymentMethod.PAY_LATER) {
-            const providerKey = input.payLaterProviderKey === undefined
+            providerKey = input.payLaterProviderKey === undefined
               ? existing.payLaterProviderKey
               : parsePayLaterProviderKey(input.payLaterProviderKey);
             if (!providerKey && (existing.paymentMethod !== method || existing.payLaterProviderKey !== null)) {
@@ -334,6 +364,9 @@ export function createExpenseAccess(
             providerChanges = { payLaterProviderKey: null, payLaterProviderName: null };
           }
 
+          const billingTerms = readSPayLaterTerms(input, providerKey, existing);
+          const scheduleChanged = expenseScheduleChanged(existing, values, billingTerms);
+          const installments = scheduleChanged ? calculateExpenseInstallments(values, billingTerms) : undefined;
           const [updatedExpense] = await tx.expense.updateManyAndReturn({
             where,
             // The composite foreign key keeps the replacement category in this group.
@@ -343,10 +376,19 @@ export function createExpenseAccess(
               timeMinutes,
               ...paymentChanges,
               ...providerChanges,
+              ...billingTerms,
               categoryId,
               updatedAt: nextUpdatedAt,
             },
           });
+          if (updatedExpense && scheduleChanged) {
+            const billingIds = await getExpenseBillingIds(tx, expenseGroupId, expenseId);
+            await tx.billingInstallment.deleteMany({ where: { expenseGroupId, expenseId } });
+            if (installments) {
+              await saveExpenseInstallments(tx, expenseGroupId, expenseId, installments.dueDay, installments.schedule);
+            }
+            await deleteEmptyBills(tx, expenseGroupId, billingIds);
+          }
           return updatedExpense;
         });
 

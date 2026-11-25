@@ -87,6 +87,9 @@ model Expense {
   paymentMethod    PaymentMethod?  @map("transactionType")
   payLaterProviderKey  String?    @db.VarChar(127)
   payLaterProviderName String?    @db.VarChar(120)
+  spayLaterDueDay      Int?       @db.SmallInt
+  spayLaterMonths      Int?       @db.SmallInt
+  spayLaterCompletedOn DateTime?  @db.Date
   categoryId       Int
   category         Category        @relation(fields: [categoryId, expenseGroupId], references: [id, expenseGroupId], onDelete: Restrict, onUpdate: Cascade)
   bankAssignment   BankAssignment? @relation(fields: [bankAssignmentId, expenseGroupId], references: [id, expenseGroupId], onDelete: Restrict, onUpdate: Cascade)
