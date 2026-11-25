@@ -502,6 +502,8 @@ test("New Expense lists enabled Pay Later products", async ({ page }) => {
   await expect(paymentProvider).toHaveText(customProvider);
   await expect(expense.getByRole("combobox", { name: "Pay Later provider", exact: true })).toHaveCount(0);
   await expect(expense.getByRole("button", { name: /how to enable/i })).toHaveCount(0);
+  await expect(expense.getByRole("combobox", { name: "Monthly due day", exact: true })).toHaveCount(0);
+  await expect(expense.getByRole("combobox", { name: "Payment term", exact: true })).toHaveCount(0);
   await expect(saveExpense).toBeEnabled();
 
   await page.goto(groupPath(data.olderHistory.publicId));
@@ -550,6 +552,16 @@ test("Pay Later purchases retain their provider after it is disabled", async ({ 
   await shopee.getByRole("button", { name: "Save changes" }).click();
   await expect(shopee).not.toBeVisible();
 
+  await groupViews.getByRole("link", { name: "Dashboard", exact: true }).click();
+  const dashboardExpense = await newExpense(page);
+  await dashboardExpense.getByRole("combobox", { name: "Payment Method", exact: true }).click();
+  await dashboardExpense.getByRole("option", { name: "Pay Later", exact: true }).click();
+  await dashboardExpense.getByRole("combobox", { name: "Payment Provider", exact: true }).click();
+  await dashboardExpense.getByRole("option", { name: "SPayLater", exact: true }).click();
+  await expect(dashboardExpense.getByRole("combobox", { name: "Monthly due day", exact: true })).toBeVisible();
+  await dashboardExpense.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(dashboardExpense).toBeHidden();
+
   await groupViews.getByRole("link", { name: "Expenses", exact: true }).click();
   const title = "SPayLater test purchase";
   const purchasedOn = "2026-11-18";
@@ -561,18 +573,47 @@ test("Pay Later purchases retain their provider after it is disabled", async ({ 
   await expense.getByRole("option", { name: "Pay Later", exact: true }).click();
   await expense.getByRole("combobox", { name: "Payment Provider", exact: true }).click();
   await expense.getByRole("option", { name: "SPayLater", exact: true }).click();
+  const dueDay = expense.getByRole("combobox", { name: "Monthly due day", exact: true });
+  const term = expense.getByRole("combobox", { name: "Payment term", exact: true });
+  const save = expense.getByRole("button", { name: "Save expense", exact: true });
+  await save.click();
+  await expect(dueDay).toBeFocused();
+  await expect(expense.getByRole("option", { name: "15th", exact: true })).toBeVisible();
+  await expense.getByRole("option", { name: "5th", exact: true }).click();
+  await save.click();
+  await expect(term).toBeFocused();
+  for (const label of ["Pay in full on first bill", "3 months", "6 months", "12 months"]) {
+    await expect(expense.getByRole("option", { name: label, exact: true })).toBeVisible();
+  }
+  await expense.getByRole("option", { name: "3 months", exact: true }).click();
+  const preview = expense.getByRole("status").filter({ hasText: "Estimated first payment" });
+  await expect(preview).toContainText("₱41.67 due Dec 5, 2026");
+  const completedOn = "2026-11-26";
+  await expense.getByLabel(/Order completed on/).fill(completedOn);
+  await expect(preview).toContainText("₱41.67 due Jan 5, 2027");
   const receipt = expense.getByRole("heading", { name: "Receipt image (optional)", exact: true });
-  await expect(expense.getByRole("combobox", { name: "Term", exact: true })).toHaveCount(0);
-  await expect(expense.getByRole("combobox", { name: /account/i })).toHaveCount(0);
-  await expect(expense.getByLabel(/due date|installment/i)).toHaveCount(0);
   await expect(receipt).toBeVisible();
   const [detailsBox, receiptBox] = await Promise.all([
     expense.getByLabel("Title", { exact: true }).boundingBox(),
     receipt.boundingBox(),
   ]);
   expect(detailsBox!.x + detailsBox!.width).toBeLessThan(receiptBox!.x);
-  await expense.getByRole("button", { name: "Save expense", exact: true }).click();
+  await save.click();
   await expect(expense).toBeHidden();
+
+  const savedPlan = await db.query(`
+    SELECT expense."amountCentavos" AS "purchaseAmount", expense."spayLaterCompletedOn"::text AS "completedOn",
+      bill."dueDay", bill."dueDate"::text AS "dueDate", installment."amountCentavos" AS "paymentAmount"
+    FROM "Expense" AS expense
+    JOIN "BillingInstallment" AS installment ON installment."expenseId" = expense.id
+    JOIN "Billing" AS bill ON bill.id = installment."billingId"
+    WHERE expense.title = $1 ORDER BY installment."installmentNumber"
+  `, [title]);
+  expect(savedPlan.rows).toEqual([
+    { purchaseAmount: 12_500, completedOn, dueDay: 5, dueDate: "2027-01-05", paymentAmount: 4_167 },
+    { purchaseAmount: 12_500, completedOn, dueDay: 5, dueDate: "2027-02-05", paymentAmount: 4_167 },
+    { purchaseAmount: 12_500, completedOn, dueDay: 5, dueDate: "2027-03-05", paymentAmount: 4_166 },
+  ]);
 
   const allMonthsUrl = new URL(page.url());
   allMonthsUrl.searchParams.set("allMonths", "1");

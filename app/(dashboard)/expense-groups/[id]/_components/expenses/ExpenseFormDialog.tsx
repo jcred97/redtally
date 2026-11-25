@@ -18,6 +18,7 @@ import type { PaymentMethod } from "@/generated/prisma/enums";
 import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
 import ReceiptImageInput from "./ReceiptImageInput";
+import SPayLaterFields from "./SPayLaterFields";
 
 const paymentOptions = [
   { value: "", label: "No payment method" },
@@ -314,6 +315,9 @@ export default function ExpenseFormDialog({
                 <p id={`${fieldId}-provider-help`} className="mt-1 text-xs text-gray-400">Enable a provider in Payment Provider → Pay Later.</p>
               )}
             </div>
+            {!expense && isPayLater && payLaterProviderKey === "shopee" && (
+              <SPayLaterFields amount={amount} expenseDate={date} />
+            )}
             {showRecordedBank && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>
             )}
