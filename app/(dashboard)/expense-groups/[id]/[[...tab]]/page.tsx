@@ -106,6 +106,8 @@ export default async function ExpenseGroupPage({
               <Link
                 key={label}
                 href={href}
+                prefetch={!current}
+                transitionTypes={["expense-group-tab"]}
                 id={current ? activeTabId : undefined}
                 aria-current={current ? "page" : undefined}
                 className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-red-400 sm:px-4 ${current ? "border-red-500 text-white" : "border-transparent text-gray-400 hover:text-white"}`}
@@ -163,6 +165,8 @@ export default async function ExpenseGroupPage({
                 <Link
                   key={label}
                   href={href}
+                  prefetch={!current}
+                  transitionTypes={["expense-group-tab"]}
                   scroll={false}
                   aria-current={current ? "page" : undefined}
                   className={`inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-red-400 ${current ? "bg-gray-800 text-white" : "text-gray-400 hover:bg-gray-900 hover:text-white"}`}

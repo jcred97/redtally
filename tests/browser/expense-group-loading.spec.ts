@@ -213,6 +213,16 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       }
     }
 
+    const [expensesPrefetch] = await Promise.all([
+      page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return url.pathname === `${groupPath}/expenses` && response.request().headers().rsc === "1";
+      }),
+      page.goto(groupPath),
+    ]);
+    expect(expensesPrefetch.ok()).toBe(true);
+    expect(await expensesPrefetch.finished()).toBeNull();
+
     const tabs = page.getByRole("navigation", { name: "Expense group views" });
     const switcher = page.getByRole("button", { name: /switch expense group/i });
     const originalSwitcher = await switcher.elementHandle();
@@ -220,11 +230,14 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       await expect(switcher).toBeVisible();
       expect(await switcher.evaluate((button, original) => button === original, originalSwitcher)).toBe(true);
     }
-    await expectLoading(async () => {
-      await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
-      await expect(status).toBeAttached();
+    await whileGroupReadsAreBlocked(async () => {
+      const expenses = tabs.getByRole("link", { name: "Expenses", exact: true });
+      await expenses.click();
+      await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
+      await expect(expenses).toHaveAttribute("aria-current", "page");
+      await expect(status).toHaveCount(0);
       await expectSameSwitcher();
-    }, "Expenses");
+    });
     await expectSameSwitcher();
     await switcher.click();
     await expect(page.getByRole("navigation", { name: "Switch expense group" })

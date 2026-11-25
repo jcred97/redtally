@@ -14,7 +14,7 @@ export default async function DashboardLayout({
   return (
     <SessionRefresh userId={user.id}>
       <DashboardHeader name={user.name} email={user.email} image={user.image} />
-      <ViewTransition update={{ default: "page-fade", "main-navigation": "none" }}>
+      <ViewTransition update={{ default: "page-fade", "main-navigation": "none", "expense-group-tab": "none" }}>
         <div className="flex flex-1 flex-col">
           <MainNavigationBoundary>{children}</MainNavigationBoundary>
         </div>
