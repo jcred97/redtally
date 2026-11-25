@@ -42,6 +42,7 @@ model ExpenseGroup {
   name               String
   categories         Category[]
   budgets            Budget[]
+  billings           Billing[]
   bankAssignments    BankAssignment[]
   payLaterProviderAssignments PayLaterProviderAssignment[]
   expenseSubmissions ExpenseSubmission[]
@@ -93,10 +94,41 @@ model Expense {
   updatedAt        DateTime        @updatedAt
   submission       ExpenseSubmission?
   recurringOccurrence RecurringExpenseOccurrence?
+  billingInstallments BillingInstallment[]
 
+  @@unique([id, expenseGroupId])
   @@index([expenseGroupId, date])
   @@index([categoryId, expenseGroupId])
   @@index([bankAssignmentId, expenseGroupId])
+}
+
+model Billing {
+  id             Int                  @id @default(autoincrement())
+  expenseGroupId Int
+  expenseGroup   ExpenseGroup         @relation(fields: [expenseGroupId], references: [id], onDelete: Cascade)
+  dueDay         Int                  @db.SmallInt
+  periodStart    DateTime             @db.Date
+  periodEnd      DateTime             @db.Date
+  statementDate  DateTime             @db.Date
+  dueDate        DateTime             @db.Date
+  installments   BillingInstallment[]
+
+  @@unique([id, expenseGroupId])
+  @@unique([expenseGroupId, dueDay, periodStart, periodEnd], map: "Billing_group_dueDay_period_key")
+}
+
+model BillingInstallment {
+  id                Int     @id @default(autoincrement())
+  expenseGroupId    Int
+  billingId         Int
+  billing           Billing @relation(fields: [billingId, expenseGroupId], references: [id, expenseGroupId], onDelete: Cascade)
+  expenseId         Int
+  expense           Expense @relation(fields: [expenseId, expenseGroupId], references: [id, expenseGroupId], onDelete: Cascade)
+  installmentNumber Int     @db.SmallInt
+  amountCentavos    Int
+
+  @@unique([billingId, expenseId])
+  @@unique([expenseId, installmentNumber])
 }
 
 model ExpenseSubmission {
