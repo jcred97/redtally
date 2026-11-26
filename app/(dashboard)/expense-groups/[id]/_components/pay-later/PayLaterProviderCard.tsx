@@ -67,7 +67,7 @@ export default function PayLaterProviderCard({ expenseGroupId, provider }: {
       submitAction={save}
     >
       <fieldset>
-        <legend className={`mb-1 ${fieldLabelClass}`}>Pay Later products</legend>
+        <legend className={`mb-1 ${fieldLabelClass}`}>Pay Later Products</legend>
         <label className={`flex min-h-10 items-center gap-3 ${fieldLabelClass}`}>
           <Checkbox name="productEnabled" defaultChecked={enabled} />
           {provider.providerName}

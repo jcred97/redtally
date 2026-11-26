@@ -13,7 +13,7 @@ export default function BillingTab({ cycles, expensesHref }: { cycles: BillingCy
       <h2 id="billing-title" className="mb-4 text-lg font-semibold">Billing</h2>
       {cycles.length === 0 ? (
         <ExpenseGroupEmptyState icon="🧾" title="No bills yet" action={{ href: expensesHref, label: "Go to Expenses" }}>
-          <p className="mt-1 text-sm text-gray-400">Save an SPayLater expense to start a billing schedule.</p>
+          <p className="mt-1 text-sm text-gray-400">Save a Pay Later expense to start a billing schedule.</p>
         </ExpenseGroupEmptyState>
       ) : (
         <div className="space-y-6">

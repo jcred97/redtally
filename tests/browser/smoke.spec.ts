@@ -838,7 +838,7 @@ test("expense payment provider filter follows the method and keeps bookmarked ba
   await form.getByRole("option", { name: "Browser Test Bank (recorded name)", exact: true }).click();
   await expect(page).toHaveURL(/[?&]bank=legacy%3A[a-f0-9]{64}/);
   await payment.click();
-  await form.getByRole("option", { name: "All payment methods", exact: true }).click();
+  await form.getByRole("option", { name: "All Payment Methods", exact: true }).click();
   await expect.poll(() => new URL(page.url()).searchParams.has("paymentMethod")).toBe(false);
   await expect(alpha).toHaveCount(0);
   await expect(page.getByRole("cell", { name: /^Beta Cafe purchase/ })).toBeVisible();
@@ -849,7 +849,7 @@ test("expense payment provider filter follows the method and keeps bookmarked ba
   await form.getByRole("option", { name: "Bank payment", exact: true }).click();
   await expect(page).toHaveURL(/[?&]paymentMethod=BANK_PAYMENT/);
   expect(new URL(page.url()).searchParams.has("bank")).toBe(false);
-  await expect(provider).toHaveText("All providers");
+  await expect(provider).toHaveText("All Providers");
   await expect(provider).toBeDisabled();
 
   await page.goBack();
@@ -857,7 +857,7 @@ test("expense payment provider filter follows the method and keeps bookmarked ba
   await expect(bankExpense).toBeVisible();
 
   await form.getByRole("link", { name: "Clear filters", exact: true }).click();
-  await expect(provider).toHaveText("All providers");
+  await expect(provider).toHaveText("All Providers");
   expect(new URL(page.url()).searchParams.has("bank")).toBe(false);
 });
 

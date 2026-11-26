@@ -176,7 +176,7 @@ export default function ExpenseHistoryFilters({
           value={category}
           onChange={(value) => changeFilter("category", value)}
           options={[
-            { value: "", label: "All categories" },
+            { value: "", label: "All Categories" },
             ...(categoryUnavailable ? [{ value: category, label: "Unavailable category" }] : []),
             ...categories.map(({ id, name }) => ({ value: String(id), label: name })),
           ]}
@@ -189,7 +189,7 @@ export default function ExpenseHistoryFilters({
           value={paymentMethod}
           onChange={(value) => changeFilter("paymentMethod", value)}
           options={[
-            { value: "", label: "All payment methods" },
+            { value: "", label: "All Payment Methods" },
             ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
           ]}
         />
@@ -202,7 +202,7 @@ export default function ExpenseHistoryFilters({
           onChange={(value) => changeFilter("paymentProvider", value)}
           disabled={!provider && eligibleProviders.length === 0}
           options={[
-            { value: "", label: "All providers" },
+            { value: "", label: "All Providers" },
             ...(providerUnavailable ? [{ value: provider, label: selectedProvider?.label ?? "Unavailable provider", disabled: true }] : []),
             ...eligibleProviders,
           ]}
