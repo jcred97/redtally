@@ -157,6 +157,14 @@ async function main() {
         title: "Outside report date", amountCentavos: 456, date: new Date("2026-11-17T00:00:00Z"),
       },
     ] });
+    const spayLater = await fixture.client.expenseGroup.create({
+      data: { userId, name: "Browser SPayLater billing", categories: { create: { name: "Shopping" } } },
+      select: { id: true, publicId: true },
+    });
+    await fixture.client.payLaterProviderAssignment.create({
+      data: { expenseGroupId: spayLater.id, userId, providerKey: "shopee" },
+    });
+
     const data: BrowserData = {
       email, password, userId,
       group: { id: group.id, publicId: group.publicId, categoryId: group.categories[0].id },
@@ -165,6 +173,7 @@ async function main() {
       largeExport: { publicId: largeExport.publicId },
       foreign: { id: foreign.id, publicId: foreign.publicId },
       olderHistory: { publicId: olderHistory.publicId },
+      spayLater: { publicId: spayLater.publicId },
       dashboard: { month: dashboardMonth, budgeted: dashboardBudgeted.publicId, unbudgeted: dashboardUnbudgeted.publicId },
     };
     const env: NodeJS.ProcessEnv = {
