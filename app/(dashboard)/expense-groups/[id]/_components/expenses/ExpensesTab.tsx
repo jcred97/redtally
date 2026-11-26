@@ -4,6 +4,7 @@ import { formatPesoAmount } from "@/app/lib/expenses/money";
 import type { ExpenseHistoryAvailability } from "@/app/(dashboard)/_lib/expense-groups/access";
 import type { getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import type { ExpenseGroupLinks, ExpenseGroupView } from "../../_lib/navigation";
+import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import ExpenseHistory from "./ExpenseHistory";
 import ExpenseHistoryFilters from "./ExpenseHistoryFilters";
 import ExportExpensesButton from "./ExportExpensesButton";
@@ -81,11 +82,7 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, p
         )}
 
         {totalExpenses === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-gray-800 bg-gray-900">
-              <span className="text-2xl">💸</span>
-            </div>
-            <p className="font-medium text-gray-300">{emptyStateTitle}</p>
+          <ExpenseGroupEmptyState icon="💸" title={emptyStateTitle}>
             {firstExpense && (
               categories.length === 0 ? (
                 <p className="mt-1 text-sm text-gray-400">
@@ -102,7 +99,7 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, p
                 All months
               </Link>
             )}
-          </div>
+          </ExpenseGroupEmptyState>
         ) : (
           <ExpenseHistory
             groupPath={expensesPath}

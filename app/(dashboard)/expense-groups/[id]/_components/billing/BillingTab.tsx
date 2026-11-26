@@ -1,20 +1,24 @@
+import Link from "next/link";
 import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import type { BillingCycle } from "../../_lib/billing/access";
+import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 
 function BillingDate({ date }: { date: Date }) {
   return <time dateTime={date.toISOString().slice(0, 10)}>{formatExpenseDate(date)}</time>;
 }
 
-export default function BillingTab({ cycles }: { cycles: BillingCycle[] }) {
+export default function BillingTab({ cycles, expensesHref }: { cycles: BillingCycle[]; expensesHref: string }) {
   return (
     <section aria-labelledby="billing-title">
       <h2 id="billing-title" className="mb-4 text-lg font-semibold">Billing</h2>
       {cycles.length === 0 ? (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
-          <p className="text-sm font-medium text-gray-300">No bills yet</p>
+        <ExpenseGroupEmptyState icon="🧾" title="No bills yet">
           <p className="mt-1 text-sm text-gray-400">Save an SPayLater expense to start a billing schedule.</p>
-        </div>
+          <Link href={expensesHref} className="button-secondary mt-3 inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-medium">
+            Go to Expenses
+          </Link>
+        </ExpenseGroupEmptyState>
       ) : (
         <div className="space-y-6">
           {cycles.map(({ dueDay, bills }) => (

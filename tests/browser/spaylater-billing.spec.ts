@@ -50,7 +50,6 @@ async function savePurchase(
   tabs: Locator,
   { title, amount, dueDay, term }: { title: string; amount: string; dueDay: string; term: string },
 ) {
-  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
   await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
   await dialog.getByLabel("Title", { exact: true }).fill(title);
@@ -98,22 +97,29 @@ test("SPayLater purchases create and reuse billing periods without duplicating e
   expect(signIn.ok()).toBe(true);
 
   const groupPath = `/expense-groups/${data.spayLater.publicId}`;
+  await page.setViewportSize({ width: 360, height: 820 });
   await page.goto(`${groupPath}/billing`);
   const tabs = page.getByRole("navigation", { name: "Expense group views", exact: true });
   const billing = page.getByRole("region", { name: "Billing", exact: true });
   await expect(billing.getByText("No bills yet", { exact: true })).toBeVisible();
   await expect(billing.getByRole("article")).toHaveCount(0);
+  expect(await billing.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await billing.getByRole("link", { name: "Go to Expenses", exact: true }).click();
+  await expect(page).toHaveURL(`${groupPath}/expenses`);
+  await page.setViewportSize({ width: 1280, height: 820 });
 
   await savePurchase(page, tabs, { title: threeMonthPurchase, amount: "1000", dueDay: "5th", term: "3 months" });
   await expectCycle(billing, "Due on the 5th", firstThreeBills);
   await expect(billing.getByRole("article")).toHaveCount(3);
 
+  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
   await savePurchase(page, tabs, {
     title: sameCyclePurchase, amount: "100", dueDay: "5th", term: "Pay in full on first bill",
   });
   await expectCycle(billing, "Due on the 5th", fifthCycleAfterReuse);
   await expect(billing.getByRole("article")).toHaveCount(3);
 
+  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
   await savePurchase(page, tabs, {
     title: otherCyclePurchase, amount: "60", dueDay: "15th", term: "Pay in full on first bill",
   });
