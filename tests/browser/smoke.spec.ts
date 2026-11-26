@@ -331,7 +331,23 @@ test("empty expense group guides the first category and expense", async ({ page 
   await groupDialog.getByRole("button", { name: "Create", exact: true }).click();
   await expect(groupDialog).not.toBeVisible();
   await page.getByRole("link", { name: /First expense workflow/ }).click();
-  await page.getByRole("link", { name: "Expenses", exact: true }).click();
+  const tabs = page.getByRole("navigation", { name: "Expense group views" });
+  await expect(tabs.getByRole("link", { name: "Dashboard", exact: true })).toHaveAttribute("aria-current", "page");
+  const spendingByCategory = page.getByRole("region", { name: "Spending by category", exact: true });
+  await expect(spendingByCategory.getByText("No expenses in this period.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Dashboard month", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Spending trend", exact: true })).toBeVisible();
+
+  await tabs.getByRole("link", { name: "Recurring", exact: true }).click();
+  const recurring = page.getByRole("region", { name: "Recurring expenses", exact: true });
+  const addCategory = recurring.getByRole("link", { name: "Go to Categories", exact: true });
+  await expect(recurring.getByText("No recurring expenses yet", { exact: true })).toBeVisible();
+  await addCategory.click();
+  await expect(tabs.getByRole("link", { name: "Categories", exact: true })).toHaveAttribute("aria-current", "page");
+  const categories = page.getByRole("region", { name: "Categories", exact: true });
+  await expect(categories.getByText("No categories yet", { exact: true })).toBeVisible();
+
+  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
 
   const history = page.getByRole("region", { name: "Expenses", exact: true });
   await expect(history.getByText("No expenses yet", { exact: true })).toBeVisible();
@@ -356,6 +372,11 @@ test("empty expense group guides the first category and expense", async ({ page 
   await expense.getByRole("button", { name: "Save expense", exact: true }).click();
   await expect(expense).not.toBeVisible();
   await expect(history.getByRole("heading", { name: "First bus ticket", exact: true })).toBeVisible();
+
+  await tabs.getByRole("link", { name: "Recurring", exact: true }).click();
+  await expect(recurring.getByText("No recurring expenses yet", { exact: true })).toBeVisible();
+  await expect(addCategory).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "+ New Recurring Expense", exact: true })).toBeVisible();
 });
 
 test("empty current month offers older history", async ({ page }) => {

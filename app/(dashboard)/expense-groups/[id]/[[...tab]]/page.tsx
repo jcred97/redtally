@@ -151,7 +151,7 @@ export default async function ExpenseGroupPage({
           />
         ) : recurringExpenses ? (
           <RecurringExpenses
-            groupPath={groupPath}
+            categoriesHref={groupPath + categoriesTab}
             key={expenseGroup.id}
             expenseGroupId={expenseGroup.id}
             today={today}

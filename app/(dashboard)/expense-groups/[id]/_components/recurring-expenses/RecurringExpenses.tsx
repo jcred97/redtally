@@ -1,17 +1,19 @@
-import Link from "next/link";
 import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { paymentMethodLabels } from "@/app/lib/expenses/payment";
 import { recurrenceFrequencyLabels } from "@/app/lib/expenses/recurrence";
 import type { RecurringExpenseEntry } from "@/app/(dashboard)/_lib/recurring-expenses/access";
 import { recurringExpenseAnchor } from "../../_lib/navigation";
+import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import RecurringExpenseActions from "./RecurringExpenseActions";
 import RecurringExpenseDialog, { type RecurringExpenseOptions } from "./RecurringExpenseDialog";
 import RunRecurringExpensesButton from "./RunRecurringExpensesButton";
 
 const statusLabels = { ACTIVE: "Active", PAUSED: "Paused", NEEDS_ATTENTION: "Needs attention" };
 
-export default function RecurringExpenses({ rules, groupPath, ...options }: RecurringExpenseOptions & { rules: RecurringExpenseEntry[]; groupPath: string }) {
+export default function RecurringExpenses({ rules, categoriesHref, ...options }: RecurringExpenseOptions & { rules: RecurringExpenseEntry[]; categoriesHref: string }) {
+  const hasCategories = options.categories.length > 0;
+
   return (
     <section aria-labelledby="recurring-expenses-title">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -19,13 +21,17 @@ export default function RecurringExpenses({ rules, groupPath, ...options }: Recu
         {rules.length > 0 && <RunRecurringExpensesButton expenseGroupId={options.expenseGroupId} />}
       </div>
       {rules.length === 0 ? (
-        <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
-          {options.categories.length > 0 ? "No recurring expenses yet." : (
-            <Link href={`${groupPath}/categories`} className="text-red-300 underline underline-offset-4">
-              Add a category to create a recurring expense.
-            </Link>
-          )}
-        </div>
+        <ExpenseGroupEmptyState
+          icon="🔁"
+          title="No recurring expenses yet"
+          action={hasCategories ? undefined : { href: categoriesHref, label: "Go to Categories" }}
+        >
+          <p className="mt-1 text-sm text-gray-400">
+            {hasCategories ? (
+              <>Select <strong className="font-medium text-gray-300">+ New Recurring Expense</strong> to create your first schedule.</>
+            ) : "Add a category to create a recurring expense."}
+          </p>
+        </ExpenseGroupEmptyState>
       ) : (
         <ul className="grid gap-3 lg:grid-cols-2 [&>li:only-child]:col-span-full">
           {rules.map((rule) => {

@@ -1,4 +1,5 @@
 import type { BankCatalogEntry } from "@/app/(dashboard)/_lib/banks/access";
+import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import BankSettingsDialog from "./BankSettingsDialog";
 
 export default function ExpenseGroupBanks({
@@ -12,9 +13,7 @@ export default function ExpenseGroupBanks({
     <section aria-labelledby="banks-title">
       <h2 id="banks-title" className="mb-4 text-lg font-semibold">Banks</h2>
       {banks.length === 0 ? (
-        <p className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
-          No banks are available.
-        </p>
+        <ExpenseGroupEmptyState icon="🏦" title="No banks available" />
       ) : (
         <ul className="expense-group-card-grid">
           {banks.map((bank) => (

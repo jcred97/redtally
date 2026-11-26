@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import type { DashboardData } from "../../_lib/dashboard/access";
 import { lastDayOfDashboardMonth } from "../../_lib/dashboard/period";
+import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import SpendingTrend from "./SpendingTrend";
 
 export default function ExpenseDashboard({
@@ -27,7 +28,7 @@ export default function ExpenseDashboard({
         >
           <h2 id="dashboard-categories-heading" className="text-lg font-semibold">Spending by category</h2>
           {dashboard.categories.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-300">No expenses in this period.</p>
+            <ExpenseGroupEmptyState icon="💸" title="No expenses in this period." compact />
           ) : (
             <ul className="mt-3 divide-y divide-gray-800">
               {dashboard.categories.map(({ id, name, totalCentavos }) => (

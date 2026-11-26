@@ -1,3 +1,4 @@
+import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import CategoryActions from "./CategoryActions";
 
 export default function ExpenseCategories({
@@ -18,9 +19,11 @@ export default function ExpenseCategories({
         Categories
       </h2>
       {categories.length === 0 ? (
-        <p className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
-          No categories yet. Add one such as Food or Transport.
-        </p>
+        <ExpenseGroupEmptyState icon="🏷️" title="No categories yet">
+          <p className="mt-1 text-sm text-gray-400">
+            Select <strong className="font-medium text-gray-300">+ New Category</strong> to add a category such as Food or Transport.
+          </p>
+        </ExpenseGroupEmptyState>
       ) : (
         <ul className="expense-group-card-grid">
           {categories.map((category) => (

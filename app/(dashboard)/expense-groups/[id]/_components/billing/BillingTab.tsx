@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { formatExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import type { BillingCycle } from "../../_lib/billing/access";
@@ -13,11 +12,8 @@ export default function BillingTab({ cycles, expensesHref }: { cycles: BillingCy
     <section aria-labelledby="billing-title">
       <h2 id="billing-title" className="mb-4 text-lg font-semibold">Billing</h2>
       {cycles.length === 0 ? (
-        <ExpenseGroupEmptyState icon="🧾" title="No bills yet">
+        <ExpenseGroupEmptyState icon="🧾" title="No bills yet" action={{ href: expensesHref, label: "Go to Expenses" }}>
           <p className="mt-1 text-sm text-gray-400">Save an SPayLater expense to start a billing schedule.</p>
-          <Link href={expensesHref} className="button-secondary mt-3 inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-medium">
-            Go to Expenses
-          </Link>
         </ExpenseGroupEmptyState>
       ) : (
         <div className="space-y-6">
