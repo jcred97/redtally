@@ -1,5 +1,6 @@
 import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import CategoryActions from "./CategoryActions";
+import styles from "./categories.module.css";
 
 export default function ExpenseCategories({
   expenseGroupId,
@@ -25,7 +26,7 @@ export default function ExpenseCategories({
           </p>
         </ExpenseGroupEmptyState>
       ) : (
-        <ul className="expense-group-card-grid">
+        <ul className={styles.grid}>
           {categories.map((category) => (
             <li
               key={category.id}

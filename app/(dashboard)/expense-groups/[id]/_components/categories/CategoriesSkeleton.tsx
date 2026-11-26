@@ -1,10 +1,11 @@
 import Skeleton from "@/app/components/feedback/Skeleton";
+import styles from "./categories.module.css";
 
 export default function CategoriesSkeleton() {
   return (
     <section>
       <h2 className="mb-4 text-lg font-semibold">Categories</h2>
-      <ul className="expense-group-card-grid">
+      <ul className={styles.grid}>
         {[
           { width: "w-28", canDelete: true },
           { width: "w-24", canDelete: true },

@@ -134,16 +134,27 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
     }
   }
 
-  async function expectFirstRowWidth(heading: string, locator: typeof skeleton, mainWidth: number) {
+  async function expectCardWidths(heading: string, locator: typeof skeleton, mainWidth: number) {
     if (!["Recurring expenses", "Categories", "Banks", "Pay Later"].includes(heading)) return;
-    const width = await locator.evaluate((element) => {
-      const cards = element.closest("section")?.querySelectorAll(":scope > ul > li");
-      if (!cards?.length) return 0;
-      const first = cards[0].getBoundingClientRect();
-      const row = Array.from(cards, (card) => card.getBoundingClientRect()).filter((card) => card.top === first.top);
-      return Math.max(...row.map((card) => card.right)) - first.left;
+    const { cardWidths, firstRowWidth, listWidth } = await locator.evaluate((element) => {
+      const list = element.closest("section")?.querySelector(":scope > ul");
+      const cards = Array.from(list?.children ?? [], (card) => card.getBoundingClientRect());
+      const first = cards[0];
+      const row = cards.filter((card) => card.top === first.top);
+      return {
+        cardWidths: cards.map((card) => card.width),
+        firstRowWidth: first ? Math.max(...row.map((card) => card.right)) - first.left : 0,
+        listWidth: list?.getBoundingClientRect().width ?? 0,
+      };
     });
-    expect(Math.abs(width - mainWidth), `${heading} cards fill the first row`).toBeLessThanOrEqual(1);
+    if (heading === "Categories") {
+      expect(cardWidths.length).toBeGreaterThan(0);
+      for (const width of cardWidths) {
+        expect(width, "Category cards fit the list and cap at 352px").toBeCloseTo(Math.min(352, listWidth), 0);
+      }
+      return;
+    }
+    expect(Math.abs(firstRowWidth - mainWidth), `${heading} cards fill the first row`).toBeLessThanOrEqual(1);
   }
 
   async function expectLoading(navigate: () => Promise<unknown>, heading: string) {
@@ -159,7 +170,7 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       const mainBox = await expectFrame(skeleton, `${heading} skeleton`);
       const headingBox = (await loadingHeading.boundingBox())!;
-      await expectFirstRowWidth(heading, loadingHeading, mainBox.width);
+      await expectCardWidths(heading, loadingHeading, mainBox.width);
       const title = await groupTitle.count() > 0 ? await groupTitle.boundingBox() : null;
       return { top: mainBox.y, headingX: headingBox.x, headingY: headingBox.y, titleHeight: Math.max(40, title?.height ?? 0) };
     });
@@ -167,7 +178,7 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
     const loadedHeading = page.getByRole("heading", { name: heading, exact: true });
     await expect(loadedHeading).toBeVisible();
     const mainBox = await expectFrame(page.getByRole("main"), heading);
-    await expectFirstRowWidth(heading, loadedHeading, mainBox.width);
+    await expectCardWidths(heading, loadedHeading, mainBox.width);
     const title = (await groupTitle.boundingBox())!;
     const extraTitleHeight = Math.max(40, title.height) - before.titleHeight;
     expect(Math.abs(mainBox.y - before.top - extraTitleHeight), `${heading} content accounts for a wrapped group name`)
