@@ -8,6 +8,7 @@ import {
 } from "../_lib/navigation";
 import { isExpenseGroupTab } from "../_lib/tabs";
 import DashboardTab from "../_components/dashboard/DashboardTab";
+import BillingTab from "../_components/billing/BillingTab";
 import ExpensesTab from "../_components/expenses/ExpensesTab";
 import ExpenseGroupPayLater from "../_components/pay-later/ExpenseGroupPayLater";
 import { getManilaToday } from "@/app/lib/expenses/date";
@@ -17,6 +18,7 @@ import { getRecurringExpenses } from "@/app/(dashboard)/_lib/recurring-expenses/
 import ExpenseGroupBanks from "../_components/banks/ExpenseGroupBanks";
 import ExpenseCategories from "../_components/categories/ExpenseCategories";
 import { getDashboard } from "../_lib/dashboard/queries";
+import { getBilling } from "../_lib/billing/queries";
 import NewCategoryButton from "../_components/categories/NewCategoryButton";
 import NewExpenseButton from "../_components/expenses/NewExpenseButton";
 import RecurringExpenseDialog from "../_components/recurring-expenses/RecurringExpenseDialog";
@@ -56,7 +58,7 @@ export default async function ExpenseGroupPage({
   } = view;
   const showBanks = showPaymentProviders && !showPayLater;
 
-  const [expenseGroup, expensePage, bankCatalog, bankOptions, historyProviderOptions, merchantLabel, recurringExpenses, dashboard, payLater] = await Promise.all([
+  const [expenseGroup, expensePage, bankCatalog, bankOptions, historyProviderOptions, merchantLabel, recurringExpenses, dashboard, payLater, billing] = await Promise.all([
     getExpenseGroupById(id),
     showExpenses ? getExpensePageByExpenseGroupId(id, requestedPage, filters, grouped) : null,
     showBanks ? getBankCatalogForExpenseGroup(id) : null,
@@ -66,9 +68,10 @@ export default async function ExpenseGroupPage({
     showRecurring ? getRecurringExpenses(id) : null,
     showDashboard ? getDashboard(id, dashboardMonth, today) : null,
     showExpenses || showDashboard ? getExpenseGroupPayLater(id) : null,
+    showBilling ? getBilling(id) : null,
   ]);
 
-  if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard)) {
+  if (!expenseGroup || (showExpenses && !expensePage) || (showBanks && !bankCatalog) || (showDashboard && !dashboard) || (showBilling && !billing)) {
     notFound();
   }
   const historyAvailability = expensePage?.totalExpenses === 0
@@ -156,8 +159,8 @@ export default async function ExpenseGroupPage({
             banks={bankOptions}
             rules={recurringExpenses}
           />
-        ) : showBilling ? (
-          <h2 className="text-xl font-semibold">Billing</h2>
+        ) : billing ? (
+          <BillingTab cycles={billing} />
         ) : showPaymentProviders ? (
           <div key={expenseGroup.id} className="space-y-6">
             <nav aria-label="Payment Provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">

@@ -127,6 +127,7 @@ test("expense groups open on Dashboard and legacy bookmarks preserve the selecte
     await expect(tab).toHaveAttribute("aria-current", "page");
     if (slug === "billing") {
       await expect(page.getByRole("heading", { name: "Billing", exact: true })).toBeVisible();
+      await expect(page.getByText("No bills yet", { exact: true })).toBeVisible();
     }
   }
   await page.reload();
