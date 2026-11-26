@@ -381,40 +381,74 @@ test("empty expense group guides the first category and expense", async ({ page 
   await expect(page.getByRole("button", { name: "+ New Recurring Expense", exact: true })).toBeVisible();
 });
 
-test("category cards stay compact and category changes persist", async ({ page }) => {
-  await page.setViewportSize({ width: 1363, height: 810 });
+test("categories use up to three equal columns and category changes persist", async ({ page }) => {
+  const desktopViewport = { width: 1363, height: 810 };
+  await page.setViewportSize(desktopViewport);
   await page.goto(`/expense-groups/${data.group.publicId}`);
   await page.getByRole("navigation", { name: "Expense group views" })
     .getByRole("link", { name: "Categories", exact: true }).click();
   const categories = page.getByRole("region", { name: "Categories", exact: true });
-  const cards = categories.getByRole("listitem");
+  const grid = categories.getByRole("list");
+  const cards = grid.getByRole("listitem");
+
+  async function expectColumns(columns: number) {
+    const geometry = await grid.evaluate((list) => {
+      const { left, right, width } = list.getBoundingClientRect();
+      const cards = Array.from(list.children, (element) => {
+        const { left, right, top, bottom, width } = element.getBoundingClientRect();
+        return { left, right, top, bottom, width };
+      });
+      return { left, right, width, cards };
+    });
+    const gap = 12;
+    const columnWidth = (geometry.width - (columns - 1) * gap) / columns;
+    for (const [index, card] of geometry.cards.entries()) {
+      const column = index % columns;
+      expect(card.width).toBeCloseTo(columnWidth, 0);
+      expect(card.left).toBeCloseTo(geometry.left + column * (columnWidth + gap), 0);
+      expect(card.top).toBe(geometry.cards[index - column].top);
+      if (column === columns - 1) expect(card.right).toBeCloseTo(geometry.right, 0);
+      if (index >= columns) expect(card.top).toBeGreaterThan(geometry.cards[index - columns].bottom);
+    }
+  }
+
   await expect(cards).toHaveCount(2);
-  await expect(cards.nth(0)).toHaveCSS("width", "352px");
-  await expect(cards.nth(1)).toHaveCSS("width", "352px");
-  const [firstDesktopCard, secondDesktopCard] = await cards.evaluateAll((elements) =>
-    elements.map((element) => {
-      const { x, y, right } = element.getBoundingClientRect();
-      return { x, y, right };
-    }));
-  expect(secondDesktopCard.y).toBe(firstDesktopCard.y);
-  expect(secondDesktopCard.x).toBe(firstDesktopCard.right + 12);
+  await expectColumns(3);
+  await page.setViewportSize({ width: 820, height: 810 });
+  await expectColumns(2);
 
   await page.setViewportSize({ width: 360, height: 640 });
-  await expect.poll(() => cards.evaluateAll((elements) => {
-    const [first, second] = elements.map((element) => element.getBoundingClientRect());
-    return first.width < 352 && second.x === first.x && second.top >= first.bottom;
-  })).toBe(true);
+  await expectColumns(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  async function createCategory(name: string) {
+    await page.getByRole("button", { name: "+ New Category", exact: true }).click();
+    const create = page.getByRole("dialog", { name: "New Category", exact: true });
+    await create.getByLabel("Name", { exact: true }).fill(name);
+    await create.getByRole("button", { name: "Create", exact: true }).click();
+    await expect(create).toBeHidden();
+    await expect(categories.getByRole("heading", { name, exact: true })).toBeVisible();
+  }
+
+  async function deleteCategory(name: string) {
+    await categories.getByRole("button", { name: `Delete category: ${name}`, exact: true }).click();
+    const deletion = page.getByRole("dialog", { name: "Delete category?", exact: true });
+    await deletion.getByRole("button", { name: "Delete category", exact: true }).click();
+    await expect(deletion).toBeHidden();
+    await expect(categories.getByRole("heading", { name, exact: true })).toHaveCount(0);
+  }
 
   const originalName = "Smoke test category";
   const updatedName = "Renamed smoke test category";
-  await page.getByRole("button", { name: "+ New Category", exact: true }).click();
-  const create = page.getByRole("dialog", { name: "New Category", exact: true });
-  await create.getByLabel("Name", { exact: true }).fill(originalName);
-  await create.getByRole("button", { name: "Create", exact: true }).click();
-  const original = categories.getByRole("heading", { name: originalName, exact: true });
-  await expect(original).toBeVisible();
+  const extraName = "Fourth smoke test category";
+  await createCategory(originalName);
+  await createCategory(extraName);
+  await page.setViewportSize(desktopViewport);
+  await expect(cards).toHaveCount(4);
+  await expectColumns(3);
+  await deleteCategory(extraName);
 
+  const original = categories.getByRole("heading", { name: originalName, exact: true });
   await categories.getByRole("button", { name: `Rename category: ${originalName}`, exact: true }).click();
   const rename = page.getByRole("dialog", { name: "Rename category", exact: true });
   await rename.getByLabel("Name", { exact: true }).fill(updatedName);
@@ -425,10 +459,7 @@ test("category cards stay compact and category changes persist", async ({ page }
   await expect(renamed).toBeVisible();
   await expect(original).toHaveCount(0);
 
-  await categories.getByRole("button", { name: `Delete category: ${updatedName}`, exact: true }).click();
-  const deletion = page.getByRole("dialog", { name: "Delete category?", exact: true });
-  await deletion.getByRole("button", { name: "Delete category", exact: true }).click();
-  await expect(renamed).toHaveCount(0);
+  await deleteCategory(updatedName);
   await page.reload();
   await expect(cards).toHaveCount(2);
   await expect(renamed).toHaveCount(0);

@@ -148,9 +148,12 @@ test("signed-in pages and their skeletons share a consistent width", async ({ pa
       };
     });
     if (heading === "Categories") {
+      const viewportWidth = page.viewportSize()!.width;
+      const columns = viewportWidth >= 1024 ? 3 : viewportWidth >= 640 ? 2 : 1;
+      const expectedCardWidth = (listWidth - (columns - 1) * 12) / columns;
       expect(cardWidths.length).toBeGreaterThan(0);
       for (const width of cardWidths) {
-        expect(width, "Category cards fit the list and cap at 352px").toBeCloseTo(Math.min(352, listWidth), 0);
+        expect(width, "Category cards use equal-width responsive columns").toBeCloseTo(expectedCardWidth, 0);
       }
       return;
     }
