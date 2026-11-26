@@ -10,14 +10,16 @@ const db = new Pool({ connectionString: process.env.REDTALLY_BROWSER_DATABASE_UR
 type StorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
 
 const test = base.extend<object, { ownerState: StorageState }>({
-  ownerState: [async ({ playwright }, provide) => {
+  ownerState: [async ({ playwright }, provide, workerInfo) => {
     const baseURL = process.env.REDTALLY_BROWSER_ORIGIN!;
     const api = await playwright.request.newContext({ baseURL });
     try {
+      // Keep replacement workers out of the shared fallback sign-in rate-limit bucket.
+      const workerIp = `2001:db8:1:${workerInfo.workerIndex.toString(16)}::1`;
       const response = await api.post("/api/auth/sign-in/email", {
-        headers: { origin: baseURL! }, data: { email: data.email, password: data.password },
+        headers: { origin: baseURL, "x-real-ip": workerIp }, data: { email: data.email, password: data.password },
       });
-      expect(response.ok()).toBe(true);
+      await expect(response).toBeOK();
       await provide(await api.storageState());
     } finally { await api.dispose(); }
   }, { scope: "worker" }],
@@ -608,8 +610,19 @@ test("the retired Accounts and Loans pages are unavailable", async ({ page }) =>
 
 test("Pay Later purchases retain their provider after it is disabled", async ({ page }) => {
   await page.setViewportSize({ width: 1185, height: 844 });
-  await page.goto("/expense-groups");
-  await page.getByRole("button", { name: /New.*Group/ }).click();
+  const hydration = deferred();
+  await page.route("**/_next/static/chunks/*.js", async (route) => {
+    await hydration.promise;
+    await route.continue();
+  });
+  const newGroup = page.getByRole("button", { name: "New Expense Group", exact: true });
+  try {
+    await page.goto("/expense-groups", { waitUntil: "commit" });
+    await expect(newGroup).toBeDisabled();
+  } finally {
+    hydration.resolve();
+  }
+  await newGroup.click();
   const groupDialog = page.getByRole("dialog", { name: "New Expense Group" });
   await groupDialog.getByLabel("Name", { exact: true }).fill("SPayLater browser group");
   await groupDialog.getByRole("button", { name: "Create", exact: true }).click();

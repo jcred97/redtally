@@ -5,6 +5,7 @@ import {
   useId,
   useRef,
   useState,
+  useSyncExternalStore,
   useTransition,
   type FormEvent,
   type MouseEvent,
@@ -22,6 +23,11 @@ const dialogWidths = {
 const actionSize = "min-h-10 rounded-lg px-4 text-sm font-medium";
 const primaryAction = `${actionSize} cursor-pointer bg-red-500 text-white transition-colors enabled:hover:bg-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-50`;
 const secondaryAction = `${actionSize} button-secondary`;
+
+// The server-rendered trigger cannot open a client-side dialog before hydration.
+const subscribeToHydration = () => () => {};
+const getClientHydration = () => true;
+const getServerHydration = () => false;
 
 type FormDialogProps = {
   triggerLabel: ReactNode;
@@ -80,6 +86,7 @@ export default function FormDialog({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [pending, startSaving] = useTransition();
+  const hydrated = useSyncExternalStore(subscribeToHydration, getClientHydration, getServerHydration);
 
   useEffect(() => {
     if (!open) {
@@ -236,7 +243,7 @@ export default function FormDialog({
         aria-haspopup="dialog"
         aria-controls={dialogId}
         onClick={openDialog}
-        disabled={disabled}
+        disabled={disabled || !hydrated}
         className={triggerClassName ?? triggerClass}
       >
         {triggerLabel}
