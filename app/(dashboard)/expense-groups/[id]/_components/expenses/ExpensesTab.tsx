@@ -1,8 +1,9 @@
+import { createHash } from "node:crypto";
 import Link from "next/link";
 import type { ComponentProps } from "react";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import type { ExpenseHistoryAvailability } from "@/app/(dashboard)/_lib/expense-groups/access";
-import type { getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expense-groups/queries";
+import type { ExpenseHistoryEntry, getExpensePageByExpenseGroupId } from "@/app/(dashboard)/_lib/expense-groups/queries";
 import type { ExpenseGroupLinks, ExpenseGroupView } from "../../_lib/navigation";
 import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
 import ExpenseHistory from "./ExpenseHistory";
@@ -23,10 +24,35 @@ type ExpensesTabProps = {
   links: ExpenseGroupLinks;
 };
 
+function selectedExpenseFilterQuery(expense: ExpenseHistoryEntry, grouped: boolean) {
+  const params = new URLSearchParams({
+    expense: String(expense.id),
+    search: expense.title,
+    day: expense.date.toISOString().slice(0, 10),
+    category: String(expense.categoryId),
+  });
+  if (expense.paymentMethod) params.set("paymentMethod", expense.paymentMethod);
+  // Match the SHA-256 values used by the history provider options.
+  if (expense.paymentMethod === "PAY_LATER") {
+    if (expense.payLaterProviderKey) {
+      const digest = createHash("sha256").update(expense.payLaterProviderKey).digest("hex");
+      params.set("paymentProvider", `pay-later:${digest}`);
+    }
+  } else if (expense.bankAssignmentId !== null) {
+    params.set("bank", `assignment:${expense.bankAssignmentId}`);
+  } else if (expense.legacyBankName?.trim()) {
+    const digest = createHash("sha256").update(expense.legacyBankName).digest("hex");
+    params.set("bank", `legacy:${digest}`);
+  }
+  if (grouped) params.set("view", "grouped");
+  return params.toString();
+}
+
 export default function ExpensesTab({ expenseGroupId, categories, bankOptions, payLaterProviders, historyProviderOptions, merchantLabel, expensePage, historyAvailability, view, links }: ExpensesTabProps) {
   const { day, month, through, grouped, filterQuery, currentMonth, hasOtherFilters } = view;
   const { groupPath, expensesPath, expenseTab, allMonthsHref } = links;
   const { totalExpenses, totalCentavos } = expensePage;
+  const selectedExpense = view.filters.expenseId === undefined ? undefined : expensePage.expenses[0];
   const firstExpense = historyAvailability === "none";
   const thisMonthOnly = month === currentMonth && !day && !through && !hasOtherFilters;
   const emptyStateTitle = firstExpense
@@ -38,12 +64,11 @@ export default function ExpensesTab({ expenseGroupId, categories, bankOptions, p
       <ExpenseHistoryFilters
         key={expenseGroupId}
         groupPath={expensesPath}
-        filterQuery={filterQuery}
+        filterQuery={selectedExpense ? selectedExpenseFilterQuery(selectedExpense, grouped) : filterQuery}
         categories={categories}
         providers={historyProviderOptions}
         merchantLabel={merchantLabel}
         currentMonth={currentMonth}
-        monthScopeHref={links.monthScopeHref}
         clearFiltersHref={groupPath + expenseTab}
         canClearFilters={day !== undefined || through !== undefined || month !== currentMonth || hasOtherFilters}
       />

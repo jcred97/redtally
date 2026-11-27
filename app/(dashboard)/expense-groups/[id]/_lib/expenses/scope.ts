@@ -7,6 +7,7 @@ export function nextExpenseHistoryScope(params: URLSearchParams, currentMonth: s
   const day = params.get("day");
   const month = params.get("month");
   const next = new URLSearchParams(params);
+  next.delete("expense");
   next.delete("day");
   next.delete("month");
   next.delete("through");

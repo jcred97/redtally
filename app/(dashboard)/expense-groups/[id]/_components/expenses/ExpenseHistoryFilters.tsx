@@ -19,7 +19,6 @@ type ExpenseHistoryFiltersProps = {
   providers: ExpenseHistoryProviderOption[];
   merchantLabel?: string;
   currentMonth: string;
-  monthScopeHref: string;
   clearFiltersHref: string;
   canClearFilters: boolean;
 };
@@ -35,7 +34,6 @@ export default function ExpenseHistoryFilters({
   providers,
   merchantLabel,
   currentMonth,
-  monthScopeHref,
   clearFiltersHref,
   canClearFilters,
 }: ExpenseHistoryFiltersProps) {
@@ -70,15 +68,14 @@ export default function ExpenseHistoryFilters({
     ? providers.filter(({ paymentMethods }) => paymentMethods.some((method) => method === paymentMethod))
     : providers;
   const providerUnavailable = provider && !eligibleProviders.some(({ value }) => value === provider);
-  const scopeHref = filters.requestedQuery === appliedQuery
-    ? monthScopeHref
-    : `${groupPath}?${nextExpenseHistoryScope(params, currentMonth)}`;
+  const scopeHref = `${groupPath}?${nextExpenseHistoryScope(params, currentMonth)}`;
   const searchText = filters.search.trim();
   const needsSearch = params.has("merchant")
     ? filters.search !== merchantLabel
     : searchText !== (params.get("search") ?? "");
 
   function navigate(next: URLSearchParams, method: "push" | "replace") {
+    next.delete("expense");
     next.sort();
     const requestedQuery = next.toString();
     if (requestedQuery === filters.requestedQuery) return;

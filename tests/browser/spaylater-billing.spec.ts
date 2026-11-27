@@ -239,13 +239,20 @@ test("finish schedule setup and follow the installment to its exact older purcha
   const installment = bills.first().getByRole("listitem");
   await expect(installment.getByText("₱24.55", { exact: true })).toBeVisible();
   await installment.getByRole("link", { name: "Replacement cable", exact: true }).click();
+  const filters = page.getByRole("form", { name: "Expense history filters" });
+  await expect(filters.getByRole("searchbox", { name: "Search expenses" })).toHaveValue("Replacement cable");
+  await expect(filters.getByLabel("Month", { exact: true })).toHaveValue("2020-02");
+  await expect(filters.getByLabel("Day (optional)", { exact: true })).toHaveValue("2020-02-02");
+  await expect(filters.getByRole("combobox", { name: "Category", exact: true })).toHaveText("Shopping");
+  await expect(filters.getByRole("combobox", { name: "Payment Method", exact: true })).toHaveText("Pay Later");
+  await expect(filters.getByRole("combobox", { name: "Payment Provider", exact: true })).toHaveText("SPayLater");
   await page.setViewportSize({ width: 1280, height: 820 });
   const rows = page.getByRole("table", { name: "Expense history", exact: true }).locator("tbody").getByRole("row");
   await expect(rows).toHaveCount(1);
   await expect(rows.getByRole("cell", { name: "Replacement cable", exact: true })).toBeVisible();
   await expect(rows.getByRole("cell", { name: "₱73.65", exact: true })).toBeVisible();
 
-  await page.goto(`${groupPath}/expenses?allMonths=1`);
+  await chooseOption(filters, "Category", "All Categories");
   await expect(rows).toHaveCount(2);
   await expect(rows.getByRole("cell", { name: "₱45.10", exact: true })).toBeVisible();
 });
