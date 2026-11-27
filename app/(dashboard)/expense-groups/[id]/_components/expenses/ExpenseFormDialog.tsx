@@ -39,6 +39,9 @@ export type EditableExpense = {
   bankName: string | null;
   payLaterProviderKey: string | null;
   payLaterProviderName: string | null;
+  spayLaterDueDay: number | null;
+  spayLaterMonths: number | null;
+  spayLaterCompletedOn: string | null;
 };
 
 type ExpenseFormDialogProps = {
@@ -315,8 +318,14 @@ export default function ExpenseFormDialog({
                 <p id={`${fieldId}-provider-help`} className="mt-1 text-xs text-gray-400">Enable a provider in Payment Provider → Pay Later.</p>
               )}
             </div>
-            {!expense && isPayLater && payLaterProviderKey === "shopee" && (
-              <SPayLaterFields amount={amount} expenseDate={date} />
+            {isPayLater && payLaterProviderKey === "shopee" && (
+              <SPayLaterFields
+                amount={amount}
+                expenseDate={date}
+                initialDueDay={String(expense?.spayLaterDueDay ?? "")}
+                initialMonths={String(expense?.spayLaterMonths ?? "")}
+                initialCompletedOn={expense?.spayLaterCompletedOn ?? ""}
+              />
             )}
             {showRecordedBank && (
               <p className="col-span-full wrap-anywhere text-sm text-gray-400">Recorded bank: {expense?.bankName}</p>

@@ -159,10 +159,22 @@ async function main() {
     ] });
     const spayLater = await fixture.client.expenseGroup.create({
       data: { userId, name: "Browser SPayLater billing", categories: { create: { name: "Shopping" } } },
-      select: { id: true, publicId: true },
+      select: { id: true, publicId: true, categories: { select: { id: true } } },
     });
     await fixture.client.payLaterProviderAssignment.create({
       data: { expenseGroupId: spayLater.id, userId, providerKey: "shopee" },
+    });
+    await fixture.client.expense.createMany({
+      data: [
+        { title: "Same-cycle Shopee purchase", amountCentavos: 10000, paymentMethod: "CASH" as const },
+        {
+          title: "Other-cycle Shopee purchase", amountCentavos: 6000, paymentMethod: "PAY_LATER" as const,
+          payLaterProviderKey: "shopee", payLaterProviderName: "SPayLater",
+        },
+      ].map((purchase) => ({
+        ...purchase, expenseGroupId: spayLater.id, categoryId: spayLater.categories[0].id,
+        date: parseExpenseDate("2026-06-26"),
+      })),
     });
 
     const data: BrowserData = {

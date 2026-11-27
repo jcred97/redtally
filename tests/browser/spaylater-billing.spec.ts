@@ -45,6 +45,17 @@ const fifthCycleAfterReuse: ExpectedBill[] = [
   ...firstThreeBills.slice(1),
 ];
 
+async function chooseOption(dialog: Locator, label: string, option: string) {
+  await dialog.getByRole("combobox", { name: label, exact: true }).click();
+  await dialog.getByRole("option", { name: option, exact: true }).click();
+}
+
+async function editExpense(page: Page, title: string) {
+  await page.getByRole("button", { name: `Actions for ${title}`, exact: true }).click();
+  await page.getByRole("button", { name: `Edit expense: ${title}`, exact: true }).click();
+  return page.getByRole("dialog", { name: "Edit Expense", exact: true });
+}
+
 async function savePurchase(
   page: Page,
   tabs: Locator,
@@ -62,8 +73,7 @@ async function savePurchase(
     ["Monthly due day", dueDay],
     ["Payment term", term],
   ]) {
-    await dialog.getByRole("combobox", { name: label, exact: true }).click();
-    await dialog.getByRole("option", { name: option, exact: true }).click();
+    await chooseOption(dialog, label, option);
   }
   await dialog.getByRole("button", { name: "Save expense", exact: true }).click();
   await expect(dialog).toBeHidden();
@@ -88,7 +98,7 @@ async function expectCycle(billing: Locator, heading: string, expected: Expected
   }
 }
 
-test("SPayLater purchases create and reuse billing periods without duplicating expenses", async ({ page, baseURL }) => {
+test("creating and editing SPayLater purchases generates bills without duplicating expenses", async ({ page, baseURL }) => {
   const data = browserData();
   const signIn = await page.request.post("/api/auth/sign-in/email", {
     headers: { origin: baseURL!, "x-real-ip": "192.0.2.74" },
@@ -112,17 +122,36 @@ test("SPayLater purchases create and reuse billing periods without duplicating e
   await expectCycle(billing, "Due on the 5th", firstThreeBills);
   await expect(billing.getByRole("article")).toHaveCount(3);
 
-  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
-  await savePurchase(page, tabs, {
-    title: sameCyclePurchase, amount: "100", dueDay: "5th", term: "Pay in full on first bill",
-  });
+  const historyPath = `${groupPath}/expenses?allMonths=1`;
+  const billingTab = tabs.getByRole("link", { name: "Billing", exact: true });
+  await page.goto(historyPath);
+  const converted = await editExpense(page, sameCyclePurchase);
+  await chooseOption(converted, "Payment Method", "Pay Later");
+  await chooseOption(converted, "Payment Provider", "SPayLater");
+  await chooseOption(converted, "Monthly due day", "5th");
+  await chooseOption(converted, "Payment term", "Pay in full on first bill");
+  await converted.getByLabel(/Order completed on/).fill("2026-06-27");
+  await converted.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(converted).toBeHidden();
+  await billingTab.click();
   await expectCycle(billing, "Due on the 5th", fifthCycleAfterReuse);
   await expect(billing.getByRole("article")).toHaveCount(3);
 
-  await tabs.getByRole("link", { name: "Expenses", exact: true }).click();
-  await savePurchase(page, tabs, {
-    title: otherCyclePurchase, amount: "60", dueDay: "15th", term: "Pay in full on first bill",
-  });
+  await page.goto(historyPath);
+  const reopened = await editExpense(page, sameCyclePurchase);
+  await expect(reopened.getByRole("combobox", { name: "Monthly due day", exact: true })).toHaveText("5th");
+  await expect(reopened.getByRole("combobox", { name: "Payment term", exact: true })).toHaveText("Pay in full on first bill");
+  await expect(reopened.getByLabel(/Order completed on/)).toHaveValue("2026-06-27");
+  await reopened.getByRole("button", { name: "Cancel", exact: true }).click();
+
+  const unscheduled = await editExpense(page, otherCyclePurchase);
+  await expect(unscheduled.getByRole("combobox", { name: "Payment Provider", exact: true })).toHaveText("SPayLater");
+  await expect(unscheduled.getByRole("combobox", { name: "Monthly due day", exact: true })).toHaveText("Select a due day");
+  await chooseOption(unscheduled, "Monthly due day", "15th");
+  await chooseOption(unscheduled, "Payment term", "Pay in full on first bill");
+  await unscheduled.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(unscheduled).toBeHidden();
+  await billingTab.click();
   await expect(billing.getByRole("heading", { level: 3 })).toHaveText(["Due on the 5th", "Due on the 15th"]);
   await expectCycle(billing, "Due on the 5th", fifthCycleAfterReuse);
   await expectCycle(billing, "Due on the 15th", [{
@@ -133,7 +162,7 @@ test("SPayLater purchases create and reuse billing periods without duplicating e
   }]);
   await expect(billing.getByRole("article")).toHaveCount(4);
 
-  await page.goto(`${groupPath}/expenses?allMonths=1`);
+  await page.goto(historyPath);
   await expect(page.getByText("3 matching expenses · ₱1,160.00 total", { exact: true })).toBeVisible();
   const history = page.getByRole("table", { name: "Expense history", exact: true });
   await expect(history.locator("tbody").getByRole("row")).toHaveCount(3);

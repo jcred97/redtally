@@ -16,7 +16,8 @@ type ExpensePageRow = {
   page: bigint;
 } & (
   | { id: null }
-  | (Pick<Expense, "id" | "title" | "merchant" | "amountCentavos" | "date" | "timeMinutes" | "updatedAt" | "categoryId" | "paymentMethod" | "bankAssignmentId" | "legacyBankName"> & {
+  | (Pick<Expense, "id" | "title" | "merchant" | "amountCentavos" | "date" | "timeMinutes" | "updatedAt" | "categoryId" | "paymentMethod" | "bankAssignmentId" | "legacyBankName" |
+      "spayLaterDueDay" | "spayLaterMonths" | "spayLaterCompletedOn"> & {
       categoryName: string;
       categoryIcon: string | null;
       bankName: string | null;
@@ -401,11 +402,13 @@ export function createExpenseGroupAccess(
           expense."dayExpenseCount", expense."dayTotalCentavos",
           expense."transactionType" AS "paymentMethod", expense."bankAssignmentId", expense.bank AS "legacyBankName",
           category.name AS "categoryName", category.icon AS "categoryIcon", bank.name AS "bankName",
-          expense."payLaterProviderKey", expense."payLaterProviderName"
+          expense."payLaterProviderKey", expense."payLaterProviderName",
+          expense."spayLaterDueDay", expense."spayLaterMonths", expense."spayLaterCompletedOn"
         FROM pagination
         LEFT JOIN LATERAL (
           SELECT id, title, merchant, "amountCentavos", date, "timeMinutes", "updatedAt", "categoryId", "transactionType", bank, "bankAssignmentId",
             "payLaterProviderKey", "payLaterProviderName",
+            "spayLaterDueDay", "spayLaterMonths", "spayLaterCompletedOn",
             ${dayTotals}
           FROM "Expense"
           WHERE "expenseGroupId" = pagination.id
@@ -452,6 +455,9 @@ export function createExpenseGroupAccess(
           payLaterProviderName: row.payLaterProviderKey
             ? getPayLaterProviderName(row.payLaterProviderKey, row.payLaterProviderName)
             : null,
+          spayLaterDueDay: row.spayLaterDueDay,
+          spayLaterMonths: row.spayLaterMonths,
+          spayLaterCompletedOn: row.spayLaterCompletedOn,
         })),
       };
     },

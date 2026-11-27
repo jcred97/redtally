@@ -78,6 +78,9 @@ export default function ExpenseHistory({
             bankName: getExpenseBankName(expense),
             payLaterProviderKey: expense.payLaterProviderKey,
             payLaterProviderName: expense.payLaterProviderName,
+            spayLaterDueDay: expense.spayLaterDueDay,
+            spayLaterMonths: expense.spayLaterMonths,
+            spayLaterCompletedOn: expense.spayLaterCompletedOn?.toISOString().slice(0, 10) ?? null,
           }}
         />
         <DeleteExpenseButton

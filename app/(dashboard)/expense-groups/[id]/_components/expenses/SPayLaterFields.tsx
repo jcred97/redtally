@@ -41,11 +41,23 @@ function firstPayment(amount: string, completedOn: string, dueDay: string, month
   })?.[0];
 }
 
-export default function SPayLaterFields({ amount, expenseDate }: { amount: string; expenseDate: string }) {
+export default function SPayLaterFields({
+  amount,
+  expenseDate,
+  initialDueDay,
+  initialMonths,
+  initialCompletedOn,
+}: {
+  amount: string;
+  expenseDate: string;
+  initialDueDay: string;
+  initialMonths: string;
+  initialCompletedOn: string;
+}) {
   const fieldId = useId();
-  const [dueDay, setDueDay] = useState("");
-  const [months, setMonths] = useState("");
-  const [completedOn, setCompletedOn] = useState("");
+  const [dueDay, setDueDay] = useState(initialDueDay);
+  const [months, setMonths] = useState(initialMonths);
+  const [completedOn, setCompletedOn] = useState(initialCompletedOn);
   const payment = firstPayment(amount, completedOn || expenseDate, dueDay, months);
 
   return (
