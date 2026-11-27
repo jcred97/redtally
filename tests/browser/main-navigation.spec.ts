@@ -13,9 +13,12 @@ test("main navigation prefetches the destination and keeps the current page duri
   const database = new Client({ connectionString: process.env.REDTALLY_BROWSER_DATABASE_URL });
   await database.connect();
   try {
-    for (const { width, from, to, link, current, destinationTitle } of [
-      { width: 1280, from: "/", to: "/expense-groups", link: "Expense Groups", current: "Overview", destinationTitle: "All Expense Groups" },
-      { width: 360, from: "/expense-groups", to: "/", link: "Overview", current: "All Expense Groups", destinationTitle: "Overview" },
+    const main = page.getByRole("main");
+    const overview = main.getByRole("region", { name: "Spent this month", exact: true });
+    const expenseGroups = main.getByRole("button", { name: "All Expense Groups, switch expense group", exact: true });
+    for (const { width, from, to, link, currentContent, destinationContent } of [
+      { width: 1280, from: "/", to: "/expense-groups", link: "Expense Groups", currentContent: overview, destinationContent: expenseGroups },
+      { width: 360, from: "/expense-groups", to: "/", link: "Overview", currentContent: expenseGroups, destinationContent: overview },
     ]) {
       await page.setViewportSize({ width, height: 850 });
       const matchesDestination = (url: URL) => url.pathname === to && url.searchParams.has("_rsc");
@@ -29,8 +32,8 @@ test("main navigation prefetches the destination and keeps the current page duri
 
       try {
         await page.goto(from);
-        const currentTitle = page.getByRole("heading", { name: current });
-        await expect(currentTitle).toBeVisible();
+        // The loading placeholders already have the page headings.
+        await expect(currentContent).toBeVisible();
         if (width < 640) await page.getByRole("button", { name: "Open navigation" }).click();
         await expect.poll(() => prefetchStarted).toBe(true);
 
@@ -47,14 +50,14 @@ test("main navigation prefetches the destination and keeps the current page duri
             );
             return result.rows[0].waiting;
           }).toBe(true);
-          await expect(currentTitle).toBeVisible();
+          await expect(currentContent).toBeVisible();
           await expect(page.getByRole("status").filter({ hasText: /Loading overview|Loading your expense groups/ })).toHaveCount(0);
         } finally {
           await database.query("ROLLBACK");
         }
 
         await expect(page).toHaveURL(to);
-        await expect(page.getByRole("heading", { name: destinationTitle })).toBeVisible();
+        await expect(destinationContent).toBeVisible();
       } finally {
         resumeRequest.resolve();
         await page.unroute(matchesDestination);
