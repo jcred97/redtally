@@ -19,6 +19,7 @@
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
     "@tesseract.js-data/eng": "1.0.0",
+    "@vercel/speed-insights": "^2.1.1",
     "better-auth": "1.7.12",
     "dotenv": "^17.4.1",
     "next": "16.4.6",
