@@ -57,7 +57,7 @@ export default async function BillingEmptyState({ expenseGroupId, categories, pa
         </>
       ) : (
         <>
-          <p className="mt-3 text-sm text-gray-400">Enable SPayLater under Shopee to add a new purchase.</p>
+          <p className="mt-3 text-sm text-gray-400">Manage which Pay Later providers you can use for new purchases.</p>
           <Link href={payLaterHref} className="button-secondary mt-3 inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-medium">
             Manage Pay Later providers
           </Link>
