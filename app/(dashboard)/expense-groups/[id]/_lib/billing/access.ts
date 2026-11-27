@@ -7,7 +7,7 @@ type BillingInstallment = {
   expense: { title: string; spayLaterMonths: number | null };
 };
 
-type Bill = {
+export type Bill = {
   id: number;
   periodStart: Date;
   periodEnd: Date;
@@ -16,11 +16,9 @@ type Bill = {
   installments: BillingInstallment[];
 };
 
-export type BillingCycle = { dueDay: number; bills: Bill[] };
-
 export function createBillingAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
   return {
-    async get(expenseGroupId: number): Promise<BillingCycle[] | null> {
+    async get(expenseGroupId: number): Promise<Bill[] | null> {
       const userId = await requireUserId();
       if (!Number.isInteger(expenseGroupId) || expenseGroupId < 1 || expenseGroupId > 2_147_483_647) {
         return null;
@@ -31,10 +29,9 @@ export function createBillingAccess(db: PrismaClient, requireUserId: () => Promi
         select: {
           billings: {
             where: { installments: { some: {} } },
-            orderBy: [{ dueDay: "asc" }, { dueDate: "asc" }, { id: "asc" }],
+            orderBy: [{ dueDate: "asc" }, { id: "asc" }],
             select: {
               id: true,
-              dueDay: true,
               periodStart: true,
               periodEnd: true,
               dueDate: true,
@@ -53,21 +50,13 @@ export function createBillingAccess(db: PrismaClient, requireUserId: () => Promi
       });
       if (!group) return null;
 
-      const cycles = new Map<number, BillingCycle>();
-      for (const { dueDay, ...bill } of group.billings) {
-        if (bill.installments.length === 0) continue;
-        let cycle = cycles.get(dueDay);
-        if (!cycle) {
-          cycle = { dueDay, bills: [] };
-          cycles.set(dueDay, cycle);
-        }
-        const totalCentavos = bill.installments.reduce(
+      return group.billings.map((bill) => ({
+        ...bill,
+        totalCentavos: bill.installments.reduce(
           (total, { amountCentavos }) => total + BigInt(amountCentavos),
           BigInt(0),
-        );
-        cycle.bills.push({ ...bill, totalCentavos });
-      }
-      return [...cycles.values()];
+        ),
+      }));
     },
   };
 }

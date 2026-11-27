@@ -160,7 +160,7 @@ export default async function ExpenseGroupPage({
             rules={recurringExpenses}
           />
         ) : billing ? (
-          <BillingTab cycles={billing} expensesHref={expensesHref} />
+          <BillingTab bills={billing} expensesHref={expensesHref} />
         ) : showPaymentProviders ? (
           <div key={expenseGroup.id} className="space-y-6">
             <nav aria-label="Payment Provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">

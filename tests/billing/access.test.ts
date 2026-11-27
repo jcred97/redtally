@@ -9,7 +9,7 @@ function day(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-test("billing reads isolate expense groups, order the populated cycles, and total shared bills exactly", async (context) => {
+test("billing reads isolate groups, sort populated bills by due date across cycles, and total shared bills exactly", async (context) => {
   const { client, close } = await createTestDatabase();
   context.after(close);
   await client.user.createMany({ data: [
@@ -49,21 +49,20 @@ test("billing reads isolate expense groups, order the populated cycles, and tota
   assert.equal(await otherBilling.get(group.id), null);
   assert.deepEqual(await otherBilling.get(foreign.id), []);
 
-  const cycles = await billing.get(group.id);
-  assert.ok(cycles);
-  assert.deepEqual(cycles.map(({ dueDay, bills }) => ({
-    dueDay,
-    bills: bills.map(({ dueDate, totalCentavos }) => [day(dueDate), totalCentavos]),
-  })), [
-    { dueDay: 5, bills: [
-      ["2026-08-05", BigInt(2_147_516_981)], ["2026-09-05", BigInt(33_333)],
-      ["2026-10-05", BigInt(33_333)], ["2026-12-05", BigInt(2_000)],
-    ] },
-    { dueDay: 15, bills: [["2026-07-15", BigInt(200)], ["2026-08-15", BigInt(200)], ["2026-09-15", BigInt(200)]] },
+  const bills = await billing.get(group.id);
+  assert.ok(bills);
+  assert.deepEqual(bills.map(({ dueDate, totalCentavos }) => [day(dueDate), totalCentavos]), [
+    ["2026-07-15", BigInt(200)],
+    ["2026-08-05", BigInt(2_147_516_981)],
+    ["2026-08-15", BigInt(200)],
+    ["2026-09-05", BigInt(33_333)],
+    ["2026-09-15", BigInt(200)],
+    ["2026-10-05", BigInt(33_333)],
+    ["2026-12-05", BigInt(2_000)],
   ]);
-  assert.ok(cycles.every(({ bills }) => bills.every(({ id }) => id !== emptyBill.id)));
+  assert.ok(bills.every(({ id }) => id !== emptyBill.id));
 
-  const firstBill = cycles[0].bills[0];
+  const firstBill = bills[1];
   assert.equal(day(firstBill.periodStart), "2026-06-25");
   assert.equal(day(firstBill.periodEnd), "2026-07-24");
   assert.equal(firstBill.installments.length, 2);
