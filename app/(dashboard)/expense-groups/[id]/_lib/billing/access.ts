@@ -1,10 +1,11 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { editableExpenseSelect } from "../expenses/editable";
 
 type BillingInstallment = {
   id: number;
   installmentNumber: number;
   amountCentavos: number;
-  expense: { title: string; spayLaterMonths: number | null };
+  expense: { id: number; title: string; spayLaterMonths: number | null };
 };
 
 export type Bill = {
@@ -18,6 +19,21 @@ export type Bill = {
 
 export function createBillingAccess(db: PrismaClient, requireUserId: () => Promise<string>) {
   return {
+    async getUnscheduledPurchases(expenseGroupId: number) {
+      const userId = await requireUserId();
+      return db.expense.findMany({
+        where: {
+          expenseGroupId,
+          category: { expenseGroup: { userId } },
+          paymentMethod: "PAY_LATER",
+          payLaterProviderKey: "shopee",
+          spayLaterDueDay: null,
+        },
+        select: editableExpenseSelect,
+        orderBy: [{ date: "desc" }, { id: "desc" }],
+      });
+    },
+
     async get(expenseGroupId: number): Promise<Bill[] | null> {
       const userId = await requireUserId();
       if (!Number.isInteger(expenseGroupId) || expenseGroupId < 1 || expenseGroupId > 2_147_483_647) {
@@ -41,7 +57,7 @@ export function createBillingAccess(db: PrismaClient, requireUserId: () => Promi
                   id: true,
                   installmentNumber: true,
                   amountCentavos: true,
-                  expense: { select: { title: true, spayLaterMonths: true } },
+                  expense: { select: { id: true, title: true, spayLaterMonths: true } },
                 },
               },
             },

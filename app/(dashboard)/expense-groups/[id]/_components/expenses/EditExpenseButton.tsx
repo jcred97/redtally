@@ -1,6 +1,7 @@
 "use client";
 
-import ExpenseFormDialog, { type EditableExpense } from "./ExpenseFormDialog";
+import ExpenseFormDialog from "./ExpenseFormDialog";
+import type { EditableExpense } from "../../_lib/expenses/editable";
 import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
 import type { BankAssignmentOption } from "@/app/lib/expenses/payment";
 

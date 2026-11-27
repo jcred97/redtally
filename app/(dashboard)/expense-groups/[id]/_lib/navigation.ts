@@ -28,6 +28,11 @@ export function canonicalExpenseGroupHref(publicId: string, query: ExpenseGroupQ
   return `/expense-groups/${publicId}${tabPath}${params.size > 0 ? `?${params}` : ""}`;
 }
 
+export function expenseHistoryEntryHref(publicId: string, expenseId: number) {
+  const href = canonicalExpenseGroupHref(publicId, { allMonths: "1", expense: String(expenseId) }, "expenses");
+  return `${href}#expense-history-title`;
+}
+
 export function recurringExpenseAnchor(id: number) {
   return `recurring-expense-${id}`;
 }

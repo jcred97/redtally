@@ -19,30 +19,12 @@ import type { ReceiptSuggestions } from "@/app/lib/receipt-scanning/config";
 import type { PayLaterProviderOption } from "@/app/lib/pay-later/providers";
 import ReceiptImageInput from "./ReceiptImageInput";
 import SPayLaterFields from "./SPayLaterFields";
+import type { EditableExpense } from "../../_lib/expenses/editable";
 
 const paymentOptions = [
   { value: "", label: "No payment method" },
   ...Object.entries(paymentMethodLabels).map(([value, label]) => ({ value, label })),
 ];
-
-export type EditableExpense = {
-  id: number;
-  title: string;
-  merchant: string | null;
-  amountCentavos: number;
-  date: string;
-  timeMinutes: number | null;
-  updatedAt: string;
-  categoryId: number;
-  paymentMethod: PaymentMethod | null;
-  bankAssignmentId: number | null;
-  bankName: string | null;
-  payLaterProviderKey: string | null;
-  payLaterProviderName: string | null;
-  spayLaterDueDay: number | null;
-  spayLaterMonths: number | null;
-  spayLaterCompletedOn: string | null;
-};
 
 type ExpenseFormDialogProps = {
   expenseGroupId: number;
@@ -50,6 +32,7 @@ type ExpenseFormDialogProps = {
   bankOptions: BankAssignmentOption[];
   payLaterProviders?: PayLaterProviderOption[];
   expense?: EditableExpense;
+  billingAction?: "add" | "setup";
   focusKey?: string;
   inMenu?: boolean;
 };
@@ -60,6 +43,7 @@ export default function ExpenseFormDialog({
   bankOptions,
   payLaterProviders = [],
   expense,
+  billingAction,
   focusKey,
   inMenu,
 }: ExpenseFormDialogProps) {
@@ -127,9 +111,9 @@ export default function ExpenseFormDialog({
       setDate(getManilaToday());
       setTime("");
       setCategoryId(String(categories[0]?.id ?? ""));
-      setPaymentMethod("");
+      setPaymentMethod(billingAction === "add" ? "PAY_LATER" : "");
       setBankAssignmentId("");
-      setPayLaterProviderKey("");
+      setPayLaterProviderKey(billingAction === "add" ? "shopee" : "");
     }
   }
 
@@ -190,12 +174,13 @@ export default function ExpenseFormDialog({
   return (
     <div>
       <FormDialog
-        triggerLabel={expense ? "Edit" : "+ New Expense"}
-        triggerAriaLabel={expense ? `Edit expense: ${expense.title}` : undefined}
+        triggerLabel={billingAction === "add" ? "Add SPayLater purchase" : billingAction === "setup" ? "Finish schedule setup" : expense ? "Edit" : "+ New Expense"}
+        triggerAriaLabel={expense ? (billingAction === "setup" ? `Finish schedule setup for ${expense.title}` : `Edit expense: ${expense.title}`) : undefined}
         triggerFocusKey={focusKey}
         triggerVariant={expense ? "secondary" : "primary"}
         triggerClassName={inMenu ? `${menuStyles.item} w-full cursor-pointer px-3 py-2 text-left text-sm` : undefined}
-        returnFocusId={expense ? "expense-history-title" : undefined}
+        returnFocusId={billingAction ? "billing-title" : expense ? "expense-history-title" : undefined}
+        successFocusId={billingAction ? "billing-title" : undefined}
         title={expense ? "Edit Expense" : "New Expense"}
         dialogSize="wide"
         compact

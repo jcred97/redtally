@@ -176,6 +176,20 @@ async function main() {
         date: parseExpenseDate("2026-06-26"),
       })),
     });
+    const pendingPurchases = await fixture.client.expenseGroup.create({
+      data: { userId, name: "Incomplete SPayLater schedules", categories: { create: { name: "Shopping" } } },
+      include: { categories: true },
+    });
+    await fixture.client.payLaterProviderAssignment.create({
+      data: { expenseGroupId: pendingPurchases.id, userId, providerKey: "shopee" },
+    });
+    await fixture.client.expense.createMany({
+      data: [4510, 7365].map((amountCentavos) => ({
+        expenseGroupId: pendingPurchases.id, categoryId: pendingPurchases.categories[0].id,
+        date: parseExpenseDate("2020-02-02"), title: "Replacement cable", amountCentavos,
+        paymentMethod: "PAY_LATER" as const, payLaterProviderKey: "shopee", payLaterProviderName: "SPayLater",
+      })),
+    });
 
     const data: BrowserData = {
       email, password, userId,
@@ -185,7 +199,7 @@ async function main() {
       largeExport: { publicId: largeExport.publicId },
       foreign: { id: foreign.id, publicId: foreign.publicId },
       olderHistory: { publicId: olderHistory.publicId },
-      spayLater: { publicId: spayLater.publicId },
+      spayLater: { publicId: spayLater.publicId, pendingPurchases: pendingPurchases.publicId },
       dashboard: { month: dashboardMonth, budgeted: dashboardBudgeted.publicId, unbudgeted: dashboardUnbudgeted.publicId },
     };
     const env: NodeJS.ProcessEnv = {

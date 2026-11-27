@@ -6,6 +6,15 @@ const threeMonthPurchase = "Three-month Shopee purchase " + "LongItemReference".
 const sameCyclePurchase = "Same-cycle Shopee purchase";
 const otherCyclePurchase = "Other-cycle Shopee purchase";
 
+test.beforeEach(async ({ page, baseURL }) => {
+  const data = browserData();
+  const signIn = await page.request.post("/api/auth/sign-in/email", {
+    headers: { origin: baseURL!, "x-real-ip": "192.0.2.74" },
+    data: { email: data.email, password: data.password },
+  });
+  expect(signIn.ok()).toBe(true);
+});
+
 type ExpectedBill = {
   period: string;
   dueDate: string;
@@ -59,18 +68,17 @@ async function editExpense(page: Page, title: string) {
 
 async function savePurchase(
   page: Page,
-  tabs: Locator,
   { title, amount, dueDay, term }: { title: string; amount: string; dueDay: string; term: string },
 ) {
-  await page.getByRole("button", { name: "+ New Expense", exact: true }).click();
+  await page.getByRole("button", { name: "Add SPayLater purchase", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New Expense", exact: true });
+  await expect(dialog.getByRole("combobox", { name: "Payment Method", exact: true })).toHaveText("Pay Later");
+  await expect(dialog.getByRole("combobox", { name: "Payment Provider", exact: true })).toHaveText("SPayLater");
   await dialog.getByLabel("Title", { exact: true }).fill(title);
   await dialog.getByLabel("Amount (PHP)", { exact: true }).fill(amount);
   await dialog.getByLabel("Date", { exact: true }).fill(`${scheduleYear}-06-26`);
   for (const [label, option] of [
     ["Category", "Shopping"],
-    ["Payment Method", "Pay Later"],
-    ["Payment Provider", "SPayLater"],
     ["Monthly due day", dueDay],
     ["Payment term", term],
   ]) {
@@ -78,7 +86,6 @@ async function savePurchase(
   }
   await dialog.getByRole("button", { name: "Save expense", exact: true }).click();
   await expect(dialog).toBeHidden();
-  await tabs.getByRole("link", { name: "Billing", exact: true }).click();
 }
 
 async function expectSchedule(section: Locator, expected: ExpectedBill[], nearestOpen: boolean) {
@@ -99,7 +106,7 @@ async function expectSchedule(section: Locator, expected: ExpectedBill[], neares
     await expect(bill.getByRole("listitem")).toHaveCount(installments.length);
     for (const { title, number, amount } of installments) {
       const line = bill.getByRole("listitem").filter({ hasText: title });
-      await expect(line.getByText(title, { exact: true })).toBeVisible();
+      await expect(line.getByRole("link", { name: title, exact: true })).toBeVisible();
       await expect(line.getByText(`Installment ${number}`, { exact: true })).toBeVisible();
       await expect(line.getByText(amount, { exact: true })).toBeVisible();
     }
@@ -112,14 +119,8 @@ async function expectSchedule(section: Locator, expected: ExpectedBill[], neares
   }
 }
 
-test("creating and editing SPayLater purchases generates bills without duplicating expenses", async ({ page, baseURL }) => {
+test("creating and editing SPayLater purchases generates bills without duplicating expenses", async ({ page }) => {
   const data = browserData();
-  const signIn = await page.request.post("/api/auth/sign-in/email", {
-    headers: { origin: baseURL!, "x-real-ip": "192.0.2.74" },
-    data: { email: data.email, password: data.password },
-  });
-  expect(signIn.ok()).toBe(true);
-
   const groupPath = `/expense-groups/${data.spayLater.publicId}`;
   await page.setViewportSize({ width: 360, height: 820 });
   await page.goto(`${groupPath}/billing`);
@@ -130,11 +131,10 @@ test("creating and editing SPayLater purchases generates bills without duplicati
   await expect(billing.getByText("No bills yet", { exact: true })).toBeVisible();
   await expect(billing.getByRole("article")).toHaveCount(0);
   expect(await billing.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await billing.getByRole("link", { name: "Go to Expenses", exact: true }).click();
-  await expect(page).toHaveURL(`${groupPath}/expenses`);
   await page.setViewportSize({ width: 1280, height: 820 });
 
-  await savePurchase(page, tabs, { title: threeMonthPurchase, amount: "1000", dueDay: "5th", term: "3 months" });
+  await savePurchase(page, { title: threeMonthPurchase, amount: "1000", dueDay: "5th", term: "3 months" });
+  await expect(page).toHaveURL(`${groupPath}/billing`);
   await expectSchedule(upcoming, firstThreeBills, true);
   await expect(billing.getByRole("article")).toHaveCount(3);
 
@@ -211,4 +211,41 @@ test("creating and editing SPayLater purchases generates bills without duplicati
     await expect(row).toHaveCount(1);
     await expect(row.getByRole("cell", { name: fullAmount, exact: true })).toBeVisible();
   }
+});
+
+test("finish schedule setup and follow the installment to its exact older purchase", async ({ page }) => {
+  const groupPath = `/expense-groups/${browserData().spayLater.pendingPurchases}`;
+  await page.setViewportSize({ width: 360, height: 820 });
+  await page.goto(`${groupPath}/billing`);
+  const billing = page.getByRole("region", { name: "Billing", exact: true });
+  const candidates = billing.getByRole("listitem").filter({ hasText: "Replacement cable" });
+  await expect(candidates).toHaveCount(2);
+  const purchase = candidates.filter({ hasText: "₱73.65" });
+  await purchase.getByRole("button", { name: "Finish schedule setup for Replacement cable", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit Expense", exact: true });
+  await expect(dialog.getByLabel("Title", { exact: true })).toHaveValue("Replacement cable");
+  await expect(dialog.getByLabel("Amount (PHP)", { exact: true })).toHaveValue("73.65");
+  await expect(dialog.getByLabel("Date", { exact: true })).toHaveValue("2020-02-02");
+  await expect(dialog.getByRole("combobox", { name: "Payment Provider", exact: true })).toHaveText("SPayLater");
+  await chooseOption(dialog, "Monthly due day", "15th");
+  await chooseOption(dialog, "Payment term", "3 months");
+  await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(dialog).toBeHidden();
+
+  const past = billing.getByRole("region", { name: "Past scheduled bills", exact: true });
+  const bills = past.getByRole("article");
+  await expect(bills).toHaveCount(3);
+  await bills.first().locator("summary").click();
+  const installment = bills.first().getByRole("listitem");
+  await expect(installment.getByText("₱24.55", { exact: true })).toBeVisible();
+  await installment.getByRole("link", { name: "Replacement cable", exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 820 });
+  const rows = page.getByRole("table", { name: "Expense history", exact: true }).locator("tbody").getByRole("row");
+  await expect(rows).toHaveCount(1);
+  await expect(rows.getByRole("cell", { name: "Replacement cable", exact: true })).toBeVisible();
+  await expect(rows.getByRole("cell", { name: "₱73.65", exact: true })).toBeVisible();
+
+  await page.goto(`${groupPath}/expenses?allMonths=1`);
+  await expect(rows).toHaveCount(2);
+  await expect(rows.getByRole("cell", { name: "₱45.10", exact: true })).toBeVisible();
 });

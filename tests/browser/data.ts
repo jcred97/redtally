@@ -8,7 +8,7 @@ export type BrowserData = {
   largeExport: { publicId: string };
   foreign: { id: number; publicId: string };
   olderHistory: { publicId: string };
-  spayLater: { publicId: string };
+  spayLater: { publicId: string; pendingPurchases: string };
   dashboard: { month: string; budgeted: string; unbudgeted: string };
 };
 

@@ -9,6 +9,7 @@ import {
 import { isExpenseGroupTab } from "../_lib/tabs";
 import DashboardTab from "../_components/dashboard/DashboardTab";
 import BillingTab from "../_components/billing/BillingTab";
+import BillingEmptyState from "../_components/billing/BillingEmptyState";
 import ExpensesTab from "../_components/expenses/ExpensesTab";
 import ExpenseGroupPayLater from "../_components/pay-later/ExpenseGroupPayLater";
 import { getManilaToday } from "@/app/lib/expenses/date";
@@ -160,7 +161,11 @@ export default async function ExpenseGroupPage({
             rules={recurringExpenses}
           />
         ) : billing ? (
-          <BillingTab bills={billing} expensesHref={expensesHref} />
+          <BillingTab
+            bills={billing}
+            expenseGroupPublicId={expenseGroup.publicId}
+            emptyState={<BillingEmptyState expenseGroupId={id} categories={categoryOptions} payLaterHref={groupPath + payLaterTab} />}
+          />
         ) : showPaymentProviders ? (
           <div key={expenseGroup.id} className="space-y-6">
             <nav aria-label="Payment Provider views" className="inline-flex gap-0.5 rounded-lg border border-gray-800 p-0.5">

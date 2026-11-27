@@ -42,6 +42,18 @@ test("billing reads isolate groups, sort populated bills by due date across cycl
   await save({ ...purchase, title: "Three installments", amount: "1000.00", spayLaterDueDay: "5" });
   await save({ ...purchase, title: "Single payment", amount: "21474836.47", spayLaterDueDay: "5", spayLaterMonths: "1" });
 
+  const unscheduled = {
+    expenseGroupId: group.id, categoryId: group.categories[0].id, amountCentavos: 1200,
+    date: new Date("2026-06-26"), paymentMethod: "PAY_LATER" as const,
+  };
+  await client.expense.createMany({ data: [
+    { ...unscheduled, title: "Unscheduled SPayLater", payLaterProviderKey: "shopee" },
+    { ...unscheduled, title: "Other provider", payLaterProviderKey: "lazada" },
+    { ...unscheduled, title: "No recorded provider" },
+  ] });
+  assert.deepEqual((await billing.getUnscheduledPurchases(group.id)).map(({ title }) => title), ["Unscheduled SPayLater"]);
+  assert.deepEqual(await otherBilling.getUnscheduledPurchases(group.id), []);
+
   const emptyBill = await client.billing.create({ data: {
     expenseGroupId: group.id, dueDay: 5, periodStart: new Date("2026-11-25"), periodEnd: new Date("2026-12-24"),
     statementDate: new Date("2026-12-25"), dueDate: new Date("2027-01-05"),

@@ -9,3 +9,7 @@ const access = createBillingAccess(prisma, requireUserId);
 export async function getBilling(expenseGroupId: number) {
   return access.get(expenseGroupId);
 }
+
+export async function getUnscheduledPurchases(expenseGroupId: number) {
+  return access.getUnscheduledPurchases(expenseGroupId);
+}

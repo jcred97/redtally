@@ -1,13 +1,15 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { formatExpenseDate, getManilaToday, parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import type { Bill } from "../../_lib/billing/access";
-import ExpenseGroupEmptyState from "../ExpenseGroupEmptyState";
+import { expenseHistoryEntryHref } from "../../_lib/navigation";
 
 function BillingDate({ date }: { date: Date }) {
   return <time dateTime={date.toISOString().slice(0, 10)}>{formatExpenseDate(date)}</time>;
 }
 
-function BillCard({ bill, open }: { bill: Bill; open: boolean }) {
+function BillCard({ bill, open, expenseGroupPublicId }: { bill: Bill; open: boolean; expenseGroupPublicId: string }) {
   const { id, periodStart, periodEnd, dueDate, totalCentavos, installments } = bill;
 
   return (
@@ -35,7 +37,13 @@ function BillCard({ bill, open }: { bill: Bill; open: boolean }) {
           {installments.map(({ id, installmentNumber, amountCentavos, expense }) => (
             <li key={id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
               <div className="min-w-0">
-                <p className="wrap-anywhere font-medium">{expense.title}</p>
+                <Link
+                  href={expenseHistoryEntryHref(expenseGroupPublicId, expense.id)}
+                  prefetch={false}
+                  className="wrap-anywhere rounded-sm font-medium text-red-400 underline underline-offset-2 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+                >
+                  {expense.title}
+                </Link>
                 <p className="mt-0.5 text-gray-400">
                   Installment {installmentNumber}{expense.spayLaterMonths !== null && ` of ${expense.spayLaterMonths}`}
                 </p>
@@ -49,18 +57,20 @@ function BillCard({ bill, open }: { bill: Bill; open: boolean }) {
   );
 }
 
-export default function BillingTab({ bills, expensesHref }: { bills: Bill[]; expensesHref: string }) {
+export default function BillingTab({ bills, expenseGroupPublicId, emptyState }: {
+  bills: Bill[];
+  expenseGroupPublicId: string;
+  emptyState: ReactNode;
+}) {
   const today = parseExpenseDate(getManilaToday());
   const upcoming = bills.filter((bill) => bill.dueDate >= today);
   const past = bills.filter((bill) => bill.dueDate < today).reverse();
 
   return (
     <section aria-labelledby="billing-title">
-      <h2 id="billing-title" className="mb-4 text-lg font-semibold">Billing</h2>
+      <h2 id="billing-title" tabIndex={-1} className="mb-4 text-lg font-semibold">Billing</h2>
       {bills.length === 0 ? (
-        <ExpenseGroupEmptyState icon="🧾" title="No bills yet" action={{ href: expensesHref, label: "Go to Expenses" }}>
-          <p className="mt-1 text-sm text-gray-400">Save a Pay Later expense to start a billing schedule.</p>
-        </ExpenseGroupEmptyState>
+        emptyState
       ) : (
         <div className="space-y-6">
           <p className="text-sm text-gray-400">Purchase amount only, before interest and fees.</p>
@@ -68,7 +78,7 @@ export default function BillingTab({ bills, expensesHref }: { bills: Bill[]; exp
             <h3 id="upcoming-bills" className="mb-3 text-base font-semibold">Upcoming bills</h3>
             {upcoming.length > 0 ? (
               <div className="space-y-3">
-                {upcoming.map((bill, index) => <BillCard key={bill.id} bill={bill} open={index === 0} />)}
+                {upcoming.map((bill, index) => <BillCard key={bill.id} bill={bill} open={index === 0} expenseGroupPublicId={expenseGroupPublicId} />)}
               </div>
             ) : (
               <p className="text-sm text-gray-300">No upcoming bills.</p>
@@ -78,7 +88,7 @@ export default function BillingTab({ bills, expensesHref }: { bills: Bill[]; exp
             <section aria-labelledby="past-bills">
               <h3 id="past-bills" className="mb-3 text-base font-semibold">Past scheduled bills</h3>
               <div className="space-y-3">
-                {past.map((bill) => <BillCard key={bill.id} bill={bill} open={false} />)}
+                {past.map((bill) => <BillCard key={bill.id} bill={bill} open={false} expenseGroupPublicId={expenseGroupPublicId} />)}
               </div>
             </section>
           )}

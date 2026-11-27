@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { formatExpenseDate, formatExpenseTime, parseExpenseDate } from "@/app/lib/expenses/date";
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import SpendingTrend from "../../expense-groups/[id]/_components/dashboard/SpendingTrend";
-import { canonicalExpenseGroupHref, recurringExpenseAnchor } from "../../expense-groups/[id]/_lib/navigation";
+import { canonicalExpenseGroupHref, expenseHistoryEntryHref, recurringExpenseAnchor } from "../../expense-groups/[id]/_lib/navigation";
 import { lastDayOfDashboardMonth } from "../../expense-groups/[id]/_lib/dashboard/period";
 import type { getHomeDashboard } from "./queries";
 
@@ -161,7 +161,7 @@ export default function DashboardReport({ data, today }: { data: DashboardData; 
                 {recentExpenses.map(({ id, title, merchant, date, timeMinutes, category, group, amountCentavos }) => (
                   <ReportRow
                     key={id}
-                    href={`${canonicalExpenseGroupHref(group.publicId, { allMonths: "1", expense: String(id) }, "expenses")}#expense-history-title`}
+                    href={expenseHistoryEntryHref(group.publicId, id)}
                     label={title}
                     description={[
                       group.name, category.name, merchant, formatExpenseDate(date),

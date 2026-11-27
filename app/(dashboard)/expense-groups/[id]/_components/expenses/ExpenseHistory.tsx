@@ -3,7 +3,8 @@ import type { ExpenseHistoryEntry } from "@/app/(dashboard)/_lib/expense-groups/
 import { formatPesoAmount } from "@/app/lib/expenses/money";
 import { expenseTimeInput, formatExpenseDate, formatExpenseTime } from "@/app/lib/expenses/date";
 import { paymentMethodLabels, type BankAssignmentOption } from "@/app/lib/expenses/payment";
-import ExpensePaymentProvider, { getExpenseBankName, getExpensePaymentProvider } from "./ExpensePaymentProvider";
+import ExpensePaymentProvider, { getExpensePaymentProvider } from "./ExpensePaymentProvider";
+import { toEditableExpense } from "../../_lib/expenses/editable";
 import EditExpenseButton from "./EditExpenseButton";
 import DeleteExpenseButton from "./DeleteExpenseButton";
 import ExpenseActionMenu from "./ExpenseActionMenu";
@@ -64,24 +65,7 @@ export default function ExpenseHistory({
           categories={categories}
           bankOptions={bankOptions}
           payLaterProviders={payLaterProviders}
-          expense={{
-            id: expense.id,
-            title: expense.title,
-            merchant: expense.merchant,
-            amountCentavos: expense.amountCentavos,
-            date: expense.date.toISOString(),
-            timeMinutes: expense.timeMinutes,
-            updatedAt: expense.updatedAt.toISOString(),
-            categoryId: expense.categoryId,
-            paymentMethod: expense.paymentMethod,
-            bankAssignmentId: expense.bankAssignmentId,
-            bankName: getExpenseBankName(expense),
-            payLaterProviderKey: expense.payLaterProviderKey,
-            payLaterProviderName: expense.payLaterProviderName,
-            spayLaterDueDay: expense.spayLaterDueDay,
-            spayLaterMonths: expense.spayLaterMonths,
-            spayLaterCompletedOn: expense.spayLaterCompletedOn?.toISOString().slice(0, 10) ?? null,
-          }}
+          expense={toEditableExpense(expense)}
         />
         <DeleteExpenseButton
           focusKey={keys.delete}
